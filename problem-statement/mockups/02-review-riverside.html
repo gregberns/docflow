@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocFlow - Review Document (Riverside Bistro)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6f8; color: #1a1a2e; }
+
+  /* Top nav */
+  .topbar { background: #1a1a2e; color: #fff; height: 52px; display: flex; align-items: center; padding: 0 24px; justify-content: space-between; }
+  .topbar-left { display: flex; align-items: center; gap: 24px; }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: #6c9bff; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .org-indicator {
+    display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 6px;
+    background: rgba(255,255,255,0.08); font-size: 13px; color: #c4c9d9; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .org-indicator:hover { background: rgba(255,255,255,0.12); }
+  .org-indicator-icon { font-size: 16px; }
+  .org-indicator-name { font-weight: 600; color: #fff; }
+  .org-indicator-change { font-size: 11px; color: #6c9bff; margin-left: 4px; }
+
+  /* Layout */
+  .detail-layout { display: flex; height: calc(100vh - 52px); }
+
+  /* Left panel — PDF viewer */
+  .pdf-panel { flex: 1; background: #2a2a2e; display: flex; flex-direction: column; min-width: 0; }
+  .pdf-toolbar {
+    height: 40px; background: #3a3a3e; display: flex; align-items: center; padding: 0 12px;
+    gap: 8px; border-bottom: 1px solid #4a4a4e; flex-shrink: 0;
+  }
+  .pdf-toolbar-btn {
+    width: 28px; height: 28px; border: none; background: rgba(255,255,255,0.08); border-radius: 4px;
+    color: #ccc; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .pdf-toolbar-btn:hover { background: rgba(255,255,255,0.15); }
+  .pdf-filename { font-size: 12px; color: #999; margin-left: 8px; flex: 1; }
+  .pdf-page-info { font-size: 11px; color: #888; }
+  .pdf-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; overflow: auto; }
+  .pdf-page {
+    background: #fff; width: 100%; max-width: 400px; aspect-ratio: 3/4.5;
+    border-radius: 2px; box-shadow: 0 2px 20px rgba(0,0,0,0.4);
+    padding: 36px 32px; display: flex; flex-direction: column; font-size: 11px; color: #333;
+  }
+
+  /* Receipt-style PDF */
+  .receipt-header { text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #ccc; padding-bottom: 16px; }
+  .receipt-store { font-size: 16px; font-weight: 700; color: #1a1a2e; }
+  .receipt-store-sub { font-size: 9px; color: #888; margin-top: 3px; }
+  .receipt-divider { border: none; border-top: 1px dashed #ccc; margin: 12px 0; }
+  .receipt-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px; }
+  .receipt-row.total { font-weight: 700; font-size: 13px; border-top: 2px solid #333; margin-top: 8px; padding-top: 8px; }
+  .receipt-items { margin-bottom: 8px; }
+  .receipt-item { display: flex; justify-content: space-between; font-size: 9.5px; margin-bottom: 3px; }
+  .receipt-item-name { flex: 1; }
+  .receipt-item-qty { width: 30px; text-align: center; color: #888; }
+  .receipt-item-price { width: 70px; text-align: right; }
+  .receipt-footer { text-align: center; margin-top: auto; font-size: 8px; color: #aaa; border-top: 2px dashed #ccc; padding-top: 12px; }
+  .receipt-barcode { font-family: monospace; font-size: 7px; letter-spacing: 2px; color: #ccc; margin-top: 6px; }
+
+  /* Right panel — form */
+  .form-panel {
+    width: 420px; flex-shrink: 0; background: #fff; border-left: 1px solid #e5e7eb;
+    display: flex; flex-direction: column;
+  }
+
+  /* Form header */
+  .form-header { padding: 20px 24px 16px; border-bottom: 1px solid #f3f4f6; }
+  .form-back { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #6b7280; text-decoration: none; margin-bottom: 12px; cursor: pointer; }
+  .form-back:hover { color: #6c9bff; }
+  .form-doc-id { font-size: 18px; font-weight: 700; }
+  .form-doc-meta { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+  .form-stage-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .badge {
+    display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+  }
+  .badge-stage.review { background: #ede9fe; color: #7c3aed; }
+  .badge-type { background: #f3f4f6; color: #374151; }
+
+  /* Stage progress */
+  .stage-progress { display: flex; align-items: center; gap: 0; padding: 16px 24px; border-bottom: 1px solid #f3f4f6; }
+  .stage-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .stage-dot.done { background: #10b981; }
+  .stage-dot.current { background: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.2); }
+  .stage-dot.upcoming { background: #e5e7eb; }
+  .stage-line { flex: 1; height: 2px; }
+  .stage-line.done { background: #10b981; }
+  .stage-line.upcoming { background: #e5e7eb; }
+  .stage-labels {
+    display: flex; justify-content: space-between; padding: 4px 24px 12px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .stage-label { font-size: 9px; color: #9ca3af; text-align: center; flex: 1; }
+  .stage-label.current { color: #7c3aed; font-weight: 600; }
+  .stage-label.done { color: #10b981; }
+
+  /* Form body */
+  .form-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  .form-section-title {
+    font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 12px; margin-top: 4px;
+  }
+
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+  .form-input, .form-select {
+    width: 100%; height: 34px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 10px;
+    font-size: 13px; color: #1a1a2e; background: #fff; outline: none;
+  }
+  .form-input:focus, .form-select:focus { border-color: #6c9bff; box-shadow: 0 0 0 2px rgba(108,155,255,0.15); }
+
+  /* Category confirmation */
+  .category-confirm {
+    background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 20px;
+  }
+  .category-confirm-label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .category-confirm .form-select { background: #fff; }
+  .category-hint { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+
+  /* Two-col row */
+  .form-row { display: flex; gap: 12px; }
+  .form-row .form-group { flex: 1; }
+
+  /* Separator */
+  .form-separator { height: 1px; background: #f3f4f6; margin: 8px 0 16px; }
+
+  /* Action bar */
+  .action-bar {
+    padding: 16px 24px; border-top: 1px solid #e5e7eb; background: #fff;
+    display: flex; gap: 10px; flex-shrink: 0;
+  }
+  .btn {
+    height: 38px; padding: 0 20px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 6px; border: none;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: #10b981; color: #fff; flex: 1; justify-content: center; }
+  .btn-primary:hover { background: #059669; }
+  .btn-danger { background: #fff; color: #dc2626; border: 1px solid #fecaca; }
+  .btn-danger:hover { background: #fef2f2; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Doc<span>Flow</span></div>
+  </div>
+  <div class="topbar-right">
+    <div class="org-indicator">
+      <span class="org-indicator-icon">&#127869;</span>
+      <span class="org-indicator-name">Riverside Bistro</span>
+      <span class="org-indicator-change">Switch</span>
+    </div>
+  </div>
+</div>
+
+<!-- Detail layout -->
+<div class="detail-layout">
+
+  <!-- PDF viewer — receipt style -->
+  <div class="pdf-panel">
+    <div class="pdf-toolbar">
+      <button class="pdf-toolbar-btn">&#8722;</button>
+      <button class="pdf-toolbar-btn">&#43;</button>
+      <span class="pdf-filename">margarita_machine_parts_receipt_0315.pdf</span>
+      <span class="pdf-page-info">Page 1 of 1</span>
+    </div>
+    <div class="pdf-body">
+      <div class="pdf-page">
+        <div class="receipt-header">
+          <div class="receipt-store">Industrial Margarita Machine Parts LLC</div>
+          <div class="receipt-store-sub">"If It Blends, We Mend"</div>
+          <div class="receipt-store-sub">4200 Agave Industrial Pkwy, Tucson, AZ 85701</div>
+          <div class="receipt-store-sub">Tel: (520) 555-MARG</div>
+        </div>
+
+        <div class="receipt-row">
+          <span>Date:</span>
+          <span>March 15, 2024</span>
+        </div>
+        <div class="receipt-row">
+          <span>Transaction #:</span>
+          <span>TXN-88214</span>
+        </div>
+        <div class="receipt-row">
+          <span>Payment:</span>
+          <span>Corporate Card ending 4477</span>
+        </div>
+
+        <hr class="receipt-divider">
+
+        <div class="receipt-items">
+          <div class="receipt-item">
+            <span class="receipt-item-name">Titanium Blender Blade Assembly (Heavy Duty)</span>
+            <span class="receipt-item-qty">x2</span>
+            <span class="receipt-item-price">$189.00</span>
+          </div>
+          <div class="receipt-item">
+            <span class="receipt-item-name">Salt Rim Dispenser Cartridge (Jumbo)</span>
+            <span class="receipt-item-qty">x6</span>
+            <span class="receipt-item-price">$47.94</span>
+          </div>
+          <div class="receipt-item">
+            <span class="receipt-item-name">Industrial Ice Crusher Motor (Refurb)</span>
+            <span class="receipt-item-qty">x1</span>
+            <span class="receipt-item-price">$324.00</span>
+          </div>
+          <div class="receipt-item">
+            <span class="receipt-item-name">Frozen Drink Consistency Sensor</span>
+            <span class="receipt-item-qty">x1</span>
+            <span class="receipt-item-price">$89.50</span>
+          </div>
+          <div class="receipt-item">
+            <span class="receipt-item-name">Novelty Oversized Umbrella Picks (500ct)</span>
+            <span class="receipt-item-qty">x1</span>
+            <span class="receipt-item-price">$12.99</span>
+          </div>
+        </div>
+
+        <hr class="receipt-divider">
+
+        <div class="receipt-row"><span>Subtotal</span><span>$663.43</span></div>
+        <div class="receipt-row"><span>Tax (8.7%)</span><span>$57.72</span></div>
+        <div class="receipt-row total"><span>TOTAL</span><span>$721.15</span></div>
+
+        <div class="receipt-footer">
+          Thank you for keeping the margaritas flowing!<br>
+          Returns accepted within 30 days with receipt.<br>
+          No returns on umbrella picks. You know why.
+          <div class="receipt-barcode">|||| |||| | ||| |||| | || |||| |||</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form panel -->
+  <div class="form-panel">
+
+    <div class="form-header">
+      <a class="form-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to Documents
+      </a>
+      <div class="form-doc-id">RCT-2024-0319</div>
+      <div class="form-doc-meta">margarita_machine_parts_receipt_0315.pdf</div>
+      <div class="form-stage-row">
+        <span class="badge badge-stage review">Review</span>
+        <span class="badge badge-type">Receipt</span>
+      </div>
+    </div>
+
+    <!-- Stage progress — Receipt: Upload → Classify → Extract → Review → Filed (5 stages, shorter) -->
+    <div class="stage-progress">
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot current"></span>
+      <span class="stage-line upcoming"></span>
+      <span class="stage-dot upcoming"></span>
+    </div>
+    <div class="stage-labels">
+      <span class="stage-label done">Upload</span>
+      <span class="stage-label done">Classify</span>
+      <span class="stage-label done">Extract</span>
+      <span class="stage-label current">Review</span>
+      <span class="stage-label">Filed</span>
+    </div>
+
+    <!-- Form body -->
+    <div class="form-body">
+
+      <!-- Category confirmation -->
+      <div class="category-confirm">
+        <div class="category-confirm-label">Document Type</div>
+        <select class="form-select">
+          <option>Invoice</option>
+          <option selected>Receipt</option>
+          <option>Expense Report</option>
+        </select>
+        <div class="category-hint">Changing the document type will trigger re-extraction with new fields.</div>
+      </div>
+
+      <!-- Extracted fields — completely different from Pinnacle Invoice -->
+      <div class="form-section-title">Extracted Data</div>
+
+      <div class="form-group">
+        <label class="form-label">Merchant</label>
+        <input class="form-input" type="text" value="Industrial Margarita Machine Parts LLC">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-input" type="date" value="2024-03-15">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Amount</label>
+          <input class="form-input" type="text" value="$721.15">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select">
+            <option>Food</option>
+            <option>Supplies</option>
+            <option selected>Equipment</option>
+            <option>Services</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Payment Method</label>
+          <input class="form-input" type="text" value="Corporate Card ending 4477">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Action bar -->
+    <div class="action-bar">
+      <button class="btn btn-danger">Reject</button>
+      <button class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Approve
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

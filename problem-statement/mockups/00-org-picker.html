@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocFlow - Select Organization</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f6f8; color: #1a1a2e;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+
+  .logo { font-size: 32px; font-weight: 700; letter-spacing: -1px; margin-bottom: 8px; }
+  .logo span { color: #6c9bff; }
+  .subtitle { font-size: 14px; color: #6b7280; margin-bottom: 40px; }
+
+  .org-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 780px; width: 100%; padding: 0 24px; }
+
+  .org-card {
+    background: #fff; border: 2px solid #e5e7eb; border-radius: 12px;
+    padding: 28px 24px; cursor: pointer; transition: all 0.15s;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+  }
+  .org-card:hover { border-color: #6c9bff; box-shadow: 0 4px 12px rgba(108,155,255,0.15); transform: translateY(-2px); }
+
+  .org-icon {
+    width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 24px; margin-bottom: 16px;
+  }
+  .org-icon.bistro { background: #fef3c7; }
+  .org-icon.legal { background: #ede9fe; }
+  .org-icon.construction { background: #fce7f3; }
+
+  .org-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .org-desc { font-size: 12px; color: #6b7280; line-height: 1.4; margin-bottom: 16px; }
+
+  .org-stats { display: flex; gap: 16px; border-top: 1px solid #f3f4f6; padding-top: 12px; width: 100%; justify-content: center; }
+  .org-stat-value { font-size: 16px; font-weight: 700; color: #1a1a2e; }
+  .org-stat-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
+</style>
+</head>
+<body>
+
+<div class="logo">Doc<span>Flow</span></div>
+<div class="subtitle">Select an organization to continue</div>
+
+<div class="org-grid">
+
+  <div class="org-card">
+    <div class="org-icon bistro">&#127869;</div>
+    <div class="org-name">Riverside Bistro</div>
+    <div class="org-desc">Restaurant chain &mdash; invoices, receipts, expense reports</div>
+    <div class="org-stats">
+      <div>
+        <div class="org-stat-value">8</div>
+        <div class="org-stat-label">In Progress</div>
+      </div>
+      <div>
+        <div class="org-stat-value">47</div>
+        <div class="org-stat-label">Filed</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="org-card">
+    <div class="org-icon legal">&#9878;</div>
+    <div class="org-name">Pinnacle Legal Group</div>
+    <div class="org-desc">Law firm &mdash; invoices, retainer agreements, expense reports</div>
+    <div class="org-stats">
+      <div>
+        <div class="org-stat-value">12</div>
+        <div class="org-stat-label">In Progress</div>
+      </div>
+      <div>
+        <div class="org-stat-value">63</div>
+        <div class="org-stat-label">Filed</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="org-card">
+    <div class="org-icon construction">&#128679;</div>
+    <div class="org-name">Ironworks Construction</div>
+    <div class="org-desc">General contractor &mdash; invoices, change orders, lien waivers</div>
+    <div class="org-stats">
+      <div>
+        <div class="org-stat-value">5</div>
+        <div class="org-stat-label">In Progress</div>
+      </div>
+      <div>
+        <div class="org-stat-value">38</div>
+        <div class="org-stat-label">Filed</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

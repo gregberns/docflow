@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocFlow - Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6f8; color: #1a1a2e; }
+
+  /* Top nav */
+  .topbar { background: #1a1a2e; color: #fff; height: 52px; display: flex; align-items: center; padding: 0 24px; justify-content: space-between; }
+  .topbar-left { display: flex; align-items: center; gap: 24px; }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: #6c9bff; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .org-indicator {
+    display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 6px;
+    background: rgba(255,255,255,0.08); font-size: 13px; color: #c4c9d9; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .org-indicator:hover { background: rgba(255,255,255,0.12); }
+  .org-indicator-icon { font-size: 16px; }
+  .org-indicator-name { font-weight: 600; color: #fff; }
+  .org-indicator-change { font-size: 11px; color: #6c9bff; margin-left: 4px; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; background: #6c9bff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; }
+
+  /* Layout */
+  .page { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* Page header */
+  .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .page-title { font-size: 22px; font-weight: 700; }
+
+  /* Filters bar */
+  .filters { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
+  .filter-group { display: flex; align-items: center; gap: 6px; }
+  .filter-label { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+  select, .search-input {
+    height: 34px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 10px;
+    font-size: 13px; background: #fff; color: #1a1a2e; outline: none; cursor: pointer;
+  }
+  select:focus, .search-input:focus { border-color: #6c9bff; box-shadow: 0 0 0 2px rgba(108,155,255,0.15); }
+  .search-input { width: 240px; padding-left: 32px; }
+  .search-wrap { position: relative; }
+  .search-wrap svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+  .filter-sep { width: 1px; height: 20px; background: #e5e7eb; margin: 0 4px; }
+  .upload-btn {
+    height: 34px; padding: 0 16px; background: #6c9bff; color: #fff; border: none; border-radius: 6px;
+    font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    transition: background 0.15s;
+  }
+  .upload-btn:hover { background: #5a8af2; }
+
+  /* Stats row */
+  .stats { display: flex; gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    flex: 1; background: #fff; border-radius: 8px; padding: 14px 18px;
+    border: 1px solid #e5e7eb;
+  }
+  .stat-value { font-size: 24px; font-weight: 700; }
+  .stat-label { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  .stat-value.blue { color: #6c9bff; }
+  .stat-value.amber { color: #f59e0b; }
+  .stat-value.green { color: #10b981; }
+  .stat-value.red { color: #ef4444; }
+
+  /* Table */
+  .table-card { background: #fff; border-radius: 8px; border: 1px solid #e5e7eb; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: #f9fafb; }
+  th {
+    text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600;
+    color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: #f9fafb; cursor: pointer; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+  }
+  .badge-stage { background: #eff6ff; color: #3b82f6; }
+  .badge-stage.extract { background: #fef3c7; color: #b45309; }
+  .badge-stage.review { background: #ede9fe; color: #7c3aed; }
+  .badge-stage.approval { background: #fce7f3; color: #be185d; }
+  .badge-stage.filed { background: #d1fae5; color: #059669; }
+  .badge-stage.rejected { background: #fee2e2; color: #dc2626; }
+  .badge-stage.flagged { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
+  .badge-stage.processing { background: #f3f4f6; color: #9ca3af; }
+
+  .badge-type { background: #f3f4f6; color: #374151; }
+  .badge-client { font-size: 12px; color: #6b7280; }
+
+  /* Row chevron */
+  .row-chevron { color: #d1d5db; transition: color 0.15s; }
+  tr:hover .row-chevron { color: #6c9bff; }
+  tr.processing-row .row-chevron { visibility: hidden; }
+
+  /* Processing rows */
+  tr.processing-row { opacity: 0.55; }
+  tr.processing-row:hover { opacity: 0.7; background: #f9fafb; cursor: default; }
+  tr.processing-row .doc-name { color: #6b7280; }
+  .processing-separator td {
+    padding: 0; border-bottom: 2px dashed #e5e7eb;
+  }
+  .spinner {
+    display: inline-block; width: 12px; height: 12px; border: 2px solid #d1d5db;
+    border-top-color: #9ca3af; border-radius: 50%;
+    animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Document name */
+  .doc-name { font-weight: 600; color: #1a1a2e; }
+  .doc-name:hover { color: #6c9bff; }
+  .doc-meta { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+  /* Flag indicator */
+  .flag-indicator { display: inline-flex; align-items: center; gap: 4px; color: #e11d48; font-size: 11px; font-weight: 600; }
+  .flag-dot { width: 6px; height: 6px; border-radius: 50%; background: #e11d48; }
+
+  /* Pagination */
+  .table-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; border-top: 1px solid #e5e7eb; background: #f9fafb;
+  }
+  .table-footer-text { font-size: 12px; color: #6b7280; }
+  .pagination { display: flex; gap: 4px; }
+  .page-btn {
+    width: 30px; height: 30px; border: 1px solid #d1d5db; border-radius: 6px;
+    background: #fff; font-size: 12px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; color: #374151;
+  }
+  .page-btn.active { background: #6c9bff; color: #fff; border-color: #6c9bff; }
+  .page-btn:hover:not(.active) { background: #f3f4f6; }
+
+  /* Responsive */
+  @media (max-width: 1200px) { .page { padding: 16px; } }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Doc<span>Flow</span></div>
+  </div>
+  <div class="topbar-right">
+    <div class="org-indicator">
+      <span class="org-indicator-icon">&#9878;</span>
+      <span class="org-indicator-name">Pinnacle Legal Group</span>
+      <span class="org-indicator-change">Switch</span>
+    </div>
+  </div>
+</div>
+
+<!-- Page content -->
+<div class="page">
+
+  <div class="page-header">
+    <div class="page-title">Documents</div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <span class="filter-label">Stage</span>
+      <select>
+        <option selected>All Stages</option>
+        <option>Classify</option>
+        <option>Extract</option>
+        <option>Review</option>
+        <option>Attorney Approval</option>
+        <option>Billing Approval</option>
+        <option>Partner Approval</option>
+        <option>Filed</option>
+        <option>Rejected</option>
+      </select>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <span class="filter-label">Type</span>
+      <select>
+        <option selected>All Types</option>
+        <option>Invoice</option>
+        <option>Retainer Agreement</option>
+        <option>Expense Report</option>
+      </select>
+    </div>
+    <div style="flex:1"></div>
+    <button class="upload-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload Document
+    </button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-value blue">12</div>
+      <div class="stat-label">In Progress</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value amber">4</div>
+      <div class="stat-label">Awaiting Review</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value red">1</div>
+      <div class="stat-label">Flagged</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value green">63</div>
+      <div class="stat-label">Filed This Month</div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Document</th>
+          <th>Type</th>
+          <th>Stage</th>
+          <th>Updated</th>
+          <th style="width:32px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="processing-row">
+          <td>
+            <div class="doc-name"><span class="spinner"></span>scan_20240315_receipt_004.pdf</div>
+          </td>
+          <td><span class="badge badge-stage processing">Classifying</span></td>
+          <td><span class="badge badge-stage processing">Classifying</span></td>
+          <td style="color:#9ca3af; font-size:12px">Just now</td>
+          <td class="row-chevron"></td>
+        </tr>
+        <tr class="processing-row">
+          <td>
+            <div class="doc-name"><span class="spinner"></span>dewey_cheatham_howe_feb_2024.pdf</div>
+          </td>
+          <td><span class="badge badge-type">Invoice</span></td>
+          <td><span class="badge badge-stage processing">Extracting</span></td>
+          <td style="color:#9ca3af; font-size:12px">2 min ago</td>
+          <td class="row-chevron"></td>
+        </tr>
+        <tr class="processing-separator"><td colspan="5"></td></tr>
+        <tr>
+          <td>
+            <div class="doc-name">INV-2024-0892</div>
+            <div class="doc-meta">Expert Witness: Dr. Reginald Von Stuffington III</div>
+          </td>
+          <td><span class="badge badge-type">Invoice</span></td>
+          <td>
+            <span class="badge badge-stage review">Review</span>
+            <div class="flag-indicator" style="margin-top:4px"><span class="flag-dot"></span> Flagged</div>
+          </td>
+          <td style="color:#6b7280; font-size:12px">5 min ago</td>
+          <td class="row-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="doc-name">RET-2024-0341</div>
+            <div class="doc-meta">Retainer &mdash; Bigglesworth Estate v. Fuzzy Paws Inc.</div>
+          </td>
+          <td><span class="badge badge-type">Retainer Agreement</span></td>
+          <td><span class="badge badge-stage approval">Partner Approval</span></td>
+          <td style="color:#6b7280; font-size:12px">18 min ago</td>
+          <td class="row-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="doc-name">EXP-2024-0226</div>
+            <div class="doc-meta">Chen, David &mdash; Client Dinner (Matter #4417)</div>
+          </td>
+          <td><span class="badge badge-type">Expense Report</span></td>
+          <td><span class="badge badge-stage approval">Attorney Approval</span></td>
+          <td style="color:#6b7280; font-size:12px">32 min ago</td>
+          <td class="row-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="doc-name">RET-2024-0340</div>
+            <div class="doc-meta">Retainer &mdash; Tanaka Corp v. Definitely Not A Ponzi LLC</div>
+          </td>
+          <td><span class="badge badge-type">Retainer Agreement</span></td>
+          <td><span class="badge badge-stage review">Review</span></td>
+          <td style="color:#6b7280; font-size:12px">1 hr ago</td>
+          <td class="row-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="doc-name">INV-2024-0885</div>
+            <div class="doc-meta">Absolutely Legitimate Court Reporting Services</div>
+          </td>
+          <td><span class="badge badge-type">Invoice</span></td>
+          <td><span class="badge badge-stage approval">Billing Approval</span></td>
+          <td style="color:#6b7280; font-size:12px">2 hr ago</td>
+          <td class="row-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="doc-name">EXP-2024-0224</div>
+            <div class="doc-meta">Park, James &mdash; Expert Deposition Travel (Matter #4392)</div>
+          </td>
+          <td><span class="badge badge-type">Expense Report</span></td>
+          <td><span class="badge badge-stage approval">Billing Approval</span></td>
+          <td style="color:#6b7280; font-size:12px">3 hr ago</td>
+          <td class="row-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="doc-name">RET-2024-0338</div>
+            <div class="doc-meta">Retainer &mdash; Mr. Whiskers Estate Trust</div>
+          </td>
+          <td><span class="badge badge-type">Retainer Agreement</span></td>
+          <td><span class="badge badge-stage filed">Filed</span></td>
+          <td style="color:#6b7280; font-size:12px">4 hr ago</td>
+          <td class="row-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="doc-name">INV-2024-0881</div>
+            <div class="doc-meta">Premium Lawyer Chair Emporium</div>
+          </td>
+          <td><span class="badge badge-type">Invoice</span></td>
+          <td><span class="badge badge-stage rejected">Rejected</span></td>
+          <td style="color:#6b7280; font-size:12px">Yesterday</td>
+          <td class="row-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="doc-name">INV-2024-0878</div>
+            <div class="doc-meta">Legal Eagle Coffee Roasters &mdash; Monthly Supply</div>
+          </td>
+          <td><span class="badge badge-type">Invoice</span></td>
+          <td><span class="badge badge-stage filed">Filed</span></td>
+          <td style="color:#6b7280; font-size:12px">Yesterday</td>
+          <td class="row-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="table-footer">
+      <span class="table-footer-text">Showing 1&ndash;10 of 76 documents</span>
+      <div class="pagination">
+        <button class="page-btn active">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">3</button>
+        <button class="page-btn">...</button>
+        <button class="page-btn">8</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

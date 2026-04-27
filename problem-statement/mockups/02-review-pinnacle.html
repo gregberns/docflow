@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocFlow - Review Document</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6f8; color: #1a1a2e; }
+
+  /* Top nav */
+  .topbar { background: #1a1a2e; color: #fff; height: 52px; display: flex; align-items: center; padding: 0 24px; justify-content: space-between; }
+  .topbar-left { display: flex; align-items: center; gap: 24px; }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: #6c9bff; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .org-indicator {
+    display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 6px;
+    background: rgba(255,255,255,0.08); font-size: 13px; color: #c4c9d9; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .org-indicator:hover { background: rgba(255,255,255,0.12); }
+  .org-indicator-icon { font-size: 16px; }
+  .org-indicator-name { font-weight: 600; color: #fff; }
+  .org-indicator-change { font-size: 11px; color: #6c9bff; margin-left: 4px; }
+
+  /* Layout */
+  .detail-layout {
+    display: flex; height: calc(100vh - 52px);
+  }
+
+  /* Left panel — PDF viewer */
+  .pdf-panel {
+    flex: 1; background: #2a2a2e; display: flex; flex-direction: column; min-width: 0;
+  }
+  .pdf-toolbar {
+    height: 40px; background: #3a3a3e; display: flex; align-items: center; padding: 0 12px;
+    gap: 8px; border-bottom: 1px solid #4a4a4e; flex-shrink: 0;
+  }
+  .pdf-toolbar-btn {
+    width: 28px; height: 28px; border: none; background: rgba(255,255,255,0.08); border-radius: 4px;
+    color: #ccc; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .pdf-toolbar-btn:hover { background: rgba(255,255,255,0.15); }
+  .pdf-filename { font-size: 12px; color: #999; margin-left: 8px; flex: 1; }
+  .pdf-page-info { font-size: 11px; color: #888; }
+  .pdf-body {
+    flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px;
+    overflow: auto;
+  }
+  .pdf-page {
+    background: #fff; width: 100%; max-width: 540px; aspect-ratio: 8.5/11;
+    border-radius: 2px; box-shadow: 0 2px 20px rgba(0,0,0,0.4);
+    padding: 48px 40px; display: flex; flex-direction: column; font-size: 11px; color: #333;
+  }
+  .pdf-header { display: flex; justify-content: space-between; margin-bottom: 32px; }
+  .pdf-company { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+  .pdf-company-sub { font-size: 9px; color: #888; margin-top: 2px; }
+  .pdf-invoice-title { font-size: 20px; font-weight: 700; color: #6c9bff; text-align: right; }
+  .pdf-invoice-num { font-size: 10px; color: #888; text-align: right; margin-top: 2px; }
+  .pdf-details { display: flex; justify-content: space-between; margin-bottom: 24px; }
+  .pdf-detail-block { font-size: 9px; line-height: 1.6; }
+  .pdf-detail-label { font-weight: 700; color: #666; text-transform: uppercase; font-size: 8px; letter-spacing: 0.5px; }
+  .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  .pdf-table th {
+    text-align: left; font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 6px 8px; border-bottom: 2px solid #1a1a2e; color: #666; font-weight: 700;
+  }
+  .pdf-table td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 9px; }
+  .pdf-table .amt { text-align: right; }
+  .pdf-totals { margin-left: auto; width: 200px; }
+  .pdf-total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 9px; }
+  .pdf-total-row.grand { border-top: 2px solid #1a1a2e; margin-top: 4px; padding-top: 6px; font-weight: 700; font-size: 11px; }
+  .pdf-terms { margin-top: auto; font-size: 8px; color: #999; border-top: 1px solid #eee; padding-top: 12px; }
+
+  /* Right panel — form */
+  .form-panel {
+    width: 420px; flex-shrink: 0; background: #fff; border-left: 1px solid #e5e7eb;
+    display: flex; flex-direction: column;
+  }
+
+  /* Form header */
+  .form-header {
+    padding: 20px 24px 16px; border-bottom: 1px solid #f3f4f6;
+  }
+  .form-back { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #6b7280; text-decoration: none; margin-bottom: 12px; cursor: pointer; }
+  .form-back:hover { color: #6c9bff; }
+  .form-doc-id { font-size: 18px; font-weight: 700; }
+  .form-doc-meta { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+  .form-stage-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .badge {
+    display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+  }
+  .badge-stage.review { background: #ede9fe; color: #7c3aed; }
+  .badge-type { background: #f3f4f6; color: #374151; }
+
+  /* Stage progress */
+  .stage-progress {
+    display: flex; align-items: center; gap: 0; padding: 16px 24px; border-bottom: 1px solid #f3f4f6;
+  }
+  .stage-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .stage-dot.done { background: #10b981; }
+  .stage-dot.current { background: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.2); }
+  .stage-dot.upcoming { background: #e5e7eb; }
+  .stage-line { flex: 1; height: 2px; }
+  .stage-line.done { background: #10b981; }
+  .stage-line.upcoming { background: #e5e7eb; }
+  .stage-labels {
+    display: flex; justify-content: space-between; padding: 4px 24px 12px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .stage-label { font-size: 9px; color: #9ca3af; text-align: center; flex: 1; }
+  .stage-label.current { color: #7c3aed; font-weight: 600; }
+  .stage-label.done { color: #10b981; }
+
+  /* Form body */
+  .form-body {
+    flex: 1; overflow-y: auto; padding: 20px 24px;
+  }
+
+  .form-section-title {
+    font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 12px; margin-top: 4px;
+  }
+
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+  .form-input, .form-select {
+    width: 100%; height: 34px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 10px;
+    font-size: 13px; color: #1a1a2e; background: #fff; outline: none;
+  }
+  .form-input:focus, .form-select:focus { border-color: #6c9bff; box-shadow: 0 0 0 2px rgba(108,155,255,0.15); }
+  .form-textarea {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px;
+    font-size: 13px; color: #1a1a2e; background: #fff; outline: none; resize: vertical;
+    font-family: inherit; min-height: 60px;
+  }
+  .form-textarea:focus { border-color: #6c9bff; box-shadow: 0 0 0 2px rgba(108,155,255,0.15); }
+
+  /* Category confirmation */
+  .category-confirm {
+    background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 20px;
+  }
+  .category-confirm-label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .category-confirm .form-select { background: #fff; }
+  .category-hint { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+
+  /* Line items table */
+  .line-items { margin-bottom: 14px; }
+  .line-items-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .line-items-table th {
+    text-align: left; padding: 6px 8px; font-size: 10px; font-weight: 600;
+    color: #6b7280; text-transform: uppercase; letter-spacing: 0.3px;
+    border-bottom: 1px solid #e5e7eb; background: #f9fafb;
+  }
+  .line-items-table td {
+    padding: 6px 8px; border-bottom: 1px solid #f3f4f6; font-size: 12px;
+  }
+  .line-items-table .amt { text-align: right; font-variant-numeric: tabular-nums; }
+  .line-items-table input {
+    width: 100%; border: 1px solid transparent; border-radius: 4px; padding: 2px 6px;
+    font-size: 12px; background: transparent; outline: none;
+  }
+  .line-items-table input:hover { border-color: #e5e7eb; }
+  .line-items-table input:focus { border-color: #6c9bff; background: #fff; box-shadow: 0 0 0 2px rgba(108,155,255,0.1); }
+
+  /* Two-col row */
+  .form-row { display: flex; gap: 12px; }
+  .form-row .form-group { flex: 1; }
+
+  /* Separator */
+  .form-separator { height: 1px; background: #f3f4f6; margin: 8px 0 16px; }
+
+  /* Action bar */
+  .action-bar {
+    padding: 16px 24px; border-top: 1px solid #e5e7eb; background: #fff;
+    display: flex; gap: 10px; flex-shrink: 0;
+  }
+  .btn {
+    height: 38px; padding: 0 20px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 6px; border: none;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: #10b981; color: #fff; flex: 1; justify-content: center; }
+  .btn-primary:hover { background: #059669; }
+  .btn-danger { background: #fff; color: #dc2626; border: 1px solid #fecaca; }
+  .btn-danger:hover { background: #fef2f2; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Doc<span>Flow</span></div>
+  </div>
+  <div class="topbar-right">
+    <div class="org-indicator">
+      <span class="org-indicator-icon">&#9878;</span>
+      <span class="org-indicator-name">Pinnacle Legal Group</span>
+      <span class="org-indicator-change">Switch</span>
+    </div>
+  </div>
+</div>
+
+<!-- Detail layout -->
+<div class="detail-layout">
+
+  <!-- PDF viewer -->
+  <div class="pdf-panel">
+    <div class="pdf-toolbar">
+      <button class="pdf-toolbar-btn">&#8722;</button>
+      <button class="pdf-toolbar-btn">&#43;</button>
+      <span class="pdf-filename">dewey_cheatham_howe_feb_2024.pdf</span>
+      <span class="pdf-page-info">Page 1 of 1</span>
+    </div>
+    <div class="pdf-body">
+      <div class="pdf-page">
+        <div class="pdf-header">
+          <div>
+            <div class="pdf-company">Dewey, Cheatham &amp; Howe</div>
+            <div class="pdf-company-sub">Management Consulting</div>
+            <div class="pdf-company-sub">742 Evergreen Terrace, Suite 400</div>
+            <div class="pdf-company-sub">Springfield, IL 62704</div>
+          </div>
+          <div>
+            <div class="pdf-invoice-title">INVOICE</div>
+            <div class="pdf-invoice-num">INV-DCH-2024-0891</div>
+          </div>
+        </div>
+
+        <div class="pdf-details">
+          <div class="pdf-detail-block">
+            <div class="pdf-detail-label">Bill To</div>
+            Pinnacle Legal Group<br>
+            1200 Justice Lane, 8th Floor<br>
+            Chicago, IL 60601
+          </div>
+          <div class="pdf-detail-block" style="text-align:right">
+            <div class="pdf-detail-label">Invoice Date</div>
+            February 15, 2024<br><br>
+            <div class="pdf-detail-label">Matter</div>
+            #4401 &mdash; Tanaka Corp<br><br>
+            <div class="pdf-detail-label">Billing Appr. Period</div>
+            January 1 &ndash; January 31, 2024<br><br>
+            <div class="pdf-detail-label">Payment Terms</div>
+            Net 30
+          </div>
+        </div>
+
+        <table class="pdf-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th class="amt">Hours</th>
+              <th class="amt">Rate</th>
+              <th class="amt">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Strategic consulting &mdash; corporate restructuring analysis</td>
+              <td class="amt">24.0</td>
+              <td class="amt">$425.00</td>
+              <td class="amt">$10,200.00</td>
+            </tr>
+            <tr>
+              <td>Stakeholder interview preparation &amp; facilitation</td>
+              <td class="amt">12.5</td>
+              <td class="amt">$425.00</td>
+              <td class="amt">$5,312.50</td>
+            </tr>
+            <tr>
+              <td>Market analysis report &mdash; competitive landscape</td>
+              <td class="amt">8.0</td>
+              <td class="amt">$375.00</td>
+              <td class="amt">$3,000.00</td>
+            </tr>
+            <tr>
+              <td>Travel expenses &mdash; client site visits (2 trips)</td>
+              <td class="amt">&mdash;</td>
+              <td class="amt">&mdash;</td>
+              <td class="amt">$1,847.60</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="pdf-totals">
+          <div class="pdf-total-row"><span>Subtotal</span><span>$20,360.10</span></div>
+          <div class="pdf-total-row"><span>Tax (0%)</span><span>$0.00</span></div>
+          <div class="pdf-total-row grand"><span>Total Due</span><span>$20,360.10</span></div>
+        </div>
+
+        <div class="pdf-terms">
+          Payment due within 30 days of invoice date. Please remit to the address above or via wire transfer (details on file).
+          Thank you for your continued trust in Dewey, Cheatham &amp; Howe.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form panel -->
+  <div class="form-panel">
+
+    <div class="form-header">
+      <a class="form-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to Documents
+      </a>
+      <div class="form-doc-id">INV-2024-0893</div>
+      <div class="form-doc-meta">dewey_cheatham_howe_feb_2024.pdf</div>
+      <div class="form-stage-row">
+        <span class="badge badge-stage review">Review</span>
+        <span class="badge badge-type">Invoice</span>
+      </div>
+    </div>
+
+    <!-- Stage progress -->
+    <div class="stage-progress">
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot current"></span>
+      <span class="stage-line upcoming"></span>
+      <span class="stage-dot upcoming"></span>
+      <span class="stage-line upcoming"></span>
+      <span class="stage-dot upcoming"></span>
+      <span class="stage-line upcoming"></span>
+      <span class="stage-dot upcoming"></span>
+    </div>
+    <div class="stage-labels">
+      <span class="stage-label done">Upload</span>
+      <span class="stage-label done">Classify</span>
+      <span class="stage-label done">Extract</span>
+      <span class="stage-label current">Review</span>
+      <span class="stage-label">Attorney</span>
+      <span class="stage-label">Billing Appr.</span>
+      <span class="stage-label">Filed</span>
+    </div>
+
+    <!-- Form body -->
+    <div class="form-body">
+
+      <!-- Category confirmation -->
+      <div class="category-confirm">
+        <div class="category-confirm-label">Document Type</div>
+        <select class="form-select">
+          <option selected>Invoice</option>
+          <option>Retainer Agreement</option>
+          <option>Expense Report</option>
+        </select>
+        <div class="category-hint">Changing the document type will trigger re-extraction with new fields.</div>
+      </div>
+
+      <!-- Extracted fields -->
+      <div class="form-section-title">Extracted Data</div>
+
+      <div class="form-group">
+        <label class="form-label">Vendor</label>
+        <input class="form-input" type="text" value="Dewey, Cheatham & Howe">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Invoice Number</label>
+          <input class="form-input" type="text" value="INV-DCH-2024-0891">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Invoice Date</label>
+          <input class="form-input" type="date" value="2024-02-15">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Matter Number</label>
+          <input class="form-input" type="text" value="4401">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Matter Name</label>
+          <input class="form-input" type="text" value="Tanaka Corp">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Amount</label>
+          <input class="form-input" type="text" value="$20,360.10">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Payment Terms</label>
+          <input class="form-input" type="text" value="Net 30">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Billing Appr. Period</label>
+        <input class="form-input" type="text" value="January 1 – January 31, 2024">
+      </div>
+
+      <div class="form-separator"></div>
+
+      <div class="form-section-title">Line Items</div>
+      <div class="line-items">
+        <table class="line-items-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th class="amt" style="width:110px">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input value="Strategic consulting — corporate restructuring analysis"></td>
+              <td class="amt"><input value="$10,200.00" style="text-align:right"></td>
+            </tr>
+            <tr>
+              <td><input value="Stakeholder interview preparation & facilitation"></td>
+              <td class="amt"><input value="$5,312.50" style="text-align:right"></td>
+            </tr>
+            <tr>
+              <td><input value="Market analysis report — competitive landscape"></td>
+              <td class="amt"><input value="$3,000.00" style="text-align:right"></td>
+            </tr>
+            <tr>
+              <td><input value="Travel expenses — client site visits (2 trips)"></td>
+              <td class="amt"><input value="$1,847.60" style="text-align:right"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- Action bar -->
+    <div class="action-bar">
+      <button class="btn btn-danger">Reject</button>
+      <button class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Approve
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

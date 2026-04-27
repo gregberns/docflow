@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocFlow - Rejected Document</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6f8; color: #1a1a2e; }
+
+  /* Top nav */
+  .topbar { background: #1a1a2e; color: #fff; height: 52px; display: flex; align-items: center; padding: 0 24px; justify-content: space-between; }
+  .topbar-left { display: flex; align-items: center; gap: 24px; }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: #6c9bff; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .org-indicator {
+    display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 6px;
+    background: rgba(255,255,255,0.08); font-size: 13px; color: #c4c9d9; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .org-indicator:hover { background: rgba(255,255,255,0.12); }
+  .org-indicator-icon { font-size: 16px; }
+  .org-indicator-name { font-weight: 600; color: #fff; }
+  .org-indicator-change { font-size: 11px; color: #6c9bff; margin-left: 4px; }
+
+  /* Layout */
+  .detail-layout { display: flex; height: calc(100vh - 52px); }
+
+  /* Left panel — PDF viewer */
+  .pdf-panel { flex: 1; background: #2a2a2e; display: flex; flex-direction: column; min-width: 0; }
+  .pdf-toolbar {
+    height: 40px; background: #3a3a3e; display: flex; align-items: center; padding: 0 12px;
+    gap: 8px; border-bottom: 1px solid #4a4a4e; flex-shrink: 0;
+  }
+  .pdf-toolbar-btn {
+    width: 28px; height: 28px; border: none; background: rgba(255,255,255,0.08); border-radius: 4px;
+    color: #ccc; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .pdf-toolbar-btn:hover { background: rgba(255,255,255,0.15); }
+  .pdf-filename { font-size: 12px; color: #999; margin-left: 8px; flex: 1; }
+  .pdf-page-info { font-size: 11px; color: #888; }
+  .pdf-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; overflow: auto; }
+  .pdf-page {
+    background: #fff; width: 100%; max-width: 540px; aspect-ratio: 8.5/11;
+    border-radius: 2px; box-shadow: 0 2px 20px rgba(0,0,0,0.4);
+    padding: 48px 40px; display: flex; flex-direction: column; font-size: 11px; color: #333;
+  }
+  .pdf-header { display: flex; justify-content: space-between; margin-bottom: 32px; }
+  .pdf-company { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+  .pdf-company-sub { font-size: 9px; color: #888; margin-top: 2px; }
+  .pdf-invoice-title { font-size: 20px; font-weight: 700; color: #6c9bff; text-align: right; }
+  .pdf-invoice-num { font-size: 10px; color: #888; text-align: right; margin-top: 2px; }
+  .pdf-details { display: flex; justify-content: space-between; margin-bottom: 24px; }
+  .pdf-detail-block { font-size: 9px; line-height: 1.6; }
+  .pdf-detail-label { font-weight: 700; color: #666; text-transform: uppercase; font-size: 8px; letter-spacing: 0.5px; }
+  .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  .pdf-table th {
+    text-align: left; font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 6px 8px; border-bottom: 2px solid #1a1a2e; color: #666; font-weight: 700;
+  }
+  .pdf-table td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 9px; }
+  .pdf-table .amt { text-align: right; }
+  .pdf-totals { margin-left: auto; width: 200px; }
+  .pdf-total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 9px; }
+  .pdf-total-row.grand { border-top: 2px solid #1a1a2e; margin-top: 4px; padding-top: 6px; font-weight: 700; font-size: 11px; }
+  .pdf-terms { margin-top: auto; font-size: 8px; color: #999; border-top: 1px solid #eee; padding-top: 12px; }
+
+  /* Right panel — form */
+  .form-panel {
+    width: 420px; flex-shrink: 0; background: #fff; border-left: 1px solid #e5e7eb;
+    display: flex; flex-direction: column;
+  }
+
+  /* Form header */
+  .form-header { padding: 20px 24px 16px; border-bottom: 1px solid #f3f4f6; }
+  .form-back { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #6b7280; text-decoration: none; margin-bottom: 12px; cursor: pointer; }
+  .form-back:hover { color: #6c9bff; }
+  .form-doc-id { font-size: 18px; font-weight: 700; }
+  .form-doc-meta { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+  .form-stage-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .badge {
+    display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+  }
+  .badge-stage.rejected { background: #fee2e2; color: #dc2626; }
+  .badge-type { background: #f3f4f6; color: #374151; }
+
+  /* Stage progress — rejected */
+  .stage-progress { display: flex; align-items: center; gap: 0; padding: 16px 24px; border-bottom: 1px solid #f3f4f6; }
+  .stage-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .stage-dot.done { background: #10b981; }
+  .stage-dot.current { background: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.2); }
+  .stage-dot.upcoming { background: #e5e7eb; }
+  .stage-line { flex: 1; height: 2px; }
+  .stage-line.done { background: #10b981; }
+  .stage-line.upcoming { background: #e5e7eb; }
+  .stage-line.rejected { background: #fecaca; }
+  .stage-labels {
+    display: flex; justify-content: space-between; padding: 4px 24px 12px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .stage-label { font-size: 9px; color: #9ca3af; text-align: center; flex: 1; }
+  .stage-label.done { color: #10b981; }
+  .stage-label.current { color: #dc2626; font-weight: 600; }
+  .stage-label.skipped { color: #d1d5db; text-decoration: line-through; }
+
+  /* Form body */
+  .form-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  .form-section-title {
+    font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 12px; margin-top: 4px;
+  }
+
+  /* Read-only field display */
+  .field-row { display: flex; margin-bottom: 10px; }
+  .field-label { width: 130px; font-size: 12px; color: #6b7280; flex-shrink: 0; padding-top: 1px; }
+  .field-value { font-size: 13px; color: #1a1a2e; font-weight: 500; flex: 1; }
+
+  .form-separator { height: 1px; background: #f3f4f6; margin: 8px 0 16px; }
+
+  /* Action bar */
+  .action-bar {
+    padding: 16px 24px; border-top: 1px solid #e5e7eb; background: #fff;
+    display: flex; gap: 10px; flex-shrink: 0;
+  }
+  .btn {
+    height: 38px; padding: 0 20px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 6px; border: none;
+    transition: all 0.15s;
+  }
+  .btn-secondary {
+    background: #fff; color: #374151; border: 1px solid #d1d5db; flex: 1; justify-content: center;
+  }
+  .btn-secondary:hover { background: #f3f4f6; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Doc<span>Flow</span></div>
+  </div>
+  <div class="topbar-right">
+    <div class="org-indicator">
+      <span class="org-indicator-icon">&#9878;</span>
+      <span class="org-indicator-name">Pinnacle Legal Group</span>
+      <span class="org-indicator-change">Switch</span>
+    </div>
+  </div>
+</div>
+
+<!-- Detail layout -->
+<div class="detail-layout">
+
+  <!-- PDF viewer -->
+  <div class="pdf-panel">
+    <div class="pdf-toolbar">
+      <button class="pdf-toolbar-btn">&#8722;</button>
+      <button class="pdf-toolbar-btn">&#43;</button>
+      <span class="pdf-filename">premium_lawyer_chair_emporium_march_2024.pdf</span>
+      <span class="pdf-page-info">Page 1 of 1</span>
+    </div>
+    <div class="pdf-body">
+      <div class="pdf-page">
+        <div class="pdf-header">
+          <div>
+            <div class="pdf-company">Premium Lawyer Chair Emporium</div>
+            <div class="pdf-company-sub">Executive Seating for Those Who Bill by the Hour</div>
+            <div class="pdf-company-sub">500 Ergonomic Blvd, Suite 1, Chicago, IL 60603</div>
+          </div>
+          <div>
+            <div class="pdf-invoice-title">INVOICE</div>
+            <div class="pdf-invoice-num">INV-PLCE-2024-0088</div>
+          </div>
+        </div>
+
+        <div class="pdf-details">
+          <div class="pdf-detail-block">
+            <div class="pdf-detail-label">Bill To</div>
+            Pinnacle Legal Group<br>
+            1200 Justice Lane, 8th Floor<br>
+            Chicago, IL 60601
+          </div>
+          <div class="pdf-detail-block" style="text-align:right">
+            <div class="pdf-detail-label">Invoice Date</div>
+            March 1, 2024<br><br>
+            <div class="pdf-detail-label">Matter</div>
+            #0000 &mdash; Office Operations<br><br>
+            <div class="pdf-detail-label">Billing Period</div>
+            N/A &mdash; one-time purchase<br><br>
+            <div class="pdf-detail-label">Payment Terms</div>
+            Net 60
+          </div>
+        </div>
+
+        <table class="pdf-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th class="amt">Qty</th>
+              <th class="amt">Unit Price</th>
+              <th class="amt">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>The Adjudicator&trade; &mdash; leather executive chair, burgundy</td>
+              <td class="amt">4</td>
+              <td class="amt">$2,850.00</td>
+              <td class="amt">$11,400.00</td>
+            </tr>
+            <tr>
+              <td>The Sidebar&trade; &mdash; mesh conference chair, black</td>
+              <td class="amt">12</td>
+              <td class="amt">$680.00</td>
+              <td class="amt">$8,160.00</td>
+            </tr>
+            <tr>
+              <td>Lumbar support attachments (for The Sidebar)</td>
+              <td class="amt">12</td>
+              <td class="amt">$45.00</td>
+              <td class="amt">$540.00</td>
+            </tr>
+            <tr>
+              <td>Delivery &amp; assembly (8th floor, freight elevator)</td>
+              <td class="amt">&mdash;</td>
+              <td class="amt">&mdash;</td>
+              <td class="amt">$350.00</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="pdf-totals">
+          <div class="pdf-total-row"><span>Subtotal</span><span>$20,450.00</span></div>
+          <div class="pdf-total-row"><span>Tax (10.25%)</span><span>$2,096.13</span></div>
+          <div class="pdf-total-row grand"><span>Total Due</span><span>$22,546.13</span></div>
+        </div>
+
+        <div class="pdf-terms">
+          The Adjudicator comes with a 10-year warranty and an air of authority.
+          5-year warranty on The Sidebar. Assembly included.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form panel -->
+  <div class="form-panel">
+
+    <div class="form-header">
+      <a class="form-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to Documents
+      </a>
+      <div class="form-doc-id">INV-2024-0881</div>
+      <div class="form-doc-meta">premium_lawyer_chair_emporium_march_2024.pdf</div>
+      <div class="form-stage-row">
+        <span class="badge badge-stage rejected">Rejected</span>
+        <span class="badge badge-type">Invoice</span>
+      </div>
+    </div>
+
+    <!-- Stage progress — rejected at Review (stages after Review are skipped) -->
+    <div class="stage-progress">
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot done"></span>
+      <span class="stage-line rejected"></span>
+      <span class="stage-dot current"></span>
+    </div>
+    <div class="stage-labels">
+      <span class="stage-label done">Upload</span>
+      <span class="stage-label done">Classify</span>
+      <span class="stage-label done">Extract</span>
+      <span class="stage-label done">Review</span>
+      <span class="stage-label current">Rejected</span>
+    </div>
+
+    <!-- Form body — read-only -->
+    <div class="form-body">
+
+      <div class="form-section-title">Document Type</div>
+      <div class="field-row">
+        <span class="field-label">Type</span>
+        <span class="field-value">Invoice</span>
+      </div>
+
+      <div class="form-separator"></div>
+
+      <div class="form-section-title">Reviewed Data</div>
+
+      <div class="field-row">
+        <span class="field-label">Vendor</span>
+        <span class="field-value">Premium Lawyer Chair Emporium</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Invoice Number</span>
+        <span class="field-value">INV-PLCE-2024-0088</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Invoice Date</span>
+        <span class="field-value">March 1, 2024</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Matter Number</span>
+        <span class="field-value">0000</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Matter Name</span>
+        <span class="field-value">Office Operations (non-billable)</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Amount</span>
+        <span class="field-value">$22,546.13</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Billing Period</span>
+        <span class="field-value">N/A — one-time purchase</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Payment Terms</span>
+        <span class="field-value">Net 60</span>
+      </div>
+
+    </div>
+
+    <!-- Action bar — just close -->
+    <div class="action-bar">
+      <button class="btn btn-secondary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to Documents
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

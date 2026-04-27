@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocFlow - Partner Approval</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6f8; color: #1a1a2e; }
+
+  /* Top nav */
+  .topbar { background: #1a1a2e; color: #fff; height: 52px; display: flex; align-items: center; padding: 0 24px; justify-content: space-between; }
+  .topbar-left { display: flex; align-items: center; gap: 24px; }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: #6c9bff; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .org-indicator {
+    display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 6px;
+    background: rgba(255,255,255,0.08); font-size: 13px; color: #c4c9d9; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .org-indicator:hover { background: rgba(255,255,255,0.12); }
+  .org-indicator-icon { font-size: 16px; }
+  .org-indicator-name { font-weight: 600; color: #fff; }
+  .org-indicator-change { font-size: 11px; color: #6c9bff; margin-left: 4px; }
+
+  /* Layout */
+  .detail-layout { display: flex; height: calc(100vh - 52px); }
+
+  /* Left panel — PDF viewer */
+  .pdf-panel { flex: 1; background: #2a2a2e; display: flex; flex-direction: column; min-width: 0; }
+  .pdf-toolbar {
+    height: 40px; background: #3a3a3e; display: flex; align-items: center; padding: 0 12px;
+    gap: 8px; border-bottom: 1px solid #4a4a4e; flex-shrink: 0;
+  }
+  .pdf-toolbar-btn {
+    width: 28px; height: 28px; border: none; background: rgba(255,255,255,0.08); border-radius: 4px;
+    color: #ccc; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .pdf-toolbar-btn:hover { background: rgba(255,255,255,0.15); }
+  .pdf-filename { font-size: 12px; color: #999; margin-left: 8px; flex: 1; }
+  .pdf-page-info { font-size: 11px; color: #888; }
+  .pdf-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; overflow: auto; }
+  .pdf-page {
+    background: #fff; width: 100%; max-width: 540px; aspect-ratio: 8.5/11;
+    border-radius: 2px; box-shadow: 0 2px 20px rgba(0,0,0,0.4);
+    padding: 48px 40px; display: flex; flex-direction: column; font-size: 11px; color: #333;
+  }
+  .pdf-header { display: flex; justify-content: space-between; margin-bottom: 28px; }
+  .pdf-company { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+  .pdf-company-sub { font-size: 9px; color: #888; margin-top: 2px; }
+  .pdf-doc-title { font-size: 18px; font-weight: 700; color: #6c9bff; text-align: right; }
+  .pdf-doc-num { font-size: 10px; color: #888; text-align: right; margin-top: 2px; }
+  .pdf-section { margin-bottom: 20px; }
+  .pdf-section-title { font-size: 9px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+  .pdf-field { display: flex; margin-bottom: 4px; font-size: 9.5px; line-height: 1.5; }
+  .pdf-field-label { width: 140px; color: #888; flex-shrink: 0; }
+  .pdf-field-value { color: #333; }
+  .pdf-body-text { font-size: 9px; line-height: 1.7; color: #444; margin-bottom: 16px; }
+  .pdf-sig { margin-top: auto; display: flex; justify-content: space-between; gap: 40px; }
+  .pdf-sig-block { flex: 1; border-top: 1px solid #333; padding-top: 6px; font-size: 8px; color: #888; }
+
+  /* Right panel — form */
+  .form-panel {
+    width: 420px; flex-shrink: 0; background: #fff; border-left: 1px solid #e5e7eb;
+    display: flex; flex-direction: column;
+  }
+
+  /* Form header */
+  .form-header { padding: 20px 24px 16px; border-bottom: 1px solid #f3f4f6; }
+  .form-back { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #6b7280; text-decoration: none; margin-bottom: 12px; cursor: pointer; }
+  .form-back:hover { color: #6c9bff; }
+  .form-doc-id { font-size: 18px; font-weight: 700; }
+  .form-doc-meta { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+  .form-stage-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .badge {
+    display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+  }
+  .badge-stage.approval { background: #fce7f3; color: #be185d; }
+  .badge-type { background: #f3f4f6; color: #374151; }
+
+  /* Stage progress */
+  .stage-progress { display: flex; align-items: center; gap: 0; padding: 16px 24px; border-bottom: 1px solid #f3f4f6; }
+  .stage-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .stage-dot.done { background: #10b981; }
+  .stage-dot.current { background: #be185d; box-shadow: 0 0 0 3px rgba(190,24,93,0.2); }
+  .stage-dot.upcoming { background: #e5e7eb; }
+  .stage-line { flex: 1; height: 2px; }
+  .stage-line.done { background: #10b981; }
+  .stage-line.upcoming { background: #e5e7eb; }
+  .stage-labels {
+    display: flex; justify-content: space-between; padding: 4px 24px 12px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .stage-label { font-size: 9px; color: #9ca3af; text-align: center; flex: 1; }
+  .stage-label.current { color: #be185d; font-weight: 600; }
+  .stage-label.done { color: #10b981; }
+
+  /* Form body */
+  .form-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  .form-section-title {
+    font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 12px; margin-top: 4px;
+  }
+
+  /* Read-only field display */
+  .field-row { display: flex; margin-bottom: 10px; }
+  .field-label { width: 130px; font-size: 12px; color: #6b7280; flex-shrink: 0; padding-top: 1px; }
+  .field-value { font-size: 13px; color: #1a1a2e; font-weight: 500; flex: 1; }
+
+  .form-separator { height: 1px; background: #f3f4f6; margin: 8px 0 16px; }
+
+  /* Scope block */
+  .scope-block {
+    background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
+    padding: 10px 12px; font-size: 12px; color: #374151; line-height: 1.5;
+  }
+
+  /* Action bar */
+  .action-bar {
+    padding: 16px 24px; border-top: 1px solid #e5e7eb; background: #fff;
+    display: flex; gap: 10px; flex-shrink: 0;
+  }
+  .btn {
+    height: 38px; padding: 0 20px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 6px; border: none;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: #10b981; color: #fff; flex: 1; justify-content: center; }
+  .btn-primary:hover { background: #059669; }
+  .btn-flag { background: #fff; color: #f59e0b; border: 1px solid #fde68a; }
+  .btn-flag:hover { background: #fffbeb; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Doc<span>Flow</span></div>
+  </div>
+  <div class="topbar-right">
+    <div class="org-indicator">
+      <span class="org-indicator-icon">&#9878;</span>
+      <span class="org-indicator-name">Pinnacle Legal Group</span>
+      <span class="org-indicator-change">Switch</span>
+    </div>
+  </div>
+</div>
+
+<!-- Detail layout -->
+<div class="detail-layout">
+
+  <!-- PDF viewer -->
+  <div class="pdf-panel">
+    <div class="pdf-toolbar">
+      <button class="pdf-toolbar-btn">&#8722;</button>
+      <button class="pdf-toolbar-btn">&#43;</button>
+      <span class="pdf-filename">bigglesworth_estate_retainer_2024.pdf</span>
+      <span class="pdf-page-info">Page 1 of 2</span>
+    </div>
+    <div class="pdf-body">
+      <div class="pdf-page">
+        <div class="pdf-header">
+          <div>
+            <div class="pdf-company">Pinnacle Legal Group</div>
+            <div class="pdf-company-sub">Attorneys at Law</div>
+            <div class="pdf-company-sub">1200 Justice Lane, 8th Floor</div>
+            <div class="pdf-company-sub">Chicago, IL 60601</div>
+          </div>
+          <div>
+            <div class="pdf-doc-title">RETAINER<br>AGREEMENT</div>
+            <div class="pdf-doc-num">RET-PLG-2024-0341</div>
+          </div>
+        </div>
+
+        <div class="pdf-section">
+          <div class="pdf-section-title">Parties</div>
+          <div class="pdf-body-text">
+            This Retainer Agreement ("Agreement") is entered into as of <strong>March 1, 2024</strong>
+            by and between <strong>Pinnacle Legal Group</strong> ("Firm") and the estate of
+            <strong>Reginald P. Bigglesworth, deceased</strong>, acting through its executor
+            <strong>Fuzzy Paws Inc.</strong> ("Client"), collectively the "Parties."
+          </div>
+        </div>
+
+        <div class="pdf-section">
+          <div class="pdf-section-title">Engagement Details</div>
+          <div class="pdf-field"><span class="pdf-field-label">Matter Type</span><span class="pdf-field-value">Estate Litigation</span></div>
+          <div class="pdf-field"><span class="pdf-field-label">Matter Description</span><span class="pdf-field-value">Bigglesworth Estate v. Fuzzy Paws Inc.</span></div>
+          <div class="pdf-field"><span class="pdf-field-label">Hourly Rate</span><span class="pdf-field-value">$650.00 / hour</span></div>
+          <div class="pdf-field"><span class="pdf-field-label">Retainer Amount</span><span class="pdf-field-value">$25,000.00</span></div>
+          <div class="pdf-field"><span class="pdf-field-label">Term</span><span class="pdf-field-value">12 months from effective date</span></div>
+        </div>
+
+        <div class="pdf-section">
+          <div class="pdf-section-title">Scope of Representation</div>
+          <div class="pdf-body-text">
+            The Firm agrees to represent the Client in all matters related to the probate and
+            distribution of the Bigglesworth Estate, including but not limited to: contesting
+            the validity of the third codicil (the "cat inheritance clause"), negotiating with
+            Fuzzy Paws Inc. regarding the disputed Cayman Islands property, and defending
+            against cross-claims filed by Dr. Von Stuffington regarding unpaid expert witness fees.
+          </div>
+        </div>
+
+        <div class="pdf-sig">
+          <div class="pdf-sig-block">
+            <strong>For the Firm</strong><br>
+            Margaret Chen, Managing Partner
+          </div>
+          <div class="pdf-sig-block">
+            <strong>For the Client</strong><br>
+            Fuzzy Paws Inc., as Executor
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form panel -->
+  <div class="form-panel">
+
+    <div class="form-header">
+      <a class="form-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to Documents
+      </a>
+      <div class="form-doc-id">RET-2024-0341</div>
+      <div class="form-doc-meta">bigglesworth_estate_retainer_2024.pdf</div>
+      <div class="form-stage-row">
+        <span class="badge badge-stage approval">Partner Approval</span>
+        <span class="badge badge-type">Retainer Agreement</span>
+      </div>
+    </div>
+
+    <!-- Stage progress — at Partner Approval (5 of 6) -->
+    <div class="stage-progress">
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot done"></span>
+      <span class="stage-line done"></span>
+      <span class="stage-dot current"></span>
+      <span class="stage-line upcoming"></span>
+      <span class="stage-dot upcoming"></span>
+    </div>
+    <div class="stage-labels">
+      <span class="stage-label done">Upload</span>
+      <span class="stage-label done">Classify</span>
+      <span class="stage-label done">Extract</span>
+      <span class="stage-label done">Review</span>
+      <span class="stage-label current">Partner Approval</span>
+      <span class="stage-label">Filed</span>
+    </div>
+
+    <!-- Form body — read-only fields -->
+    <div class="form-body">
+
+      <div class="form-section-title">Document Type</div>
+      <div class="field-row">
+        <span class="field-label">Type</span>
+        <span class="field-value">Retainer Agreement</span>
+      </div>
+
+      <div class="form-separator"></div>
+
+      <div class="form-section-title">Reviewed Data</div>
+
+      <div class="field-row">
+        <span class="field-label">Client Name</span>
+        <span class="field-value">Bigglesworth Estate (Fuzzy Paws Inc., Executor)</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Matter Type</span>
+        <span class="field-value">Estate Litigation</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Hourly Rate</span>
+        <span class="field-value">$650.00</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Retainer Amount</span>
+        <span class="field-value">$25,000.00</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Effective Date</span>
+        <span class="field-value">March 1, 2024</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Term Length</span>
+        <span class="field-value">12 months</span>
+      </div>
+
+      <div class="form-separator"></div>
+
+      <div class="form-section-title">Scope</div>
+      <div class="scope-block">
+        Probate and distribution of the Bigglesworth Estate, including contesting the third
+        codicil ("cat inheritance clause"), negotiating disputed Cayman Islands property with
+        Fuzzy Paws Inc., and defending against cross-claims from Dr. Von Stuffington regarding
+        unpaid expert witness fees.
+      </div>
+
+    </div>
+
+    <!-- Action bar -->
+    <div class="action-bar">
+      <button class="btn btn-flag">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        Flag
+      </button>
+      <button class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Approve
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

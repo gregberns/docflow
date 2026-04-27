@@ -1,0 +1,7 @@
+.env
+
+# Original take-home archive (extracted contents live under problem-statement/)
+DocFlow_Take_Home_Exercise_greg_berns.zip
+
+# Kerf working snapshots
+.kerf/project/*/.history/
