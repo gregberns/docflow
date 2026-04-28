@@ -1,18 +1,28 @@
-<!-- PP-TRIAL:v2 2026-04-28 main -->
-# Session Handoff
+<!-- PP-TRIAL:v2 2026-04-28 implementation -->
+# Session Handoff — Implementation phase
 
-**Status:** clean. Pass 7 (Tasks) is done and reviewed. Beads issue tracker is initialized in `.beads/`, holds all 68 tasks + 7 epics with 214 dep edges, no cycles. Three parallel reviews (deps / per-task content / cycle resolution) all returned accept-with-fixes; fixes were applied to both the doc and beads. Doc and tracker now agree.
+**Status:** clean. Pass 7 (Tasks) is finalized. `kerf finalize docflow --branch implementation` succeeded; this branch is the implementation working tree. The planning artifacts are copied into `.kerf/docflow/` (read those, not `.kerf/project/docflow/`, which is the bench-side source). 75 beads issues (7 epics + 68 tasks), 0 cycles, 9 ready entry points.
 
-**Why this matters.** DocFlow is a multi-client document-processing take-home. Pass 7 turned the assembled spec into 68 implementation tasks; the beads tracker now exposes 9 unblocked entry points (`C7.1, C1.1, C2.1, C4.1, C4.3, C7.8, C1.9, C3.1, C5.1`) that an implementing agent can pick up in parallel.
+**What this is.** DocFlow — a multi-tenant document-processing take-home: org picker → per-org dashboard → upload → live classify+extract → workflow stages (Review / Approval / Filed / Rejected) with flag-and-resolve. Three real clients with nine `(client, doc-type)` workflows; everything driven by declarative config so adding a fourth client is data, not code.
 
-**Next step.** Two natural moves; ask the user which:
-1. `kerf finalize docflow --branch <name>` — packages the planning artifacts into an implementation branch. The user has gated every prior pass advance, so don't run this without confirmation.
-2. Begin implementation by picking from `br ready`. The agent doing this should follow the workflow described in `AGENTS.md` § "Beads Workflow Integration" (`br update <id> --status=in_progress` to claim, `br close <id>` to finish, `br sync --flush-only` before commits).
+**Next step (the user is handing off here).** A new agent coordinates implementation. Standard loop:
+1. `br ready` — pick an unblocked task. Current entry points: `C7.1, C1.1, C2.1, C4.1, C4.3, C7.8, C1.9, C3.1, C5.1`.
+2. `br update <id> --status=in_progress` to claim, then implement.
+3. `br close <id>` when AC are met. **"Done means green"** per `AGENTS.md` — `make test` exit 0 (lint, format, type-check, unit + property + integration tests, coverage threshold).
+4. `br sync --flush-only` before each commit so `.beads/issues.jsonl` stays current.
 
-**Files to open first.** `SPEC.md` (implementer entry point), `07-tasks.md` (full task list), `beads-review.md` (audit trail explaining why doc and beads diverged then realigned), `AGENTS.md` (canonical conventions + beads workflow). `CLAUDE.md` symlinks to `AGENTS.md`.
+**Files to open first.**
+- `.kerf/docflow/SPEC.md` — implementer entry point (curated tour over the planning artifacts).
+- `.kerf/docflow/07-tasks.md` — full task list with deliverables / AC / deps / phase ordering.
+- `.kerf/docflow/06-integration.md` — seams, init order, transaction boundaries, integration test strategy.
+- `.kerf/docflow/05-specs/c{N}-*-spec.md` — per-component spec for whichever task you're on.
+- `AGENTS.md` (`CLAUDE.md` symlinks here) — `'Done' means green`, lint/format rules, beads workflow.
+- `.kerf/docflow/beads-review.md` — explains why beads and 07-tasks.md briefly diverged then realigned (relevant if you see "Post-assembly verification (after C7.4)" in fragment-task ACs).
 
-**Posture notes.** From memory: use judgment on routine moves (commits, format choices, subagent fan-out); ask only on substantive moves like `kerf finalize` or scope changes. Don't pad README/Production-Considerations with unprompted operational color.
+**Posture.** Use judgment on routine moves (commits, format choices, subagent fan-out). Reserve asks for substantive moves (architectural reversals, scope additions, opening a PR / pushing the branch). Don't pad README or production-considerations with operational color the user didn't ask for.
 
-**Things that would change the plan.** If the user asks about beads commands, refer them to `AGENTS.md` § "Beads Workflow Integration" — short reference is `br ready` / `br show <id>` / `br update --status` / `br close` / `br sync --flush-only`. The `br` CLI is the agent-facing surface; `bd` is an alias.
+**If the implementer hits the V1 co-ownership pattern.** C7.4 stitches the SQL fragments contributed by C1.5/C2.3/C3.1/C4.3. The fragment tasks ship the SQL + entities; their post-V1 verification ACs run only after C7.4 lands (this is documented in their AC bullets as "Post-assembly verification (after C7.4): ..."). Don't try to add reverse deps in beads — it's a cycle.
+
+**If you need to push or open a PR.** The user hasn't authorized either. Ask first.
 
 **Blocking questions.** None.
