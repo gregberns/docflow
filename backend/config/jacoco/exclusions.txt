@@ -41,6 +41,10 @@ com/docflow/c3/events/ExtractionCompleted.class
 com/docflow/c3/events/ExtractionFailed.class
 com/docflow/workflow/events/DocumentStateChanged.class
 
+# C2 ingestion persistence: JPA entity (accessors only). The reader carries the
+# only mapping logic in the package and is covered directly by the fragment IT.
+com/docflow/ingestion/internal/StoredDocumentEntity.class
+
 # C1 persistence: JPA entities and IdClass holders (accessors only).
 # Repositories are interfaces and not counted by JaCoCo.
 com/docflow/config/persistence/OrganizationEntity.class
