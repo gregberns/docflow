@@ -1,3 +1,4 @@
+import java.io.File
 import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
@@ -153,4 +154,104 @@ tasks.jacocoTestCoverageVerification {
 
 tasks.check {
     dependsOn(tasks.jacocoTestCoverageVerification)
+}
+
+abstract class GrepForbiddenStringsTask : DefaultTask() {
+    @get:Internal
+    abstract val forbiddenStringsFile: RegularFileProperty
+
+    @get:Internal
+    abstract val sourceRoot: DirectoryProperty
+
+    @get:Input
+    abstract val configPackagePath: Property<String>
+
+    @get:Input
+    abstract val envReadPatterns: ListProperty<String>
+
+    @TaskAction
+    fun scan() {
+        val file = forbiddenStringsFile.get().asFile
+        if (!file.exists() || !file.isFile || !file.canRead()) {
+            throw GradleException(
+                "grepForbiddenStrings: required file is missing or unreadable: $file",
+            )
+        }
+
+        val literals = file.readLines(Charsets.UTF_8)
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("#") }
+        if (literals.isEmpty()) {
+            throw GradleException(
+                "grepForbiddenStrings: $file contains zero usable patterns " +
+                    "(only comments/blanks). Refusing to silently pass.",
+            )
+        }
+
+        val literalPatterns = literals.map { lit ->
+            val quoted = "\"" + Regex.escape(lit) + "\""
+            Regex(quoted)
+        }
+        val envPatterns = envReadPatterns.get().map { Regex(Regex.escape(it)) }
+
+        val root = sourceRoot.get().asFile
+        if (!root.exists()) {
+            logger.lifecycle("grepForbiddenStrings: source root $root does not exist; nothing to scan.")
+            return
+        }
+
+        val configRel = configPackagePath.get().replace('/', File.separatorChar)
+        val violations = mutableListOf<String>()
+        val rootPath = root.toPath()
+
+        root.walkTopDown()
+            .filter { it.isFile && it.name.endsWith(".java") }
+            .forEach { javaFile ->
+                val rel = rootPath.relativize(javaFile.toPath()).toString()
+                val isUnderConfig = rel.startsWith(configRel + File.separator) ||
+                    rel == configRel
+                javaFile.useLines { seq ->
+                    seq.forEachIndexed { idx, line ->
+                        for (re in literalPatterns) {
+                            if (re.containsMatchIn(line)) {
+                                violations.add(
+                                    "${javaFile.absolutePath}:${idx + 1}: forbidden literal " +
+                                        "matched by /${re.pattern}/",
+                                )
+                            }
+                        }
+                        if (!isUnderConfig) {
+                            for (re in envPatterns) {
+                                if (re.containsMatchIn(line)) {
+                                    violations.add(
+                                        "${javaFile.absolutePath}:${idx + 1}: env-read pattern " +
+                                            "/${re.pattern}/ outside com.docflow.config",
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        if (violations.isNotEmpty()) {
+            violations.forEach { logger.error(it) }
+            throw GradleException(
+                "grepForbiddenStrings found ${violations.size} violation(s); see log above.",
+            )
+        }
+    }
+}
+
+tasks.register<GrepForbiddenStringsTask>("grepForbiddenStrings") {
+    group = "verification"
+    description = "Scans backend Java sources for forbidden literals and env-read patterns."
+    forbiddenStringsFile.set(rootProject.layout.projectDirectory.file("../config/forbidden-strings.txt"))
+    sourceRoot.set(layout.projectDirectory.dir("src/main/java"))
+    configPackagePath.set("com/docflow/config")
+    envReadPatterns.set(listOf("System.getenv", "@Value"))
+}
+
+tasks.named("check") {
+    dependsOn("grepForbiddenStrings")
 }
