@@ -1,0 +1,34 @@
+organizationId: test-bistro
+id: invoice
+displayName: Invoice
+inputModality: PDF
+fields:
+  - name: vendor
+    type: STRING
+    required: true
+  - name: invoiceNumber
+    type: STRING
+    required: true
+  - name: invoiceDate
+    type: DATE
+    required: true
+  - name: totalAmount
+    type: DECIMAL
+    required: true
+  - name: line-items
+    type: ARRAY
+    required: true
+    itemSchema:
+      fields:
+        - name: description
+          type: STRING
+          required: true
+        - name: quantity
+          type: DECIMAL
+          required: true
+        - name: unitPrice
+          type: DECIMAL
+          required: true
+        - name: total
+          type: DECIMAL
+          required: true

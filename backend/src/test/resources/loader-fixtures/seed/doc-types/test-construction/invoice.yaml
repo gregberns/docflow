@@ -1,0 +1,31 @@
+organizationId: test-construction
+id: invoice
+displayName: Invoice
+inputModality: PDF
+fields:
+  - name: vendor
+    type: STRING
+    required: true
+  - name: invoiceNumber
+    type: STRING
+    required: true
+  - name: projectCode
+    type: STRING
+    required: true
+  - name: amount
+    type: DECIMAL
+    required: true
+  - name: materials
+    type: ARRAY
+    required: true
+    itemSchema:
+      fields:
+        - name: item
+          type: STRING
+          required: true
+        - name: quantity
+          type: DECIMAL
+          required: false
+        - name: unitCost
+          type: DECIMAL
+          required: false

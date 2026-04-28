@@ -1,0 +1,5 @@
+- id: bad-org
+  displayName: ""
+  iconId: icon-bad
+  documentTypeIds:
+    - thing

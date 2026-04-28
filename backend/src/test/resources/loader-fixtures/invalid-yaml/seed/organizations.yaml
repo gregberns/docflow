@@ -1,0 +1,6 @@
+- id: bad-org
+  displayName: Bad Org
+  iconId: icon-bad
+  documentTypeIds:
+    - thing
+  this is not: valid: yaml: at: all

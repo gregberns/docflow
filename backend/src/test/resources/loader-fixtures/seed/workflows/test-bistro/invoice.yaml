@@ -1,0 +1,33 @@
+organizationId: test-bistro
+documentTypeId: invoice
+stages:
+  - id: Review
+    displayName: Review
+    kind: REVIEW
+    canonicalStatus: AWAITING_REVIEW
+  - id: Manager Approval
+    displayName: Manager Approval
+    kind: APPROVAL
+    canonicalStatus: AWAITING_APPROVAL
+    role: manager
+  - id: Filed
+    displayName: Filed
+    kind: TERMINAL
+    canonicalStatus: FILED
+  - id: Rejected
+    displayName: Rejected
+    kind: TERMINAL
+    canonicalStatus: REJECTED
+transitions:
+  - from: Review
+    action: APPROVE
+    to: Manager Approval
+  - from: Review
+    action: REJECT
+    to: Rejected
+  - from: Manager Approval
+    action: APPROVE
+    to: Filed
+  - from: Manager Approval
+    action: REJECT
+    to: Rejected

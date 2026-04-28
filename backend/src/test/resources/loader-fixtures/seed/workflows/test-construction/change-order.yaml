@@ -1,0 +1,33 @@
+organizationId: test-construction
+documentTypeId: change-order
+stages:
+  - id: Review
+    displayName: Review
+    kind: REVIEW
+    canonicalStatus: AWAITING_REVIEW
+  - id: Client Approval
+    displayName: Client Approval
+    kind: APPROVAL
+    canonicalStatus: AWAITING_APPROVAL
+    role: client
+  - id: Filed
+    displayName: Filed
+    kind: TERMINAL
+    canonicalStatus: FILED
+  - id: Rejected
+    displayName: Rejected
+    kind: TERMINAL
+    canonicalStatus: REJECTED
+transitions:
+  - from: Review
+    action: APPROVE
+    to: Client Approval
+  - from: Review
+    action: REJECT
+    to: Rejected
+  - from: Client Approval
+    action: APPROVE
+    to: Filed
+  - from: Client Approval
+    action: REJECT
+    to: Rejected

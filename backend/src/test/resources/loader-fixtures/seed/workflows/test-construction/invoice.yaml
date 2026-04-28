@@ -1,0 +1,33 @@
+organizationId: test-construction
+documentTypeId: invoice
+stages:
+  - id: Review
+    displayName: Review
+    kind: REVIEW
+    canonicalStatus: AWAITING_REVIEW
+  - id: Project Manager Approval
+    displayName: Project Manager Approval
+    kind: APPROVAL
+    canonicalStatus: AWAITING_APPROVAL
+    role: project-manager
+  - id: Filed
+    displayName: Filed
+    kind: TERMINAL
+    canonicalStatus: FILED
+  - id: Rejected
+    displayName: Rejected
+    kind: TERMINAL
+    canonicalStatus: REJECTED
+transitions:
+  - from: Review
+    action: APPROVE
+    to: Project Manager Approval
+  - from: Review
+    action: REJECT
+    to: Rejected
+  - from: Project Manager Approval
+    action: APPROVE
+    to: Filed
+  - from: Project Manager Approval
+    action: REJECT
+    to: Rejected

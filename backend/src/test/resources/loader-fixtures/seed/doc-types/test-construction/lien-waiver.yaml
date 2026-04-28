@@ -1,0 +1,23 @@
+organizationId: test-construction
+id: lien-waiver
+displayName: Lien Waiver
+inputModality: TEXT
+fields:
+  - name: subcontractor
+    type: STRING
+    required: true
+  - name: projectCode
+    type: STRING
+    required: true
+  - name: amount
+    type: DECIMAL
+    required: true
+  - name: throughDate
+    type: DATE
+    required: true
+  - name: waiverType
+    type: ENUM
+    required: true
+    enumValues:
+      - unconditional
+      - conditional

@@ -1,0 +1,17 @@
+organizationId: test-construction
+id: change-order
+displayName: Change Order
+inputModality: TEXT
+fields:
+  - name: projectCode
+    type: STRING
+    required: true
+  - name: description
+    type: STRING
+    required: true
+  - name: costImpact
+    type: DECIMAL
+    required: true
+  - name: requestedBy
+    type: STRING
+    required: true

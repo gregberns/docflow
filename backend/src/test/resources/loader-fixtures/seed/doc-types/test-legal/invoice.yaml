@@ -1,0 +1,17 @@
+organizationId: test-legal
+id: invoice
+displayName: Invoice
+inputModality: TEXT
+fields:
+  - name: vendor
+    type: STRING
+    required: true
+  - name: invoiceNumber
+    type: STRING
+    required: true
+  - name: matterNumber
+    type: STRING
+    required: true
+  - name: amount
+    type: DECIMAL
+    required: true

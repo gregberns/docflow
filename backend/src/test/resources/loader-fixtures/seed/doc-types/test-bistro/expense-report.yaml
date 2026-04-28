@@ -1,0 +1,28 @@
+organizationId: test-bistro
+id: expense-report
+displayName: Expense Report
+inputModality: PDF
+fields:
+  - name: employeeName
+    type: STRING
+    required: true
+  - name: submissionDate
+    type: DATE
+    required: true
+  - name: totalAmount
+    type: DECIMAL
+    required: true
+  - name: items
+    type: ARRAY
+    required: true
+    itemSchema:
+      fields:
+        - name: date
+          type: DATE
+          required: true
+        - name: description
+          type: STRING
+          required: true
+        - name: amount
+          type: DECIMAL
+          required: true

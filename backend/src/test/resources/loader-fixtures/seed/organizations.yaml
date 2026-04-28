@@ -1,0 +1,23 @@
+- id: test-bistro
+  displayName: Test Bistro
+  iconId: icon-bistro
+  documentTypeIds:
+    - invoice
+    - receipt
+    - expense-report
+
+- id: test-legal
+  displayName: Test Legal
+  iconId: icon-legal
+  documentTypeIds:
+    - invoice
+    - retainer
+    - expense-report
+
+- id: test-construction
+  displayName: Test Construction
+  iconId: icon-construction
+  documentTypeIds:
+    - invoice
+    - change-order
+    - lien-waiver
