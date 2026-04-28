@@ -32,8 +32,12 @@ com/docflow/api/dto/RetypeAccepted.class
 # C7 platform event payloads: pure value records (accessors only). The
 # DocumentEventBus and AsyncConfig in com/docflow/platform are intentionally
 # NOT excluded — they own bus dispatch and async-exception logging and are
-# covered directly by DocumentEventBusTest.
+# covered directly by DocumentEventBusTest. FlywayConfig is a Spring
+# @Configuration scaffold whose only job is bean wiring; the migration
+# itself is exercised by FlywayBaselineTest, which drives Flyway directly
+# rather than through this bean.
 com/docflow/platform/DocumentEvent.class
+com/docflow/platform/FlywayConfig.class
 com/docflow/c3/events/StoredDocumentIngested.class
 com/docflow/c3/events/ProcessingStepChanged.class
 com/docflow/c3/events/ProcessingCompleted.class
