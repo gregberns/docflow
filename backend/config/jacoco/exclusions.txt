@@ -41,6 +41,20 @@ com/docflow/c3/events/ExtractionCompleted.class
 com/docflow/c3/events/ExtractionFailed.class
 com/docflow/workflow/events/DocumentStateChanged.class
 
+# C1 persistence: JPA entities and IdClass holders (accessors only).
+# Repositories are interfaces and not counted by JaCoCo.
+com/docflow/config/persistence/OrganizationEntity.class
+com/docflow/config/persistence/OrganizationDocTypeEntity.class
+com/docflow/config/persistence/OrganizationDocTypeId.class
+com/docflow/config/persistence/DocumentTypeEntity.class
+com/docflow/config/persistence/DocumentTypeId.class
+com/docflow/config/persistence/WorkflowEntity.class
+com/docflow/config/persistence/WorkflowId.class
+com/docflow/config/persistence/StageEntity.class
+com/docflow/config/persistence/StageId.class
+com/docflow/config/persistence/TransitionEntity.class
+com/docflow/config/persistence/TransitionEntity$*.class
+
 # C1 OrgConfig domain: pure value records (accessors only) and plain enums.
 # StageGuardConfig is intentionally NOT excluded — it owns the only non-trivial
 # logic in this package and is covered directly by StageGuardConfigTest.

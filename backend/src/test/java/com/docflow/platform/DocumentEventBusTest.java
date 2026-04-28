@@ -137,7 +137,12 @@ class DocumentEventBusTest {
     }
   }
 
-  @org.springframework.boot.autoconfigure.SpringBootApplication
+  @org.springframework.boot.autoconfigure.SpringBootApplication(
+      exclude = {
+        org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration.class,
+        org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration.class,
+        org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration.class
+      })
   @Import({DocumentEventBus.class, AsyncConfig.class})
   static class TestApp {}
 
