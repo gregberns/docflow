@@ -1,0 +1,15 @@
+# JaCoCo coverage exclusion patterns (one glob per line, '#' starts a comment).
+# Patterns are class-name globs as accepted by Gradle's classDirectories.matching(...)
+# include/exclude rules. Limited per spec C7-R5 to:
+#   - Spring Boot bootstrap class
+#   - Generated sources
+#   - Flyway migration classes
+#   - Spring @Configuration scaffolding
+#   - SSE emitter transport-shell classes
+#   - Records / value classes whose only methods are accessors
+#
+# Only the bootstrap class is real today. Other entries are added as
+# corresponding code lands (see git blame for justification on each line).
+
+com/docflow/Application.class
+com/docflow/Application$*.class

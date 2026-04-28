@@ -25,8 +25,7 @@ public record AppConfig(
 
   public record Storage(@NotBlank String storageRoot) {}
 
-  public record Database(
-      @NotBlank String url, @NotBlank String user, @NotNull String password) {}
+  public record Database(@NotBlank String url, @NotBlank String user, @NotNull String password) {}
 
   public record OrgConfigBootstrap(boolean seedOnBoot, @NotBlank String seedResourcePath) {}
 }
