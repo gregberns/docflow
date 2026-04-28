@@ -13,3 +13,25 @@
 
 com/docflow/Application.class
 com/docflow/Application$*.class
+
+# C2 ingestion public seam: pure value records (accessors only).
+com/docflow/ingestion/StoredDocument.class
+com/docflow/ingestion/IngestionResult.class
+
+# C1 OrgConfig domain: pure value records (accessors only) and plain enums.
+# StageGuardConfig is intentionally NOT excluded — it owns the only non-trivial
+# logic in this package and is covered directly by StageGuardConfigTest.
+com/docflow/config/org/OrgConfig.class
+com/docflow/config/org/OrganizationDefinition.class
+com/docflow/config/org/DocTypeDefinition.class
+com/docflow/config/org/FieldDefinition.class
+com/docflow/config/org/ArrayItemSchema.class
+com/docflow/config/org/WorkflowDefinition.class
+com/docflow/config/org/StageDefinition.class
+com/docflow/config/org/TransitionDefinition.class
+com/docflow/config/org/InputModality.class
+com/docflow/config/org/FieldType.class
+com/docflow/config/org/StageKind.class
+com/docflow/config/org/WorkflowStatus.class
+com/docflow/config/org/TransitionAction.class
+com/docflow/config/org/GuardOp.class
