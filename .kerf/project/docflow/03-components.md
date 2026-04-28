@@ -135,7 +135,7 @@ C2 **does not** expose a `listDocuments` endpoint for the dashboard — that rea
 
 ### The `ProcessingDocument` entity
 
-`ProcessingDocument` is C3's transient aggregate root — it exists only while a document is being processed (typically minutes), and is deleted when the pipeline completes successfully. Failed processing rows stay in the DB indefinitely so the user can retry.
+`ProcessingDocument` is C3's transient aggregate root — it exists only while a document is being processed (typically minutes), and is deleted when the pipeline completes successfully. Failed processing rows stay in the DB; the user can re-upload the file to start a fresh pipeline run if desired (no retry endpoint is exposed).
 
 Schema:
 - `id` (PK)
@@ -145,7 +145,6 @@ Schema:
 - `current_step ∈ {TEXT_EXTRACTING, CLASSIFYING, EXTRACTING, FAILED}`
 - `raw_text` (nullable; populated when text-extract step completes)
 - `last_error` (nullable; populated when `current_step = FAILED`)
-- `attempt_count` (int; bumped on retry)
 
 Index: `(organization_id, created_at DESC)` for the dashboard's "processing" section list.
 
@@ -155,7 +154,7 @@ Index: `(organization_id, created_at DESC)` for the dashboard's "processing" sec
 2. **C3-R2.** `extractFields(processingDocumentId | documentId, docTypeId)` calls the Anthropic API using tool use: the tool's input JSON schema is derived from the doc-type's field schema in C1. `tool_choice` forces the model to call that specific tool. The returned `tool_use.input` is validated against the schema. If the model returns an invalid structure, the call is retried once; a second failure surfaces a typed error.
     - During the **initial pipeline**, the result is staged on the `ProcessingDocument` and rolled into `Document.extractedFields` at completion time.
     - During **retype re-extraction** (invoked by C4 — see C4-R6), the result is written directly to `Document.extractedFields` via UPDATE (no `ProcessingDocument` involvement).
-3. **C3-R3.** Pipeline steps are separate HTTP calls — a classification failure does not prevent a later retry of classification, and an extraction failure does not require re-running classification. Retry resumes from `ProcessingDocument.currentStep`.
+3. *(removed — user-initiated pipeline retry is out of scope; the original requirements doc does not require it. A failed `ProcessingDocument` row is left in place; the user re-uploads the file to start a new pipeline run.)*
 4. **C3-R4.** Retype re-extraction (C4-driven, see C4-R6): replaces `Document.extractedFields` via UPDATE. The old field payload is not merged or preserved — prior values are not recoverable from the audit table either, since the take-home's `llm_call_audit` keeps metadata only (see C3-R5a). Accepted simplification for the take-home.
 5. **C3-R5.** Prompts live as named resource files at `src/main/resources/prompts/<id>.txt`. There is no in-app versioning scheme — prompt history is tracked via git. The eval (C3-R8) reports against whatever prompts are committed at the run's commit.
 5a. **C3-R5a.** LLM-call audit persists to a dedicated `llm_call_audit` table, one row per classify or extract invocation, with columns: `id`, `stored_document_id` (FK; always populated — every audited call has an underlying file), `processing_document_id` (FK, nullable — populated for initial-pipeline calls), `document_id` (FK, nullable — populated for retype re-extraction calls), `organization_id`, `call_type ∈ {classify, extract}`, `model_id`, `error` (nullable), `at`. Index on `(stored_document_id, at DESC)`.
@@ -172,7 +171,7 @@ Index: `(organization_id, created_at DESC)` for the dashboard's "processing" sec
     2. `currentStep = CLASSIFYING` → call Anthropic classify; record audit row; on success, capture `detectedDocumentType` (in-memory, not on the row — it's transient until terminal).
     3. `currentStep = EXTRACTING` → call Anthropic extract with tool schema for `detectedDocumentType`; record audit row; on success, capture `extractedFields`.
     4. **Terminal success:** emit `ProcessingCompleted { storedDocumentId, processingDocumentId, organizationId, detectedDocumentType, extractedFields, rawText, at }` on the `DocumentEventBus` — internal-only, not on the SSE stream. C4 subscribes; in one transaction C4 INSERTs `Document` (with `processedAt = now`, `reextractionStatus = NONE`) + INSERTs `WorkflowInstance` (with `currentStageId = Review`). The `ProcessingDocument` row is left in place; cleanup is deferred to a hypothetical cron-style cleanup not implemented in the take-home (see Production Considerations, C7-R9). C4 emits `DocumentStateChanged` for the new `Review` state — that is the SSE-visible event.
-    5. **Failure at any step:** UPDATE `ProcessingDocument.currentStep = FAILED`, set `lastError`, emit `ProcessingStepChanged { storedDocumentId, processingDocumentId, organizationId, currentStep: FAILED, error: { code, message }, at }`. The `ProcessingDocument` row stays in the DB — the UI surfaces a "Processing failed — Retry" affordance (C6-R8). No `Document` row is created for failed processing.
+    5. **Failure at any step:** UPDATE `ProcessingDocument.currentStep = FAILED`, set `lastError`, emit `ProcessingStepChanged { storedDocumentId, processingDocumentId, organizationId, currentStep: FAILED, error: { code, message }, at }`. The `ProcessingDocument` row stays in the DB; the UI surfaces the failed state inline (C6-R3). No `Document` row is created for failed processing. Recovery is by re-upload — no retry endpoint is exposed.
 15. **C3-R15.** *(Removed — `document_classifications` and `document_extractions` tables no longer exist. `Document.detectedDocumentType` and `Document.extractedFields` hold current values; `llm_call_audit` holds history.)*
 16. **C3-R16.** Tenant-awareness: `organization_id` is denormalized onto `processing_documents`, `llm_call_audit`, `documents` (C4), and `workflow_instances` (C4-R11). Consistency with `StoredDocument.organization_id` is guaranteed by the writers that set them (they always read the parent `StoredDocument` first). A unit test asserts the writers produce consistent `organization_id` values.
 
@@ -183,7 +182,6 @@ Index: `(organization_id, created_at DESC)` for the dashboard's "processing" sec
 ### Interfaces provided
 - `ProcessingDocumentService.start(storedDocumentId)` — kicks off the pipeline. Called by C2 after upload writes the initial `ProcessingDocument` row.
 - `ProcessingDocumentReader.get(id) → ProcessingDocument` and `.list(orgId) → ProcessingDocumentSummary[]` — read-side surface; the list form powers the dashboard's processing section (C5-R3).
-- `ProcessingDocumentService.retry(processingDocumentId)` — resumes a `FAILED` processing run; resets `currentStep` to the failed step and re-runs forward.
 - `LlmExtractor.extract(documentId, docTypeId)` — invoked by C4 for **retype re-extraction**; UPDATEs `Document.extractedFields` and `Document.detectedDocumentType`; emits `ExtractionCompleted { documentId }` (or `ExtractionFailed`). Used by C4-R6.
 - `EvalRunner.run(options) → MarkdownReport` — dev-tool surface, not exposed over HTTP.
 
@@ -191,7 +189,7 @@ C3 never calls C4 directly. C4 learns of pipeline completion by subscribing to `
 
 ### Sub-package layout
 
-- `pipeline/` — `ProcessingPipelineOrchestrator`, retry coordination, step implementations.
+- `pipeline/` — `ProcessingPipelineOrchestrator`, step implementations.
 - `prompts/` — prompt storage / versioning.
 - `audit/` — `LlmCallAudit` writer + reader.
 - `eval/` — `EvalRunner` + recorded-response replay.
@@ -278,16 +276,24 @@ Indexes: `(organization_id, processed_at DESC)`; `(stored_document_id)` unique.
 
 ### Requirements
 
-1. **C5-R1.** `GET /api/organizations` returns the list of organizations (id, name, icon, docTypes) from C1. `GET /api/organizations/{orgId}` returns a single org with its workflows and field schemas sufficient for the frontend to render filter dropdowns and the review form.
+1. **C5-R1.** `GET /api/organizations` returns the list of organizations as `{ id, name, icon, docTypes, inProgressCount, filedCount }` per org. `inProgressCount` is the count of `ProcessingDocument` rows for the org without a matching `Document` (mirrors the dashboard's processing-section filter). `filedCount` is the count of `WorkflowInstance` rows where `currentStatus = FILED`. Counts are computed at request time. `GET /api/organizations/{orgId}` returns a single org with its workflows and field schemas sufficient for the frontend to render filter dropdowns and the review form.
 2. **C5-R2.** `POST /api/organizations/{orgId}/documents` accepts a multipart upload and returns a document id. Rejects unknown orgId with 404 and unsupported MIME types with 415.
-3. **C5-R3.** `GET /api/organizations/{orgId}/documents` returns the dashboard list as a single response with two arrays:
+3. **C5-R3.** `GET /api/organizations/{orgId}/documents` returns the dashboard list as a single response with two arrays plus a `stats` block:
 
     ```json
     {
       "processing": ProcessingDocumentSummary[],
-      "documents": DocumentView[]
+      "documents": DocumentView[],
+      "stats": {
+        "inProgress": int,
+        "awaitingReview": int,
+        "flagged": int,
+        "filedThisMonth": int
+      }
     }
     ```
+
+    `stats` are aggregate counts for the org, **unfiltered** by the request's `status`/`docType` query params (so the badge bar above the table always reflects the org's full picture, not the filtered view): `inProgress` = count of in-flight `ProcessingDocument` rows; `awaitingReview` / `flagged` = counts of `WorkflowInstance` rows with the matching `currentStatus`; `filedThisMonth` = count where `currentStatus = FILED AND WorkflowInstance.updated_at >= start of current calendar month` (using `updated_at` as the Filed-at proxy, since Filed is terminal).
 
     - `processing` — every in-flight `ProcessingDocument` for the org, projected to `{ processingDocumentId, storedDocumentId, sourceFilename, currentStep, lastError, createdAt }`. Filtered to exclude rows that already have a matching `Document` by `storedDocumentId` (since the take-home does not implement post-success cleanup of `ProcessingDocument` rows; see C4-R13). Always returned in `createdAt DESC` order. Frontend renders this as the small "in flight" section at the top of the dashboard (C6-R2).
     - `documents` — processed documents (joined `Document` + `WorkflowInstance` + stage display metadata) filtered by query params **`status`** (canonical `WorkflowStatus` value) and `docType`. **No per-org stage-name filter exists** — the API speaks only the canonical status vocabulary per C1-R12. Sorted by `updatedAt DESC` within the filtered set. Returns up to a soft cap (e.g., 200 rows). Pagination is out of scope for the take-home — the sample corpus stays well under the cap.
@@ -340,30 +346,32 @@ Indexes: `(organization_id, processed_at DESC)`; `(stored_document_id)` unique.
 
 ### Requirements
 
-1. **C6-R1.** Organization picker screen (landing page) lists all orgs from `/api/organizations`. Selecting an org stores the selection client-side and navigates to the dashboard.
-2. **C6-R2.** Dashboard screen shows **two sections** for the selected org, sourced from the single `GET /api/organizations/{orgId}/documents` response (C5-R3):
-    - **Processing section (top, small).** Renders the `processing` array from the API response — every in-flight `ProcessingDocument`. Each row shows filename, current step badge (`Text Extracting` / `Classifying` / `Extracting` / `Failed`), reduced opacity, and a spinner (or retry affordance for `Failed`).
+1. **C6-R1.** Organization picker screen (landing page) lists all orgs from `/api/organizations`. Each org card shows the org's icon, name, supported doc-types, and two stat badges: `In Progress` (= `inProgressCount` from the API response) and `Filed` (= `filedCount`). Selecting an org stores the selection client-side and navigates to the dashboard.
+2. **C6-R2.** Dashboard screen shows a **stats bar**, **two list sections**, and a filter row for the selected org, sourced from the single `GET /api/organizations/{orgId}/documents` response (C5-R3):
+    - **Stats bar (top).** Four count badges rendered from the response's `stats` block: `In Progress`, `Awaiting Review`, `Flagged`, `Filed This Month`. Counts are unfiltered — they always reflect the org's full picture.
+    - **Processing section (small).** Renders the `processing` array — every in-flight `ProcessingDocument`. Each row shows filename, current step badge (`Text Extracting` / `Classifying` / `Extracting` / `Failed`), reduced opacity, and a spinner. Failed rows show the error inline; recovery is via re-upload (no retry button).
     - **Documents section (below).** Renders the `documents` array — processed documents — with filter dropdowns for **`status` (canonical `WorkflowStatus` enum)** and `docType`. Status options are the fixed canonical vocabulary (Awaiting Review, Awaiting Approval, Flagged, Filed, Rejected) — the same for every org. Status options that can't apply to any of the org's workflows may be hidden (e.g., Riverside Receipt has no approval stage, so "Awaiting Approval" is omitted when viewing Riverside). `docType` options come from the selected org's configured doc-types.
 
     Verified by a component test that asserts: the `docType` dropdown is scoped (e.g., "Retainer Agreement" appears only on Pinnacle), the `status` dropdown uses canonical values (no per-org stage names, no processing-step names), and the processing section renders separately from the documents section.
-3. **C6-R3.** Processing-section rows are **non-clickable** (still in flight; no detail view yet). Rows where `currentStep = FAILED` show an inline "Processing failed — Retry" affordance that POSTs to a retry endpoint; on success the row's `currentStep` cycles back to its original failed step and re-runs forward.
+3. **C6-R3.** Processing-section rows are **non-clickable**. Rows where `currentStep = FAILED` show the failure state inline (filename, last error message, no actionable button). The user recovers by re-uploading the file, which starts a new pipeline run on a new `ProcessingDocument` row.
 4. **C6-R4.** Document upload button on the dashboard opens a file picker, posts to `/api/organizations/{orgId}/documents`, and shows the uploaded document in the processing section with live updates from SSE.
 5. **C6-R5.** The dashboard subscribes to `/api/organizations/{orgId}/stream` SSE. On **any** event (`ProcessingStepChanged` or `DocumentStateChanged`), the handler invalidates the dashboard query and refetches `GET /api/organizations/{orgId}/documents`. Surgical cache updates (remove-from-processing, add-to-documents, diff-on-stage-change) are not implemented — at the take-home's scale the refetch is cheap and the code stays simple. The active document detail view (when open) similarly refetches its own query on `DocumentStateChanged` for that `documentId`. Closing the SSE connection on unmount is tested.
-6. **C6-R6.** Clicking a row in the documents section opens the detail view route for that processed `documentId`. Clicking a row in the processing section is a no-op (or shows the minimal processing detail per C6-R7) — there is no full review/approval UI for in-flight documents.
-7. **C6-R7.** Only processed documents have a detail view: route `/documents/{id}`, sourced from `GET /api/documents/{id}`, two-panel layout with PDF preview on the left and the full Review/Approval form panel on the right (per C6-R8). In-flight processing rows are not navigable — the dashboard processing section (C6-R2) renders everything the user needs to see for a `ProcessingDocument`, including the inline retry affordance for failed processing (C6-R3). There is no `/processing-documents/{id}` route.
+6. **C6-R6.** Clicking a row in the documents section opens the detail view route for that processed `documentId`. Clicking a row in the processing section is a no-op — there is no full review/approval UI for in-flight documents.
+7. **C6-R7.** Only processed documents have a detail view: route `/documents/{id}`, sourced from `GET /api/documents/{id}`, two-panel layout with PDF preview on the left and the full Review/Approval form panel on the right (per C6-R8). In-flight processing rows are not navigable — the dashboard processing section (C6-R2) renders everything the user needs to see for a `ProcessingDocument`, including the inline failure state (C6-R3). There is no `/processing-documents/{id}` route.
 8. **C6-R8.** The processed-`Document` form panel content depends on the current workflow stage and reextraction status:
     - **`reextractionStatus = IN_PROGRESS`:** in-flight banner ("Re-extracting as <newType>…"); form disabled; no action buttons until completion.
-    - **`reextractionStatus = FAILED`:** error banner with Retry affordance; form re-enabled with the previous values still visible.
+    - **`reextractionStatus = FAILED`:** error banner with the failure message; form re-enabled with the previous values still visible. Recovery is by selecting a doc-type in the dropdown again, which triggers a new re-extraction call.
     - **Review (not flagged):** editable form with fields generated from the doc-type schema (C1 via C5); document-type dropdown; Approve + Reject action buttons.
     - **Review (flagged):** same form with a flag banner (origin stage + comment) above the form; Resolve replaces Approve.
-    - **Approval stages:** read-only summary of the reviewed data; Approve + Flag buttons. If C1 config supplies a `role` for the stage, it is displayed alongside the stage label ("Attorney Approval — role: Attorney").
-    - **Filed / Rejected:** read-only summary; single Back to Documents button.
+    - **Approval stages:** read-only summary of the reviewed data; Approve + Flag buttons. Array-of-object fields (line items, materials, items) render as read-only tables (no inline edit, no add/remove row controls). If C1 config supplies a `role` for the stage, it is displayed alongside the stage label ("Attorney Approval — role: Attorney").
+    - **Filed / Rejected:** read-only summary (same read-only treatment for arrays); single Back to Documents button.
 9. **C6-R9.** Stage progress indicator **synthesizes from `ProcessingDocument.currentStep` (when in flight) or `WorkflowInstance.currentStageId` (when processed)**, plus the workflow definition returned by C5:
     - **In-flight (`ProcessingDocument`):** shows the pre-workflow processing steps as their own progress segment (Text Extracting → Classifying → Extracting), with the current step highlighted and any `FAILED` step shown in red.
     - **Processed (`Document` with `WorkflowInstance`):** shows the full workflow stages (Review → … → Filed/Rejected) per the configured workflow.
+    - **Rejected terminal state:** the indicator visually distinguishes the rejection — the segment leading into `Rejected` is rendered in red, and `Rejected` is shown as the current (red) terminal stage. Approval stages that were configured but never reached (because the document was rejected from Review) are still rendered in the sequence but visually muted, matching the Rejected mockup.
 
     The pre-workflow processing steps and the workflow stages are rendered as a single visual sequence so users see the full lifecycle, but they come from two different data sources joined client-side.
-10. **C6-R10.** Review form supports all field types in the C1 schema: string, date, decimal, enum (dropdown), and array-of-object (`lineItems`, `materials`, `items`) with add/remove row.
+10. **C6-R10.** Review form supports all field types in the C1 schema: string, date, decimal, enum (dropdown), and array-of-object (`lineItems`, `materials`, `items`). Array-of-object fields render as a table with **inline-editable cells** (each field of each row is editable in place, matching the Pinnacle Invoice mockup's line-items table) plus add/remove-row controls. Inline editing applies only in the **Review** stage; Approval and terminal stages render the same data read-only (per C6-R8).
 11. **C6-R11.** Changing the document type in the Review form opens a confirm modal ("Re-extract as …?"). Confirming POSTs to `/api/documents/{id}/review/retype` (C5-R7) with the new type. The form transitions to the `reextractionStatus = IN_PROGRESS` state per C6-R8 — the document does **not** leave Review (no `Extract` workflow stage exists anymore); the in-flight banner signals the retype.
 12. **C6-R12.** Flag from an approval stage opens a modal with a required comment textarea; submit is disabled until non-empty. On submit, posts the `Flag` action.
 13. **C6-R13.** Frontend component tests cover: stage progress component for each workflow variant, review form for at least one schema from each client (e.g., Pinnacle Invoice, Riverside Receipt, Ironworks Lien Waiver), flag modal validation, reclassify modal confirm/cancel.
@@ -387,25 +395,16 @@ Indexes: `(organization_id, processed_at DESC)`; `(stored_document_id)` unique.
 
 1. **C7-R1.** `docker-compose.yml` at the repo root starts backend, frontend, and PostgreSQL with a single `docker-compose up` invocation. No host-side setup beyond Docker itself and populating `.env` from `.env.example`.
 2. **C7-R2.** `.env.example` documents every required environment variable (minimum: `ANTHROPIC_API_KEY`). `.env` is in `.gitignore`.
-3. **C7-R3.** PostgreSQL schema is managed by Flyway migrations under a versioned `db/migration` directory. Every migration is named `V{n}__{snake_case}.sql` and is never edited once applied. Migrations are split by table/feature rather than one giant baseline:
-    - `V1__client_data_tables.sql` — empty `organizations`, `document_types`, `workflows`, `stages`, `transitions`. (Unchanged from prior plan.)
-    - `V2__stored_documents.sql` — C2's immutable file-reference table.
-    - `V3__processing_documents.sql` — C3's transient pipeline table.
-    - `V4__documents.sql` — C4's processed-document entity (with `extracted_fields JSONB`, `raw_text`, `reextraction_status`).
-    - `V5__workflow_instances.sql` — C4's workflow run-state.
-    - `V6__llm_call_audit.sql` — C3's LLM call ledger (with FKs to `stored_documents`, `processing_documents`, `documents`).
-    - Later migrations as features are added; never edit an applied one.
-
-    Migrations for `document_classifications` and `document_extractions` are **not** present — those tables don't exist in the new model (current values live on `Document`; history lives in `llm_call_audit`).
+3. **C7-R3.** PostgreSQL schema is managed by Flyway migrations under a versioned `db/migration` directory. Every migration is named `V{n}__{snake_case}.sql` and is never edited once applied. The initial schema is a single baseline migration `V1__init.sql` that creates all tables in one file: client-data tables (`organizations`, `document_types`, `workflows`, `stages`, `transitions`), `stored_documents` (C2), `processing_documents` (C3), `documents` and `workflow_instances` (C4), and `llm_call_audit` (C3). Future schema changes are additive migrations (`V2__*`, `V3__*`, never editing V1). The single-baseline shape was chosen for simplicity over a per-table split — bounded-context ownership is documented in the component sections, not encoded in migration filenames.
 
     Application-level seeder (C1-R11) runs on startup if client-data tables are empty, loading from `src/main/resources/seed/`.
 4. **C7-R4.** Seed data mechanism loads roughly half of the 23 sample PDFs under `problem-statement/samples/` into the running app on first startup (or on demand via a command). Which files are seeded is deterministic, pinned in a committed manifest `seed/manifest.yaml` listing the relative paths together with each sample's labeled ground-truth `documentType` and `extractedFields`. The seeder **bypasses `ProcessingDocument` entirely** — for each manifest entry, in one transaction it INSERTs a `StoredDocument` (file copied to storage), a `Document` (with `detectedDocumentType` and `extractedFields` from the manifest, `processedAt = now`, `reextractionStatus = NONE`), and a `WorkflowInstance` (with `currentStageId = Review`, `currentStatus = AWAITING_REVIEW`). No LLM call happens at seed time. A test compares the post-seed `documents` set to the manifest.
 5. **C7-R5.** Backend Gradle build includes: Spotless (format), Checkstyle + PMD (lint), JaCoCo (coverage — fail below 70% line coverage), Error Prone (static analysis), and a `grepForbiddenStrings` task that scans `src/main/java` and fails on literal hits for any stage name or client slug (as required by C1-R7 and C4-R10). The `grepForbiddenStrings` task is wired into the default `check` task. `./gradlew build` fails on any violation. JaCoCo exclusions are enumerated in a committed file (e.g., `config/jacoco/exclusions.txt`) and limited to: generated sources (MapStruct/Jackson), Flyway migration classes, Spring configuration classes, SSE emitter transport-shell classes (which don't coverage-test well for long-lived connections), and records/value classes whose only methods are accessors. The exclusion list is reviewed in Pass 5 (change-spec).
 6. **C7-R6.** Frontend build includes: ESLint (error on warnings), Prettier (`--check` in CI), TypeScript strict mode, Vitest for unit tests, Playwright for E2E. `npm run build` fails on any of the above.
 6a. **C7-R6a.** Frontend test coverage is enforced by the build. The threshold lives in `frontend/vitest.config.ts` under `test.coverage.thresholds`; `npm run build` fails below the threshold. Until Pass 4 decides the bar, a placeholder of `0` is committed in that exact file with a `// TODO(research): set coverage threshold` comment so the deferred decision is machine-grep-findable and impossible to lose in prose.
-7. **C7-R7.** A `.claude/settings.json` Stop hook runs the fast test suite + lint/format/type checks and blocks the agent's "done" signal if any fail. Long-running tests (full Playwright E2E, live-mode eval) are excluded from the hook.
+7. **C7-R7.** A `.claude/settings.json` Stop hook runs `make test` (see C7-R14) and blocks the agent's "done" signal if it fails. `make test` is the fast gate — lint, format, type-check, unit + property tests, coverage threshold. Long-running tests (Playwright E2E via `make e2e`, live-mode LLM eval via `make eval`) are excluded from the hook.
 8. **C7-R8.** `AGENTS.md` at the repo root documents conventions; `CLAUDE.md` is a symlink to `AGENTS.md` (already present).
-9. **C7-R9.** `README.md` at the repo root documents: how to run (`docker-compose up`), the design decisions (no-auth, local FS vs. S3, Java/Spring versions, Anthropic choice, SSE), how the client data (orgs, document types, workflows) is seeded from YAML fixtures on first startup only for ease of setup — after which the database is authoritative, how to run the LLM eval, how to add labeled samples, and a **"Production considerations"** section that names what was intentionally simplified for the take-home and what would change in production. At minimum this section covers:
+9. **C7-R9.** `README.md` at the repo root documents: how to run (`cp .env.example .env`, fill in `ANTHROPIC_API_KEY`, then `make build && make start` per C7-R14), the design decisions (no-auth, local FS vs. S3, Java/Spring versions, Anthropic choice, SSE), how the client data (orgs, document types, workflows) is seeded from YAML fixtures on first startup only for ease of setup — after which the database is authoritative, how to run the LLM eval (`make eval`), how to add labeled samples, and a **"Production considerations"** section that names what was intentionally simplified for the take-home and what would change in production. At minimum this section covers:
     - No auth; real deployment would add identity + role-based access; the `role` slot on approval stages (C1-R10) is the attach point.
     - The `role/stage/action` domain model is deliberately basic — production would likely promote `Role` to a first-class entity with a permissions matrix, support composite approvers, and let roles be shared across orgs where appropriate.
     - **`ProcessingDocument` cleanup is deferred.** On successful pipeline completion the take-home leaves the `ProcessingDocument` row in place; the dashboard query filters it out by joining against `documents`. Production would add a cron-style cleanup that deletes `ProcessingDocument` rows whose `storedDocumentId` already has a `Document`. This kept the take-home's transactional handoff from spanning two contexts.
@@ -413,19 +412,30 @@ Indexes: `(organization_id, processed_at DESC)`; `(stored_document_id)` unique.
     - Local-filesystem storage instead of S3 (C2-R7 isolates the seam).
     - Classpath seed fixtures instead of an externally-managed config store.
     - Single-tenant deployment — horizontal scaling concerns (distributed SSE fan-out, LLM call concurrency limits) not addressed.
-10. **C7-R10.** A CI workflow file (or a single `make check` target usable by CI) runs the full gate: backend build (including Spotless, Checkstyle, PMD, JaCoCo 70% floor, Error Prone, `grepForbiddenStrings`, the single happy-path LLM smoke test from C3-R12, property-based workflow-engine tests, seed-manifest verification, the C1-R9 fourth-org seeder unit test); frontend build (ESLint, Prettier `--check`, TypeScript strict, Vitest with coverage threshold, Playwright happy-path E2E, Playwright flag-and-resolve E2E). The eval (C3-R8) is run on demand, not in CI.
+    - **No pagination on the dashboard documents list.** The endpoint returns up to a soft cap (~200 rows); the take-home corpus stays well below it. Production would add cursor-based pagination on the `documents` array (the `processing` array stays small in any deployment, since rows are transient).
+10. **C7-R10.** A CI workflow file invokes the Makefile targets (C7-R14): `make test` (the fast gate — Spotless, Checkstyle, PMD, JaCoCo 70% floor, Error Prone, `grepForbiddenStrings`, the single happy-path LLM smoke test from C3-R12, property-based workflow-engine tests, seed-manifest verification, the C1-R9 fourth-org seeder unit test, ESLint, Prettier `--check`, TypeScript strict, Vitest with coverage threshold) followed by `make e2e` (the Playwright happy-path and flag-and-resolve scenarios). `make eval` (the live LLM eval, C3-R8) is run on demand, not in CI.
 11. **C7-R11.** A `DocumentEventBus` (in-process publish/subscribe) is provided at the platform layer. Contract: `publish(event)` is synchronous from the caller's perspective but dispatch to subscribers is non-blocking. Used by C3 (emit `ProcessingStepChanged` for SSE; emit `ProcessingCompleted`, `ExtractionCompleted`, `ExtractionFailed` internal-only), C4 (emit `DocumentStateChanged` for SSE; subscribe to `ProcessingCompleted` for initial materialization and to `ExtractionCompleted`/`ExtractionFailed` for retype completion), and C5 (subscribe for SSE fan-out per org — `ProcessingStepChanged` and `DocumentStateChanged` only).
 12. **C7-R12.** Docker-compose includes a frontend container and backend container that run on the same Docker network; the frontend dev server (when run on the host via `npm run dev`) uses Vite's proxy config to forward `/api/**` and `/api/**/stream` to `http://localhost:8080`, avoiding CORS. Production docker-compose serves the frontend behind the same origin as the backend (either via a reverse proxy or by having the backend serve the built SPA). CORS policy for any cross-origin case: deny by default.
-13. **C7-R13.** **Startup-only external-input loading.** All environment variables and external configuration (Anthropic API key, model ID, DB URL/credentials, file-storage path, seed-on-boot flag, recorded-eval mode toggle) are read exactly once at backend startup, validated, and bound to a single typed immutable `AppConfig` object (or a small nested set) that is injected into components. After binding, no runtime code reads `System.getenv()`, `@Value("${...}")`, or `.env` files. Missing/invalid config fails startup with a clear error citing the offending key and source — never a runtime 500 inside a user request. Model ID for the Anthropic SDK is pinned in `AppConfig.llm.modelId = "claude-sonnet-4-6"` (sourced from config, not hardcoded in C3). A startup-config test asserts that (a) removing a required env var causes startup to fail with the expected error code, and (b) no class in `src/main/java` other than the `AppConfig` binder references `System.getenv`, `@Value`, or similar — enforced by a grep check in the `grepForbiddenStrings` task (C7-R5).
+13. **C7-R13.** **Startup-only external-input loading.** All environment variables and external configuration (Anthropic API key, model ID, DB URL/credentials, file-storage path, seed-on-boot flag) are read exactly once at backend startup, validated, and bound to a single typed immutable `AppConfig` object (or a small nested set) that is injected into components. After binding, no runtime code reads `System.getenv()`, `@Value("${...}")`, or `.env` files. Missing/invalid config fails startup with a clear error citing the offending key and source — never a runtime 500 inside a user request. Model ID for the Anthropic SDK is pinned in `AppConfig.llm.modelId = "claude-sonnet-4-6"` (sourced from config, not hardcoded in C3). A startup-config test asserts that (a) removing a required env var causes startup to fail with the expected error code, and (b) no class in `src/main/java` other than the `AppConfig` binder references `System.getenv`, `@Value`, or similar — enforced by a grep check in the `grepForbiddenStrings` task (C7-R5).
+14. **C7-R14. `Makefile` for unified developer commands.** A `Makefile` at the repo root provides a single uniform interface for build, run, and test. Required targets:
+    - `make build` — `docker compose build` (builds backend + frontend images).
+    - `make start` (alias `make up`) — `docker compose up` (starts the full stack: backend, frontend, Postgres).
+    - `make stop` (alias `make down`) — `docker compose down`.
+    - `make test` — runs the full **fast gate**: backend `./gradlew check` + frontend `npm --prefix frontend run check`. Lint, format, type-check, unit tests, property tests, coverage threshold. This is the single command an agent (or a developer) runs to verify "done"; the Stop hook (C7-R7) runs the same target. Returns non-zero on any failure.
+    - `make e2e` — runs the Playwright E2E scenarios from C6-R14 (happy-path + flag-and-resolve) against the running stack. Excluded from `make test` because it requires a started stack and takes longer.
+    - `make eval` — runs the live-API LLM eval (C3-R8) and prints the markdown report. On-demand only.
+
+    A new developer's path to a working app is two commands after `cp .env.example .env`: `make build && make start`. The agent's "is my work done?" check is one command: `make test`.
 
 ### Dependencies
 - None at the data layer. Consumed by every other component as build/deploy scaffolding.
 
 ### Interfaces provided
-- `docker-compose up` (runtime harness).
-- `./gradlew build`, `npm run build` (build harnesses).
+- `Makefile` targets — `make build`, `make start`/`up`, `make stop`/`down`, `make test`, `make e2e`, `make eval` (the developer- and agent-facing entry points; C7-R14).
+- `docker-compose.yml` (runtime harness wrapped by the Makefile).
+- `./gradlew build`, `npm run build` (build harnesses called via `make test` / `make build`).
 - Flyway migration directory structure (consumed by C2).
-- Stop hook + CI workflow (process harness).
+- Stop hook + CI workflow (process harness; both invoke `make test`).
 
 ---
 
