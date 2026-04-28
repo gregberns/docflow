@@ -5,6 +5,9 @@ import java.util.List;
 public abstract sealed class DocflowException extends RuntimeException
     permits UnknownOrganizationException,
         UnknownDocumentException,
+        UnknownProcessingDocumentException,
+        UnknownDocTypeException,
+        InvalidFileException,
         ValidationException,
         InvalidActionException,
         ReextractionInProgressException,
