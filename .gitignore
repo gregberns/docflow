@@ -26,3 +26,6 @@ frontend/test-results/
 .vscode/
 *.iml
 .DS_Store
+
+# Claude Code agent worktrees (ephemeral; see .claude/settings.json for hooks)
+.claude/worktrees/
