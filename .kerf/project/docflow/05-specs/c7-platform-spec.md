@@ -219,7 +219,7 @@ The 11 unselected PDFs remain available for upload via the dashboard during demo
 | `backend/src/main/resources/db/migration/V1__init.sql` | **new** | Single baseline migration creating all tables (C7-R3). |
 | `backend/src/main/resources/seed/manifest.yaml` | **new** | 12-entry seed manifest (C7-R4). See §3.7. |
 | `backend/src/main/resources/seed/files/**/*.pdf` | **new** | 12 PDF copies, mirroring the manifest's relative paths. (Resource-path copies of the corresponding files under `problem-statement/samples/`; `problem-statement/` stays read-only.) |
-| `backend/src/main/java/com/docflow/config/AppConfig.java` | **new** | The only legitimate config reader (C7-R13). Records + `@ConfigurationProperties` + `@Validated`. |
+| `backend/src/main/java/com/docflow/config/AppConfig.java` | **new** | The only legitimate config reader (C7-R13). Records + `@ConfigurationProperties` + `@Validated`. Hosts nested records contributed by other components: `AppConfig.Llm` (C3 — `modelId`, `apiKey`, `requestTimeout`, `eval.reportPath`), `AppConfig.Storage` (C2 — `storageRoot`), `AppConfig.OrgConfigBootstrap` (C1 — `seedOnBoot`, `seedResourcePath`). All non-config components consume bound values via injection only. |
 | `backend/src/main/java/com/docflow/platform/DocumentEventBus.java` | **new** | Wraps `ApplicationEventPublisher` (C7-R11). |
 | `backend/src/main/java/com/docflow/platform/AsyncConfig.java` | **new** | `@EnableAsync`; `AsyncUncaughtExceptionHandler` logging at ERROR. |
 | `backend/src/main/resources/application.yml` | **new** | `spring.threads.virtual.enabled=true`, Flyway config, `docflow.*` config tree. |

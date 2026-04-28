@@ -148,7 +148,7 @@ Two prompt families:
 
 ### 3.5 Input modality
 
-**Decision: hybrid (text for classify, PDF for extract on doc-types with nested arrays; text for extract on flat doc-types).** Per-doc-type modality is a metadata flag on the C1 doc-type record (`inputModality ∈ {text, pdf}`, default `text`). Doc-types with a nested-array field (`lineItems`, `materials`, `items`) set `pdf`. Base64 inline; no Files-API.
+**Decision: hybrid (text for classify, PDF for extract on doc-types with nested arrays; text for extract on flat doc-types).** Per-doc-type modality is a metadata flag on the C1 doc-type record (`inputModality ∈ {TEXT, PDF}`, default `TEXT`). Doc-types with a nested-array field (`lineItems`, `materials`, `items`) set `PDF`. Base64 inline; no Files-API.
 
 **Rationale.** Research §1 documented this as the recommended default; the table-heavy doc-types (Riverside Invoice, Pinnacle Invoice, Ironworks Invoice, both Expense Reports) benefit from preserved column alignment, while flat doc-types (Riverside Receipt, Pinnacle Retainer, Ironworks Change Order, Ironworks Lien Waiver) get nothing from the image channel and don't pay the token cost.
 
