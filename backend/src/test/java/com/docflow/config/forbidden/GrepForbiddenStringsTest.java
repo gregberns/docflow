@@ -20,8 +20,8 @@ class GrepForbiddenStringsTest {
     List<String> literals = readForbiddenLiterals();
 
     assertThat(literals)
-        .as("forbidden-strings.txt must list 11 stage names + 3 slugs + 3 display variants")
-        .hasSize(17);
+        .as("forbidden-strings.txt literals: 11 stage names + 3 slugs + 3 display variants + .env")
+        .hasSize(18);
 
     assertThat(literals)
         .contains(
@@ -41,7 +41,8 @@ class GrepForbiddenStringsTest {
             "ironworks-construction",
             "Riverside Bistro",
             "Pinnacle Legal Group",
-            "Ironworks Construction");
+            "Ironworks Construction",
+            ".env");
   }
 
   @Test
@@ -101,6 +102,9 @@ class GrepForbiddenStringsTest {
       String line = raw.strip();
       if (line.isEmpty() || line.startsWith("#")) {
         continue;
+      }
+      if (line.startsWith("[") && line.endsWith("]")) {
+        break;
       }
       out.add(line);
     }

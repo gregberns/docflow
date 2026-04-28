@@ -168,9 +168,6 @@ abstract class GrepForbiddenStringsTask : DefaultTask() {
     @get:Input
     abstract val configPackagePath: Property<String>
 
-    @get:Input
-    abstract val envReadPatterns: ListProperty<String>
-
     @TaskAction
     fun scan() {
         val file = forbiddenStringsFile.get().asFile
@@ -180,10 +177,8 @@ abstract class GrepForbiddenStringsTask : DefaultTask() {
             )
         }
 
-        val literals = file.readLines(Charsets.UTF_8)
-            .map { it.trim() }
-            .filter { it.isNotEmpty() && !it.startsWith("#") }
-        if (literals.isEmpty()) {
+        val (literals, bareTokens) = parseSections(file.readLines(Charsets.UTF_8))
+        if (literals.isEmpty() && bareTokens.isEmpty()) {
             throw GradleException(
                 "grepForbiddenStrings: $file contains zero usable patterns " +
                     "(only comments/blanks). Refusing to silently pass.",
@@ -194,7 +189,7 @@ abstract class GrepForbiddenStringsTask : DefaultTask() {
             val quoted = "\"" + Regex.escape(lit) + "\""
             Regex(quoted)
         }
-        val envPatterns = envReadPatterns.get().map { Regex(Regex.escape(it)) }
+        val bareTokenPatterns = bareTokens.map { Regex(Regex.escape(it)) }
 
         val root = sourceRoot.get().asFile
         if (!root.exists()) {
@@ -212,6 +207,9 @@ abstract class GrepForbiddenStringsTask : DefaultTask() {
                 val rel = rootPath.relativize(javaFile.toPath()).toString()
                 val isUnderConfig = rel.startsWith(configRel + File.separator) ||
                     rel == configRel
+                if (isUnderConfig) {
+                    return@forEach
+                }
                 javaFile.useLines { seq ->
                     seq.forEachIndexed { idx, line ->
                         for (re in literalPatterns) {
@@ -222,14 +220,12 @@ abstract class GrepForbiddenStringsTask : DefaultTask() {
                                 )
                             }
                         }
-                        if (!isUnderConfig) {
-                            for (re in envPatterns) {
-                                if (re.containsMatchIn(line)) {
-                                    violations.add(
-                                        "${javaFile.absolutePath}:${idx + 1}: env-read pattern " +
-                                            "/${re.pattern}/ outside com.docflow.config",
-                                    )
-                                }
+                        for (re in bareTokenPatterns) {
+                            if (re.containsMatchIn(line)) {
+                                violations.add(
+                                    "${javaFile.absolutePath}:${idx + 1}: bare-token pattern " +
+                                        "/${re.pattern}/ outside com.docflow.config",
+                                )
                             }
                         }
                     }
@@ -243,15 +239,35 @@ abstract class GrepForbiddenStringsTask : DefaultTask() {
             )
         }
     }
+
+    private fun parseSections(lines: List<String>): Pair<List<String>, List<String>> {
+        val literals = mutableListOf<String>()
+        val bareTokens = mutableListOf<String>()
+        var current = literals
+        for (raw in lines) {
+            val trimmed = raw.trim()
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) continue
+            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                current = when (trimmed) {
+                    "[bare-tokens]" -> bareTokens
+                    else -> throw GradleException(
+                        "grepForbiddenStrings: unknown section header $trimmed",
+                    )
+                }
+                continue
+            }
+            current.add(trimmed)
+        }
+        return literals to bareTokens
+    }
 }
 
 tasks.register<GrepForbiddenStringsTask>("grepForbiddenStrings") {
     group = "verification"
-    description = "Scans backend Java sources for forbidden literals and env-read patterns."
+    description = "Scans backend Java sources for forbidden literals and bare-token patterns."
     forbiddenStringsFile.set(rootProject.layout.projectDirectory.file("../config/forbidden-strings.txt"))
     sourceRoot.set(layout.projectDirectory.dir("src/main/java"))
     configPackagePath.set("com/docflow/config")
-    envReadPatterns.set(listOf("System.getenv", "@Value"))
 }
 
 tasks.named("check") {

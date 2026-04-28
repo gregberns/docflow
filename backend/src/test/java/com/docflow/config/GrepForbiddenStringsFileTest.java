@@ -16,17 +16,14 @@ import org.junit.jupiter.api.io.TempDir;
  * Contract test for {@code config/forbidden-strings.txt} and the parsing rules the {@code
  * grepForbiddenStrings} Gradle task (C7.6) applies to it.
  *
- * <p>The Gradle task strips {@code #}-prefixed comments and blank lines and treats every remaining
- * line as a forbidden literal. It fails fast if the file is missing/unreadable or the post-strip
- * list is empty. This test exercises that parsing contract independently of the Gradle runtime so a
- * regression in either the file or the parser shape is caught at unit-test speed.
- *
- * <p>The fixture-driven positive/negative regex test owned by C1.9 lives at {@code
- * com.docflow.config.forbidden.GrepForbiddenStringsTest}. A future refinement (deferred) is a
- * Gradle TestKit run that drives the {@code grepForbiddenStrings} task end-to-end against synthetic
- * source trees; this contract test stops short of that.
+ * <p>The file is split into two sections: a default section of quoted-literal patterns and a {@code
+ * [bare-tokens]} section of substring patterns (env-read expressions per C7-R13). The Gradle task
+ * strips comments and blank lines, routes lines into the active section, and fails fast on a
+ * missing file or a fully empty post-strip list.
  */
 class GrepForbiddenStringsFileTest {
+
+  private static final String BARE_TOKENS_HEADER = "[bare-tokens]";
 
   @Test
   void canonicalFileExistsAndContainsCategorySectionHeaders() throws IOException {
@@ -37,19 +34,20 @@ class GrepForbiddenStringsFileTest {
         .as("config/forbidden-strings.txt must call out the categories the C7.6 task understands")
         .contains("# Stage names")
         .contains("# Client slugs")
-        .contains("# Client display-name variants");
+        .contains("# Client display-name variants")
+        .contains("# Env-file literal")
+        .contains(BARE_TOKENS_HEADER);
   }
 
   @Test
-  void parserStripsCommentsAndBlanksAndYieldsCanonicalLiterals() throws IOException {
+  void parserSplitsLiteralsAndBareTokensIntoSeparateBuckets() throws IOException {
     Path file = canonicalForbiddenStringsFile();
 
-    List<String> patterns = parsePatterns(file);
+    Sections sections = parseSections(file);
 
-    assertThat(patterns)
-        .as("11 stage names + 3 client slugs + 3 display variants must remain after strip")
-        .hasSize(17);
-    assertThat(patterns)
+    assertThat(sections.literals())
+        .as("11 stage names + 3 client slugs + 3 display variants + .env = 18 literals")
+        .hasSize(18)
         .contains(
             "Review",
             "Manager Approval",
@@ -60,7 +58,11 @@ class GrepForbiddenStringsFileTest {
             "ironworks-construction",
             "Riverside Bistro",
             "Pinnacle Legal Group",
-            "Ironworks Construction");
+            "Ironworks Construction",
+            ".env");
+    assertThat(sections.bareTokens())
+        .as("env-read expressions per C7-R13")
+        .containsExactlyInAnyOrder("System.getenv", "@Value");
   }
 
   @Test
@@ -71,28 +73,43 @@ class GrepForbiddenStringsFileTest {
         "# only comments here\n\n# even more comments\n   \n",
         StandardCharsets.UTF_8);
 
-    List<String> patterns = parsePatterns(commentsOnly);
+    Sections sections = parseSections(commentsOnly);
 
-    assertThat(patterns)
-        .as("a comments/blanks-only file must parse to zero patterns so the task can fail fast")
-        .isEmpty();
+    assertThat(sections.literals()).isEmpty();
+    assertThat(sections.bareTokens()).isEmpty();
   }
 
   @Test
   void missingFileSurfacesAsNoSuchFileException(@TempDir Path tmp) {
     Path missing = tmp.resolve("does-not-exist.txt");
 
-    assertThatThrownBy(() -> parsePatterns(missing))
+    assertThatThrownBy(() -> parseSections(missing))
         .as("the parser must surface a missing file rather than silently returning empty")
         .isInstanceOf(NoSuchFileException.class);
   }
 
-  private static List<String> parsePatterns(Path file) throws IOException {
-    return Files.readAllLines(file, StandardCharsets.UTF_8).stream()
-        .map(String::strip)
-        .filter(line -> !line.isEmpty() && !line.startsWith("#"))
-        .toList();
+  private static Sections parseSections(Path file) throws IOException {
+    List<String> literals = new java.util.ArrayList<>();
+    List<String> bareTokens = new java.util.ArrayList<>();
+    List<String> current = literals;
+    for (String raw : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+      String line = raw.strip();
+      if (line.isEmpty() || line.startsWith("#")) {
+        continue;
+      }
+      if (line.startsWith("[") && line.endsWith("]")) {
+        if (BARE_TOKENS_HEADER.equals(line)) {
+          current = bareTokens;
+          continue;
+        }
+        throw new IllegalStateException("Unknown section header " + line);
+      }
+      current.add(line);
+    }
+    return new Sections(List.copyOf(literals), List.copyOf(bareTokens));
   }
+
+  private record Sections(List<String> literals, List<String> bareTokens) {}
 
   private static Path canonicalForbiddenStringsFile() {
     Path cursor = Path.of("").toAbsolutePath();
