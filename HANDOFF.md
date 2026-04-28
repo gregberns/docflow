@@ -3,7 +3,13 @@
 
 **Status:** clean. 13 beads tasks closed this session, repo on `implementation`, working tree clean, last commit `e7433bd`. Both pipelines green: `./gradlew check` BUILD SUCCESSFUL, `npm --prefix frontend run check` passes (5/5 tests). 8 ready entry points; 55 tasks remain.
 
-**What we're doing.** DocFlow take-home — multi-tenant document processing. Implementation against the kerf plan in `.kerf/docflow/`; beads (`br`) is the work tracker. The orchestrator pattern is to delegate each beads task to a sub-agent, verify it landed cleanly, then `br close <id>` and commit. Independent tasks have been parallelized successfully (3-way and 2-way batches) — see commit history.
+**What we're doing.** DocFlow take-home — multi-tenant document processing. Implementation against the kerf plan in `.kerf/docflow/`; beads (`br`) is the work tracker.
+
+**How to run (the user's standing instructions for this work).**
+- **Operate as orchestrator.** Delegate substantive work to sub-agents via the Agent tool. Keep the main thread for coordination, integration, and committing. Run independent tasks in parallel — 2- and 3-way batches landed cleanly this session; the only constraint is one agent per shared file (e.g., one owner of `build.gradle.kts` per batch).
+- **Per-task ralph loop:** spawn an implementer agent, then a verifier agent for the same task. The verifier reads the same `br show <id>` + spec, runs `./gradlew check` independently, and checks AC by AC. Verifier passes ⇒ close + commit. Verifier finds defects ⇒ send back to implementer with the defect list.
+- **`br show <id>` is the brief.** Beads carries the full task definition (deliverables + ACs + spec refs). Point sub-agents at it directly; don't paraphrase.
+- **No permission asks for routine moves.** Commits, format choices, dep version picks, kerf-status flips, brew-installing missing toolchain — all pre-authorized. Ask only for substantive risks: opening a PR, pushing the branch, architectural reversals, scope expansion.
 
 **Closed this session (in order):** C7.1, C7.2, C7.3, C7.5, C7.8, C1.9, C6.1, C1.1, C2.1, C4.1, C5.1, C1.6, C7.7. Foundations + scaffolds + the cross-cutting platform pieces (config, quality gates, event bus, error taxonomy, application shell, seed data) all in place.
 
@@ -29,7 +35,5 @@
 - `.kerf/docflow/06-integration.md` — seam shapes; SQL fragments are described here.
 - `.kerf/docflow/05-specs/c{N}-*-spec.md` — per-component spec for whichever you pick.
 - `AGENTS.md` (= CLAUDE.md) — `'Done' means green`, beads workflow.
-
-**Posture.** User authorized autonomous execution this session ("don't need permission to perform tasks asked of you"). Push and PR are still NOT pre-authorized — ask if you reach that point.
 
 **No blocking questions.**
