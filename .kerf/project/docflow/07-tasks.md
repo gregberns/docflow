@@ -201,7 +201,7 @@ Per-component sections below. Cross-component dep IDs are resolved to specific t
 - `documents` has `(organization_id, processed_at DESC)` and UNIQUE `(stored_document_id)` indexes; `workflow_instances` has `(organization_id, current_status, updated_at DESC)` and UNIQUE `(document_id)` indexes.
 - `current_status` CHECK enumerates `AWAITING_REVIEW, FLAGGED, AWAITING_APPROVAL, FILED, REJECTED`; `reextraction_status` CHECK enumerates `NONE, IN_PROGRESS, FAILED`.
 **Within-component deps:** C7.3.
-**Cross-component deps:** Stitches fragments from **C1.5, C2.3, C3.1, C4.3**.
+**Cross-component deps:** Stitches fragments from **C1.5, C2.3, C3.1, C4.3** (forward edges: C7.4 depends on each fragment task). C7.4 is also the **post-assembly verification gate** for the four fragment tasks: each fragment task carries one or more "Post-assembly verification (after C7.4)" ACs that can only be exercised once V1 is stitched. Those are runtime-ordering concerns, not DAG edges back to C7.4 (which would create a cycle).
 **Size:** 1 day (assembly only — fragments are owned by other tasks).
 
 #### C7.5 — Quality gate plugins: Spotless, Checkstyle, PMD, JaCoCo, Error Prone        [P4]
@@ -377,9 +377,9 @@ Per-component sections below. Cross-component dep IDs are resolved to specific t
 - `backend/src/main/resources/db/migration/fragments/c1-org-config.sql`.
 **Acceptance criteria:**
 - Every FK has an index; `idx_stages_workflow` present; CHECK constraints on `kind`, `canonical_status`, `action`, `guard_op`, `input_modality`.
-- Repositories load against Postgres Testcontainer without schema errors (gated on **C7.4** assembly).
+- **Post-assembly verification (after C7.4):** repositories load against Postgres Testcontainer without schema errors.
 **Within-component deps:** C1.1.
-**Cross-component deps:** Fragment stitched into `V1__init.sql` by **C7.4**.
+**Cross-component deps:** Fragment stitched into `V1__init.sql` by **C7.4**. C7.4 depends on this task (forward edge); the post-V1 verification AC above runs once C7.4 lands.
 **Size:** 1 day.
 
 #### C1.6 — Contribute `OrgConfigBootstrap` to `AppConfig` + `application.yml` keys      [P1]
@@ -428,7 +428,7 @@ Per-component sections below. Cross-component dep IDs are resolved to specific t
 **Acceptance criteria:**
 - AC-G1 (literal violation detected with file/line), AC-G2 (enum reference passes).
 **Within-component deps:** none.
-**Cross-component deps:** **C7.6** owns the Gradle task that consumes this file.
+**Cross-component deps:** Backref — the operative DAG edge is **C7.6 → C1.9** (the grep Gradle task fails fast at execution time if this file is missing, so it depends on this task). Declared on C7.6's deps line.
 **Size:** half-day.
 
 #### C1.10 — Fourth-org extensibility test                                                [P5]
@@ -484,11 +484,11 @@ Per-component sections below. Cross-component dep IDs are resolved to specific t
 - DDL fragment merged into `backend/src/main/resources/db/migration/V1__init.sql` (assembled by C7.4).
 - `StoredDocumentEntity.java`, `StoredDocumentEntityRepository.java`, `StoredDocumentJpaReader.java` under `com.docflow.ingestion.internal`.
 **Acceptance criteria:**
-- AC-R9: `flywayInfo` shows V1 applied; `information_schema` confirms columns + index.
+- **Post-assembly verification (after C7.4)** — AC-R9: `flywayInfo` shows V1 applied; `information_schema` confirms columns + index.
 - AC-IMMUTABILITY: entity has no setters; repository has no `update*`/`save*` beyond single insert path.
-- AC-R5: `StoredDocumentReader.get(id)` returns rows regardless of org.
+- **Post-assembly verification (after C7.4)** — AC-R5: `StoredDocumentReader.get(id)` returns rows regardless of org.
 **Within-component deps:** C2.1.
-**Cross-component deps:** **C7.4** assembles `V1__init.sql`; depends on C1.5 (organizations table for FK target) being ordered before this fragment in V1.
+**Cross-component deps:** Fragment stitched into `V1__init.sql` by **C7.4** (forward edge: C7.4 depends on this task). V1-ordering hint: C1.5's `organizations` table must precede this fragment for FK resolution; C7.4 enforces order at assembly. Post-V1 ACs above run once C7.4 lands.
 **Size:** 1 day.
 
 #### C2.4 — Tika MIME sniffing + upload orchestrator                                      [P6]
@@ -537,10 +537,10 @@ Per-component sections below. Cross-component dep IDs are resolved to specific t
 - SQL fragments merged into `V1__init.sql` (assembled by C7.4).
 - `backend/src/test/java/com/docflow/c3/audit/LlmCallAuditCheckConstraintIT.java`.
 **Acceptance criteria:**
-- AC5: `processing_documents` and `llm_call_audit` tables exist after `flywayMigrate` with all columns, FKs, indexes, CHECK constraints.
-- CHECK rejects rows with neither or both of `processing_document_id` / `document_id`.
+- **Post-assembly verification (after C7.4)** — AC5: `processing_documents` and `llm_call_audit` tables exist after `flywayMigrate` with all columns, FKs, indexes, CHECK constraints.
+- **Post-assembly verification (after C7.4):** CHECK rejects rows with neither or both of `processing_document_id` / `document_id`.
 **Within-component deps:** none.
-**Cross-component deps:** **C7.4** assembles V1; **C2.3** (`stored_documents`) and **C4.3** (`documents`) must be ordered earlier in V1.
+**Cross-component deps:** Fragments stitched into `V1__init.sql` by **C7.4** (forward edge: C7.4 depends on this task). V1-ordering hints: C2.3's `stored_documents` and C4.3's `documents` must precede this fragment for FK resolution; C7.4 enforces order at assembly. Post-V1 ACs above run once C7.4 lands.
 **Size:** half-day.
 
 #### C3.2 — `ProcessingDocument` entity, writer, reader                                   [P6]
@@ -724,12 +724,12 @@ Per-component sections below. Cross-component dep IDs are resolved to specific t
 - SQL fragment merged into `V1__init.sql` (assembled by C7.4).
 - `SchemaIndexExistenceTest.java` under `com.docflow.workflow` (Testcontainers — asserts `(organization_id, current_status, updated_at DESC)` and `(document_id)` UNIQUE indexes exist).
 **Acceptance criteria:**
-- `documents` has `(organization_id, processed_at DESC)` and UNIQUE `(stored_document_id)` indexes.
-- `workflow_instances` has `(organization_id, current_status, updated_at DESC)` and UNIQUE `(document_id)` indexes.
+- **Post-assembly verification (after C7.4):** `documents` has `(organization_id, processed_at DESC)` and UNIQUE `(stored_document_id)` indexes (asserted by `SchemaIndexExistenceTest`).
+- **Post-assembly verification (after C7.4):** `workflow_instances` has `(organization_id, current_status, updated_at DESC)` and UNIQUE `(document_id)` indexes.
 - `current_status` CHECK enumerates exactly the 5 canonical values; `reextraction_status` CHECK enumerates `NONE, IN_PROGRESS, FAILED` with default `NONE`.
-- Flyway migrate succeeds against empty Postgres.
+- **Post-assembly verification (after C7.4):** Flyway migrate succeeds against empty Postgres.
 **Within-component deps:** none.
-**Cross-component deps:** **C7.4** assembles V1; **C2.3** (`stored_documents`) and **C1.5** (`document_types`, `stages`) ordered earlier.
+**Cross-component deps:** Fragment stitched into `V1__init.sql` by **C7.4** (forward edge: C7.4 depends on this task). V1-ordering hints: C2.3's `stored_documents` and C1.5's `document_types`/`stages` must precede this fragment for FK resolution; C7.4 enforces order at assembly. Post-V1 ACs above run once C7.4 lands.
 **Size:** half-day.
 
 #### C4.4 — `TransitionResolver`                                                          [P6]
