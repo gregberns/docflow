@@ -18,6 +18,17 @@ com/docflow/Application$*.class
 com/docflow/ingestion/StoredDocument.class
 com/docflow/ingestion/IngestionResult.class
 
+# C5 API DTOs: pure value records (accessors only).
+# ActionRequest is intentionally NOT excluded — its Jackson polymorphism is
+# covered directly by ActionRequestDeserializationTest.
+com/docflow/api/dto/OrganizationListItem.class
+com/docflow/api/dto/OrganizationDetail.class
+com/docflow/api/dto/DashboardResponse.class
+com/docflow/api/dto/DashboardStats.class
+com/docflow/api/dto/ReviewFieldsPatch.class
+com/docflow/api/dto/RetypeRequest.class
+com/docflow/api/dto/RetypeAccepted.class
+
 # C1 OrgConfig domain: pure value records (accessors only) and plain enums.
 # StageGuardConfig is intentionally NOT excluded — it owns the only non-trivial
 # logic in this package and is covered directly by StageGuardConfigTest.
