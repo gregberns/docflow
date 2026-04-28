@@ -29,6 +29,18 @@ com/docflow/api/dto/ReviewFieldsPatch.class
 com/docflow/api/dto/RetypeRequest.class
 com/docflow/api/dto/RetypeAccepted.class
 
+# C7 platform event payloads: pure value records (accessors only). The
+# DocumentEventBus and AsyncConfig in com/docflow/platform are intentionally
+# NOT excluded — they own bus dispatch and async-exception logging and are
+# covered directly by DocumentEventBusTest.
+com/docflow/platform/DocumentEvent.class
+com/docflow/c3/events/StoredDocumentIngested.class
+com/docflow/c3/events/ProcessingStepChanged.class
+com/docflow/c3/events/ProcessingCompleted.class
+com/docflow/c3/events/ExtractionCompleted.class
+com/docflow/c3/events/ExtractionFailed.class
+com/docflow/workflow/events/DocumentStateChanged.class
+
 # C1 OrgConfig domain: pure value records (accessors only) and plain enums.
 # StageGuardConfig is intentionally NOT excluded — it owns the only non-trivial
 # logic in this package and is covered directly by StageGuardConfigTest.

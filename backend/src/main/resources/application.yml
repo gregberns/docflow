@@ -27,3 +27,21 @@ docflow:
   config:
     seed-on-boot: true
     seed-resource-path: classpath:seed/
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+docflow:
+  config:
+    seed-on-boot: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+docflow:
+  config:
+    seed-on-boot: false
