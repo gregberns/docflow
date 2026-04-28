@@ -1,0 +1,38 @@
+# Forbidden literal strings for the grepForbiddenStrings build check.
+#
+# Authority: .kerf/docflow/05-specs/c1-config-spec.md §3.6 (C1-R7).
+# Consumer: C7-R5 grepForbiddenStrings Gradle task (see C7.6).
+#
+# Each non-comment, non-blank line is one literal that MUST NOT appear as a
+# raw string in backend Java source outside the C1 config package, Flyway
+# migration classes, test sources, and seed resources. References via the
+# WorkflowStatus / StageDefinition enums and config records are not literals
+# and are not matched.
+#
+# Format:
+#   - One literal per line, no surrounding quotes.
+#   - Lines beginning with '#' are comments; blank lines are ignored.
+#   - Leading/trailing whitespace on a literal line is trimmed before matching.
+
+# Stage names (11)
+Review
+Manager Approval
+Finance Approval
+Attorney Approval
+Billing Approval
+Partner Approval
+Project Manager Approval
+Accounting Approval
+Client Approval
+Filed
+Rejected
+
+# Client slugs (3)
+riverside-bistro
+pinnacle-legal
+ironworks-construction
+
+# Client display-name variants (3)
+Riverside Bistro
+Pinnacle Legal Group
+Ironworks Construction
