@@ -5,3 +5,24 @@ DocFlow_Take_Home_Exercise_greg_berns.zip
 
 # Kerf working snapshots
 .kerf/project/*/.history/
+
+# Backend (Gradle / Java)
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
+backend/*.log
+
+# Frontend (Node / Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.vite/
+frontend/playwright-report/
+frontend/test-results/
+
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+.DS_Store

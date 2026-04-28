@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: docflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d docflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - docflow
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DB_URL: ${DB_URL}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      STORAGE_ROOT: ${STORAGE_ROOT}
+    ports:
+      - "8080:8080"
+    volumes:
+      - storage-data:${STORAGE_ROOT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - docflow
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8080
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - docflow
+
+networks:
+  docflow:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  storage-data:
