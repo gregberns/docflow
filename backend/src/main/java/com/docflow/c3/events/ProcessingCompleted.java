@@ -8,7 +8,7 @@ import java.util.UUID;
 public record ProcessingCompleted(
     UUID storedDocumentId,
     UUID processingDocumentId,
-    UUID organizationId,
+    String organizationId,
     String detectedDocumentType,
     Map<String, Object> extractedFields,
     String rawText,

@@ -5,5 +5,5 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record StoredDocumentIngested(
-    UUID storedDocumentId, UUID organizationId, UUID processingDocumentId, Instant occurredAt)
+    UUID storedDocumentId, String organizationId, UUID processingDocumentId, Instant occurredAt)
     implements DocumentEvent {}

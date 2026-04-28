@@ -5,5 +5,5 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record ExtractionFailed(
-    UUID documentId, UUID organizationId, String error, Instant occurredAt)
+    UUID documentId, String organizationId, String error, Instant occurredAt)
     implements DocumentEvent {}

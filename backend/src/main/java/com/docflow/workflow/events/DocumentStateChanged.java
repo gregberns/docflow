@@ -7,7 +7,7 @@ import java.util.UUID;
 public record DocumentStateChanged(
     UUID documentId,
     UUID storedDocumentId,
-    UUID organizationId,
+    String organizationId,
     String currentStage,
     String currentStatus,
     String reextractionStatus,

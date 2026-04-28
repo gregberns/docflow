@@ -8,7 +8,6 @@ import com.docflow.ingestion.StoredDocumentReader;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
-import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,13 +85,13 @@ class StoredDocumentPersistenceFragmentIT {
 
   @Test
   void readerReturnsRowRegardlessOfOrg() {
-    String orgId = UUID.randomUUID().toString();
+    String orgId = "pinnacle-legal";
     new JdbcTemplate(dataSource)
         .update(
             "INSERT INTO organizations (id, display_name, icon_id) VALUES (?, ?, ?)",
             orgId,
-            "Read Test Org",
-            "icon-read-test");
+            "Pinnacle Legal",
+            "icon-pinnacle-legal");
 
     StoredDocumentId id = StoredDocumentId.generate();
     Instant uploadedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
@@ -107,7 +106,7 @@ class StoredDocumentPersistenceFragmentIT {
 
     StoredDocument loaded = reader.get(id).orElseThrow();
     assertThat(loaded.id()).isEqualTo(id);
-    assertThat(loaded.organizationId()).isEqualTo(UUID.fromString(orgId));
+    assertThat(loaded.organizationId()).isEqualTo(orgId);
     assertThat(loaded.uploadedAt()).isEqualTo(uploadedAt);
     assertThat(loaded.sourceFilename()).isEqualTo("report.pdf");
     assertThat(loaded.mimeType()).isEqualTo("application/pdf");

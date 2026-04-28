@@ -7,7 +7,7 @@ import java.util.UUID;
 public record ProcessingStepChanged(
     UUID storedDocumentId,
     UUID processingDocumentId,
-    UUID organizationId,
+    String organizationId,
     String currentStep,
     String error,
     Instant occurredAt)

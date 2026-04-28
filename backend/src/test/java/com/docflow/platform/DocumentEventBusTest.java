@@ -42,7 +42,7 @@ import org.springframework.stereotype.Component;
     properties = {"spring.threads.virtual.enabled=true", "spring.main.web-application-type=none"})
 class DocumentEventBusTest {
 
-  private static final UUID ORG_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+  private static final String ORG_ID = "pinnacle-legal";
 
   @Autowired private DocumentEventBus bus;
   @Autowired private RecordingListener recording;

@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public record ExtractionCompleted(
     UUID documentId,
-    UUID organizationId,
+    String organizationId,
     Map<String, Object> extractedFields,
     String detectedDocumentType,
     Instant occurredAt)
