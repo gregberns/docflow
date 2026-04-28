@@ -1,39 +1,47 @@
 <!-- PP-TRIAL:v2 2026-04-28 implementation -->
 # Session Handoff — implementation phase
 
-**Status:** clean. 13 beads tasks closed this session, repo on `implementation`, working tree clean, last commit `e7433bd`. Both pipelines green: `./gradlew check` BUILD SUCCESSFUL, `npm --prefix frontend run check` passes (5/5 tests). 8 ready entry points; 55 tasks remain.
+**Status:** clean. 9 beads tasks closed this session, repo on `implementation`, working tree clean, last commit `a9b5614`. `./gradlew check` BUILD SUCCESSFUL (16 tasks all green incl. `:grepForbiddenStrings` and the Testcontainer ITs). 5 ready entry points; ~46 tasks remain.
 
-**What we're doing.** DocFlow take-home — multi-tenant document processing. Implementation against the kerf plan in `.kerf/docflow/`; beads (`br`) is the work tracker.
+**What we're doing.** DocFlow take-home — multi-tenant document processing. Implementing against the kerf plan in `.kerf/docflow/`; beads (`br`) is the tracker.
 
-**How to run (the user's standing instructions for this work).**
-- **Operate as orchestrator.** Delegate substantive work to sub-agents via the Agent tool. Keep the main thread for coordination, integration, and committing. Run independent tasks in parallel — 2- and 3-way batches landed cleanly this session; the only constraint is one agent per shared file (e.g., one owner of `build.gradle.kts` per batch).
-- **Per-task ralph loop:** spawn an implementer agent, then a verifier agent for the same task. The verifier reads the same `br show <id>` + spec, runs `./gradlew check` independently, and checks AC by AC. Verifier passes ⇒ close + commit. Verifier finds defects ⇒ send back to implementer with the defect list.
-- **`br show <id>` is the brief.** Beads carries the full task definition (deliverables + ACs + spec refs). Point sub-agents at it directly; don't paraphrase.
-- **No permission asks for routine moves.** Commits, format choices, dep version picks, kerf-status flips, brew-installing missing toolchain — all pre-authorized. Ask only for substantive risks: opening a PR, pushing the branch, architectural reversals, scope expansion.
+**How to run (the user's standing instructions, unchanged from prior handoff).**
+- **Orchestrator + ralph loop:** delegate to sub-agents, then verify with a separate sub-agent against `br show <id>` + spec ACs. Verifier passes ⇒ close + commit. Verifier finds defects ⇒ back to implementer.
+- **Parallel where independent.** Worktree isolation (`isolation: "worktree"`) handled the C2.3/C3.1/C4.3 fan-out and the C7.6/C1.2/C2.2 fan-out cleanly this session — file ownership is the only constraint (one owner of `build.gradle.kts` per batch unless worktrees absorb it). 4-way parallel feasible for the next batch.
+- **No permission asks for routine moves.** Substantive risks only (push, PR, architectural reversal, scope expansion).
+- **CWD trap:** `br` operates on whatever directory you're in — running it inside a worktree path hits that worktree's beads DB, not main's. Always `cd /Users/gb/github/basata` (or use `git -C <main>` for git) before `br ready` / `br close` / `br create`. Lost ~10 minutes to this; flagging.
 
-**Closed this session (in order):** C7.1, C7.2, C7.3, C7.5, C7.8, C1.9, C6.1, C1.1, C2.1, C4.1, C5.1, C1.6, C7.7. Foundations + scaffolds + the cross-cutting platform pieces (config, quality gates, event bus, error taxonomy, application shell, seed data) all in place.
+**Closed this session (commit order):** C1.5, C2.3, C3.1, C4.3, **type-fix**, C7.4, C7.6, C1.2, C2.2, C5.2. Also filed **df-5my** (P3 chore) for a C1.9 gap (see below).
 
-**Next step.** Run `br ready` and pick. The eight ready tasks are:
-1. **C1.5 / C2.3 / C3.1 / C4.3** — V1 SQL fragment + JPA entity tasks (the V1 co-ownership pattern from the original handoff still applies; their post-V1 verification ACs run only after C7.4 stitches). One of these four should add Flyway + JDBC + spring-data-jpa to `backend/build.gradle.kts`; the others ride on those deps. Worth doing one alone first to land the deps cleanly.
-2. **C7.6** — `grepForbiddenStrings` Gradle task + tests. Consumes `config/forbidden-strings.txt` (already committed in C1.9). Modifies build.gradle.kts.
-3. **C1.2** — ConfigLoader (Jackson 3 YAML → records). Tests bind the seed YAML.
-4. **C2.2** — FilesystemStoredDocumentStorage with atomic-move.
-5. **C5.2** — GlobalExceptionHandler with RFC 7807 ProblemDetail. Probably needs `spring-boot-starter-web` (not yet in build).
+**Two cross-cutting fixes worth knowing.**
+1. **`organizationId` is a `String` slug, not a `UUID`.** C1 ships `organizations.id` as `VARCHAR(255)` (slugs like `pinnacle-legal`); C2.1 had typed it as UUID and propagated through `DocumentEvent` + the 6 event records. Audit confirmed bounded surface; flipped all 12 sites + 2 test fixtures in commit `6e4ccee`. Surrogate UUIDs (stored_documents.id, documents.id, etc.) remain UUID — only category-1 config-slug IDs were wrong.
+2. **Spring Boot 4.0.0 ships without `FlywayAutoConfiguration`.** `FlywayConfig` (committed in C7.4 / `3fb331b`) wires it manually with `@ConditionalOnBean(DataSource.class)` + `@ConditionalOnProperty("spring.flyway.enabled", matchIfMissing = true)` so fragment-level ITs that disable flyway keep working unmodified.
 
-**Toolchain gotchas (don't lose time re-discovering).**
-- macOS host has no Java/Gradle by default. We installed via brew earlier: `brew install gradle` brought OpenJDK 25.0.2 + Gradle 9.4.1. **All gradle commands need:** `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"; export JAVA_HOME="/opt/homebrew/opt/openjdk";` before `./gradlew`. Without that the `/usr/bin/java` shim fails.
-- Spring Boot 4.0.0 + Java 25 + Gradle 9 work; the gradle wrapper is generated for 9.4.1.
-- `google-java-format` had to be pinned to **1.28.0** under JDK 25 (older GJF tripped on javac internals).
-- Quality gates are live — every backend change must pass Spotless / Checkstyle 10.21.1 / PMD 7.22.0 / JaCoCo ≥0.70 line / Error Prone (replacing SpotBugs per analysis §4.3).
-- Pure-value records and enums go into `backend/config/jacoco/exclusions.txt` to keep coverage realistic. The file has explanatory section headers — keep that pattern.
+**Heads-up: scope expansion in C5.2.** `DocflowException` is `sealed`, but C5.1 only shipped 6 subclasses while C5-R9a / AC10 require the contract test to exercise 11 codes. C5.2 added 3 minimal `permits` subclasses (`UnknownProcessingDocumentException`, `UnknownDocTypeException`, `InvalidFileException`). Verifier ruled this justified — spec §4.3's class list is illustrative, the codes are canonical, and C5.4–C5.6 controllers will need throwers anyway.
 
-**Cross-component spec resolution worth remembering.** `WorkflowStatus` lives at `com.docflow.config.org.WorkflowStatus` (C1 ownership per c1-config-spec §3.2 / C1-R12), not under `com.docflow.workflow` even though c4-workflow-spec.md's table shows the latter. C4 imports it.
+**Followup filed: df-5my.** `config/forbidden-strings.txt` (C1.9) is missing the env-read patterns and `.env` literal that c7-platform-spec.md §3.6 / C7-R13 say should live in the file. C7.6's Gradle task hard-codes `System.getenv` and `@Value` to keep the build closed; `.env` is unenforced. Tighten when convenient.
+
+**Next step.** Run `br ready`. The 5 ready tasks are:
+1. **C3.2** (df-2zl.2) — ProcessingDocument entity, writer, reader (under `com.docflow.c3.persistence` likely). Depends on C7.4 schema, now landed.
+2. **C3.3** (df-2zl.3) — LlmCallAudit record + LlmCallAuditWriter (INSERT-only).
+3. **C1.3** (df-sxq.5) — ConfigValidator (CV-1..CV-8). Pure Java; consumes the OrgConfig records and the loader from C1.2.
+4. **C7.10** (df-9c2.10) — Stop hook in `.claude/settings.json` running `make test` with 600s timeout.
+5. **df-5my** (P3 chore) — see followup above.
+
+C3.2 + C3.3 + C1.3 are independent file-wise (different packages, no shared `build.gradle.kts` touches likely) → 3-way parallel candidate. C7.10 only modifies `.claude/settings.json` and is a one-shot.
+
+**Toolchain gotchas (cumulative).**
+- PATH/JAVA_HOME for gradle: `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"; export JAVA_HOME="/opt/homebrew/opt/openjdk"`. Build from `/Users/gb/github/basata/backend/`.
+- Jackson 3 namespace is `tools.jackson.*` (NOT `com.fasterxml.jackson.*`). YAML artifact: `tools.jackson.dataformat:jackson-dataformat-yaml` (BOM-managed at 3.0.2).
+- Testcontainers 2.0 artifact names are `testcontainers-postgresql` / `testcontainers-junit-jupiter`; Java packages unchanged.
+- google-java-format pinned 1.28.0 (JDK 25).
+- `:grepForbiddenStrings` now runs as part of `:check`. New code under `com.docflow.config` is allow-listed for `System.getenv` + `@Value`; stage names and client slugs are forbidden everywhere.
+- `WorkflowStatus` lives at `com.docflow.config.org.WorkflowStatus` (C1 ownership), not `com.docflow.workflow` despite c4-workflow-spec.md's table.
+- `br sync --flush-only` says "Nothing to export" when the SQLite hash matches; use `--force` if you need to force-export after `br create` / `br close`.
 
 **Files to open first.**
-- `.kerf/docflow/SPEC.md` — implementer entry tour.
-- `.kerf/docflow/07-tasks.md` — full task list.
-- `.kerf/docflow/06-integration.md` — seam shapes; SQL fragments are described here.
-- `.kerf/docflow/05-specs/c{N}-*-spec.md` — per-component spec for whichever you pick.
-- `AGENTS.md` (= CLAUDE.md) — `'Done' means green`, beads workflow.
+- `.kerf/docflow/SPEC.md`, `.kerf/docflow/07-tasks.md`, `.kerf/docflow/06-integration.md`
+- `.kerf/docflow/05-specs/c{N}-*-spec.md` for the picked task
+- `AGENTS.md` (= `CLAUDE.md`)
 
 **No blocking questions.**
