@@ -5,7 +5,7 @@ project:
     id: basata
 jig: plan
 jig_version: 1
-status: ready
+status: finalized
 status_values:
     - problem-space
     - analyze
@@ -16,13 +16,14 @@ status_values:
     - tasks
     - ready
 created: 2026-04-24T16:20:03Z
-updated: 2026-04-28T16:32:29Z
+updated: 2026-04-28T17:58:33Z
 sessions:
     - id: null
       started: 2026-04-24T16:20:03Z
 active_session: anonymous
 depends_on: []
 implementation:
-    branch: null
+    branch: implementation
     pr: null
-    commits: []
+    commits:
+        - 2623d244a1d5ef09f89dd739156f1fcf7291258b
