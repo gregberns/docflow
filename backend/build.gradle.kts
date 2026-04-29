@@ -36,6 +36,7 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     implementation("com.github.f4b6a3:uuid-creator:6.1.1")
     implementation("org.apache.tika:tika-core:3.3.0")
+    implementation("org.apache.pdfbox:pdfbox:3.0.3")
     implementation("tools.jackson.dataformat:jackson-dataformat-yaml")
     implementation("com.anthropic:anthropic-java:2.10.0")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")

@@ -159,7 +159,7 @@ class ProcessingDocumentWriterTest {
       ProcessingDocumentId processingDocumentId, StoredDocumentId storedDocumentId) {}
 
   @SpringBootApplication(
-      scanBasePackages = {"com.docflow.c3.pipeline", "com.docflow.ingestion.internal"})
+      scanBasePackages = {"com.docflow.c3.pipeline.internal", "com.docflow.ingestion.internal"})
   @EntityScan(basePackages = {"com.docflow.c3.pipeline.internal", "com.docflow.ingestion.internal"})
   @EnableJpaRepositories(
       basePackages = {"com.docflow.c3.pipeline.internal", "com.docflow.ingestion.internal"})
