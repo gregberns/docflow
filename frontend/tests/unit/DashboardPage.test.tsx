@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { http, HttpResponse } from "msw";
+import { server } from "../msw/server";
 import { DashboardPage } from "../../src/routes/DashboardPage";
 
 function renderDashboard(orgId = "pinnacle-legal") {
@@ -61,6 +63,57 @@ describe("DashboardPage", () => {
     fireEvent.click(screen.getAllByTestId("document-row")[0]);
     await waitFor(() => {
       expect(screen.getByTestId("document-detail-stub")).toBeInTheDocument();
+    });
+  });
+
+  it("renders an error banner when the dashboard query fails", async () => {
+    server.use(
+      http.get("/api/organizations/:orgId/documents", () =>
+        HttpResponse.json(
+          {
+            type: "about:blank",
+            title: "Internal Server Error",
+            status: 500,
+            code: "INTERNAL",
+            message: "boom",
+            details: [],
+          },
+          { status: 500, headers: { "Content-Type": "application/problem+json" } },
+        ),
+      ),
+    );
+    renderDashboard();
+    await screen.findByTestId("dashboard-error");
+    expect(screen.getByTestId("dashboard-error")).toHaveTextContent(/boom|Unable to load/);
+  });
+
+  it("triggers the upload flow and shows an error when upload fails", async () => {
+    server.use(
+      http.post("/api/organizations/:orgId/documents", () =>
+        HttpResponse.json(
+          {
+            type: "about:blank",
+            title: "Unsupported Media Type",
+            status: 415,
+            code: "UNSUPPORTED_MEDIA_TYPE",
+            message: "Only PDF and image files are supported",
+            details: [],
+          },
+          { status: 415, headers: { "Content-Type": "application/problem+json" } },
+        ),
+      ),
+    );
+    renderDashboard();
+    await screen.findByTestId("dashboard-stats");
+
+    fireEvent.click(screen.getByTestId("upload-button"));
+
+    const input = screen.getByTestId("upload-file-input") as HTMLInputElement;
+    const file = new File([new Uint8Array([1, 2, 3])], "bad.txt", { type: "text/plain" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("upload-error")).toBeInTheDocument();
     });
   });
 });

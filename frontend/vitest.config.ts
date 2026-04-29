@@ -11,12 +11,22 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
-      // TODO(research): set coverage threshold
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/types/**",
+        "src/main.tsx",
+        "src/pdf-worker.ts",
+        "src/**/*.d.ts",
+        "tests/**",
+        "vite.config.ts",
+        "vitest.config.ts",
+        "eslint.config.js",
+      ],
       thresholds: {
-        lines: 0,
-        branches: 0,
-        functions: 0,
-        statements: 0,
+        lines: 70,
+        branches: 60,
+        functions: 70,
+        statements: 70,
       },
     },
   },
