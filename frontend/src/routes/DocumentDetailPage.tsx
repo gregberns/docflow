@@ -2,10 +2,12 @@ import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getDocument, getDocumentFileUrl } from "../api/documents";
+import { getWorkflow } from "../api/workflows";
 import { DetailLayout } from "../components/DetailLayout";
 import { PdfViewer } from "../components/PdfViewer";
 import { DocumentHeader } from "../components/DocumentHeader";
 import { FormPanel } from "../components/FormPanel";
+import { StageProgress } from "../components/StageProgress";
 import { useOrgEvents } from "../hooks/useOrgEvents";
 import type { FieldSchema } from "../types/schema";
 
@@ -51,6 +53,14 @@ export function DocumentDetailPage() {
 
   useOrgEvents(data?.organizationId, documentId ? { documentId } : undefined);
 
+  const orgId = data?.organizationId;
+  const docTypeId = data?.detectedDocumentType;
+  const { data: workflow } = useQuery({
+    queryKey: ["workflow", orgId, docTypeId],
+    queryFn: () => getWorkflow(orgId ?? "", docTypeId ?? ""),
+    enabled: typeof orgId === "string" && orgId.length > 0 && typeof docTypeId === "string",
+  });
+
   const fields = useMemo(() => (data ? deriveFallbackFields(data.extractedFields) : []), [data]);
 
   const docTypeOptions = useMemo(
@@ -69,6 +79,18 @@ export function DocumentDetailPage() {
       {data && documentId && (
         <>
           <DocumentHeader document={data} />
+          {workflow &&
+            (data.currentStageId === null ? (
+              <StageProgress mode="in-flight" currentStep="EXTRACTING" stages={workflow.stages} />
+            ) : (
+              <StageProgress
+                mode="processed"
+                stages={workflow.stages}
+                currentStageId={data.currentStageId}
+                currentStatus={data.currentStatus}
+                originStage={data.workflowOriginStage}
+              />
+            ))}
           <DetailLayout
             left={<PdfViewer fileUrl={getDocumentFileUrl(documentId)} />}
             right={

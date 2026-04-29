@@ -147,4 +147,34 @@ describe("DocumentDetailPage", () => {
     view.unmount();
     expect(sources[0]!.close).toHaveBeenCalledTimes(1);
   });
+
+  it("mounts StageProgress in processed mode for an AWAITING_APPROVAL document", async () => {
+    server.use(
+      http.get("/api/documents/:documentId", () =>
+        HttpResponse.json({
+          ...fixtures.document,
+          currentStageId: "approval",
+          currentStageDisplayName: "Approval",
+          currentStatus: "AWAITING_APPROVAL",
+          workflowOriginStage: null,
+        }),
+      ),
+    );
+
+    renderPage();
+
+    const stageProgress = await screen.findByTestId("stage-progress");
+    expect(stageProgress).toBeInTheDocument();
+
+    // Workflow stages should render with their displayNames + processed-mode states.
+    await waitFor(() => {
+      expect(screen.getByTestId("stage-workflow-approval")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("stage-workflow-review")).toHaveAttribute("data-state", "done");
+    expect(screen.getByTestId("stage-workflow-approval")).toHaveAttribute(
+      "data-state",
+      "highlighted-pink",
+    );
+    expect(screen.getByTestId("stage-workflow-filed")).toHaveAttribute("data-state", "upcoming");
+  });
 });
