@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render as rtlRender, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { FormPanel } from "../../src/components/FormPanel";
 import type { DocumentView } from "../../src/types/readModels";
 import type { FieldSchema } from "../../src/types/schema";
 import type { StageSummary } from "../../src/types/workflow";
+
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 const PINNACLE_INVOICE_FIELDS: FieldSchema[] = [
   { name: "vendor", type: "STRING", required: true, enumValues: null, itemFields: null },
