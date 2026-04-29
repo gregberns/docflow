@@ -92,7 +92,7 @@ afterEach(() => {
 });
 
 describe("DocumentDetailPage", () => {
-  it("renders header, two-panel layout, and the form-panel placeholder", async () => {
+  it("renders header, two-panel layout, and the FormPanel right pane", async () => {
     renderPage();
 
     await screen.findByTestId("document-header");
@@ -103,7 +103,7 @@ describe("DocumentDetailPage", () => {
     expect(screen.getByTestId("detail-pane-left")).toBeInTheDocument();
     expect(screen.getByTestId("detail-pane-right")).toBeInTheDocument();
     expect(screen.getByTestId("pdf-viewer")).toBeInTheDocument();
-    expect(screen.getByTestId("form-panel-placeholder")).toBeInTheDocument();
+    expect(screen.getByTestId("form-panel")).toBeInTheDocument();
   });
 
   it("opens exactly one EventSource and issues exactly one GET /api/documents/{id}", async () => {
@@ -135,7 +135,7 @@ describe("DocumentDetailPage", () => {
     });
     expect(screen.getByTestId("pdf-viewer")).toHaveAttribute("data-pdf-state", "error");
     // Form panel must remain rendered and usable even when the PDF errors.
-    expect(screen.getByTestId("form-panel-placeholder")).toBeInTheDocument();
+    expect(screen.getByTestId("form-panel")).toBeInTheDocument();
     expect(screen.getByTestId("detail-pane-right")).toBeInTheDocument();
   });
 

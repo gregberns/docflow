@@ -1,13 +1,47 @@
-import { useParams } from "react-router-dom";
+import { useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getDocument, getDocumentFileUrl } from "../api/documents";
 import { DetailLayout } from "../components/DetailLayout";
 import { PdfViewer } from "../components/PdfViewer";
 import { DocumentHeader } from "../components/DocumentHeader";
+import { FormPanel } from "../components/FormPanel";
 import { useOrgEvents } from "../hooks/useOrgEvents";
+import type { FieldSchema } from "../types/schema";
+
+function deriveFallbackFields(extractedFields: Record<string, unknown>): FieldSchema[] {
+  return Object.keys(extractedFields).map((name) => {
+    const value = extractedFields[name];
+    if (Array.isArray(value)) {
+      const sample = (value[0] ?? {}) as Record<string, unknown>;
+      const itemFields: FieldSchema[] = Object.keys(sample).map((childName) => ({
+        name: childName,
+        type: "STRING",
+        required: false,
+        enumValues: null,
+        itemFields: null,
+      }));
+      return {
+        name,
+        type: "ARRAY",
+        required: false,
+        enumValues: null,
+        itemFields,
+      };
+    }
+    return {
+      name,
+      type: "STRING",
+      required: false,
+      enumValues: null,
+      itemFields: null,
+    };
+  });
+}
 
 export function DocumentDetailPage() {
   const { documentId } = useParams<{ documentId: string }>();
+  const navigate = useNavigate();
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["document", documentId],
@@ -16,6 +50,13 @@ export function DocumentDetailPage() {
   });
 
   useOrgEvents(data?.organizationId, documentId ? { documentId } : undefined);
+
+  const fields = useMemo(() => (data ? deriveFallbackFields(data.extractedFields) : []), [data]);
+
+  const docTypeOptions = useMemo(
+    () => (data?.detectedDocumentType ? [data.detectedDocumentType] : []),
+    [data?.detectedDocumentType],
+  );
 
   return (
     <main data-testid="document-detail-page" data-document-id={documentId}>
@@ -31,7 +72,15 @@ export function DocumentDetailPage() {
           <DetailLayout
             left={<PdfViewer fileUrl={getDocumentFileUrl(documentId)} />}
             right={
-              <div data-testid="form-panel-placeholder">Form panel coming soon (df-6m8.8).</div>
+              <FormPanel
+                document={data}
+                fields={fields}
+                docTypeOptions={docTypeOptions}
+                handlers={{
+                  onBackToDocuments: () =>
+                    navigate(`/org/${encodeURIComponent(data.organizationId)}/dashboard`),
+                }}
+              />
             }
           />
         </>
