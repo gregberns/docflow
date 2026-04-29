@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Prepare .env (CI defaults)
+        run: |
+          cp .env.example .env
+          # Backend AppConfig requires a non-blank api key to bind; the CI
+          # workflow never invokes `make eval`, so any non-blank stub suffices.
+          # If a real ANTHROPIC_API_KEY secret is provided, prefer it.
+          if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+            sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}|" .env
+          else
+            sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=ci-stub-not-a-real-key|" .env
+          fi
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: make test
+        run: make test
+
+      - name: make build
+        run: make build
+
+      - name: make start (background)
+        run: make start
+
+      - name: Wait for backend health
+        run: |
+          set -e
+          # Source .env so we know which host port the backend is published on.
+          set -a
+          . ./.env
+          set +a
+          BACKEND_PORT="${BACKEND_HOST_PORT:-8551}"
+          FRONTEND_PORT="${FRONTEND_HOST_PORT:-5173}"
+          echo "Waiting for backend on http://localhost:${BACKEND_PORT}/api/organizations ..."
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${BACKEND_PORT}/api/organizations" || true)
+            if [ "${code}" = "200" ]; then
+              echo "Backend up after ${i} attempt(s) (HTTP ${code})."
+              break
+            fi
+            if [ "${i}" = "60" ]; then
+              echo "Backend never reported healthy. Dumping container state:" >&2
+              docker compose ps || true
+              docker compose logs --tail=200 backend || true
+              docker compose logs --tail=100 postgres || true
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "Waiting for frontend on http://localhost:${FRONTEND_PORT}/ ..."
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${FRONTEND_PORT}/" || true)
+            if [ "${code}" = "200" ]; then
+              echo "Frontend up after ${i} attempt(s) (HTTP ${code})."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Frontend never reported healthy." >&2
+          docker compose ps || true
+          docker compose logs --tail=200 frontend || true
+          exit 1
+
+      - name: make e2e
+        run: make e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Dump docker compose logs on failure
+        if: failure()
+        run: |
+          docker compose ps || true
+          docker compose logs --tail=500 || true
+
+      - name: make stop
+        if: always()
+        run: make stop
