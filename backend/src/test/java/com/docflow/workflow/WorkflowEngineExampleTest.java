@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -26,10 +27,17 @@ import com.docflow.workflow.events.DocumentStateChanged;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -379,6 +387,77 @@ class WorkflowEngineExampleTest {
 
     order.verify(eventBus).publish(any(DocumentEvent.class));
     order.verify(llmExtractor).extract(eq(documentId), eq(NEW_DOC_TYPE_ID));
+  }
+
+  @Test
+  void approveWhenWriterReportsStaleState_returnsInvalidActionAndDoesNotPublish() {
+    Document document = document(ReextractionStatus.NONE);
+    WorkflowInstance reviewInstance = instance(STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, null);
+    when(documentReader.get(documentId)).thenReturn(Optional.of(document));
+    when(instanceReader.getByDocumentId(documentId)).thenReturn(Optional.of(reviewInstance));
+
+    doThrow(new StaleWorkflowStateException(documentId, STAGE_REVIEW))
+        .when(instanceWriter)
+        .advanceStage(documentId, STAGE_MANAGER, catalog, ORG_ID, DOC_TYPE_ID);
+
+    WorkflowOutcome outcome = engine.applyAction(documentId, new WorkflowAction.Approve());
+
+    assertThat(outcome).isInstanceOf(WorkflowOutcome.Failure.class);
+    WorkflowError.InvalidAction err =
+        (WorkflowError.InvalidAction) ((WorkflowOutcome.Failure) outcome).error();
+    assertThat(err.currentStageId()).isEqualTo(STAGE_REVIEW);
+    assertThat(err.actionType()).isEqualTo("APPROVE");
+    verifyNoInteractions(eventBus);
+  }
+
+  @Test
+  void fourConcurrentApproveCalls_oneSuccessThreeStaleAndExactlyOneEventPublished()
+      throws Exception {
+    Document document = document(ReextractionStatus.NONE);
+    WorkflowInstance reviewInstance = instance(STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, null);
+    when(documentReader.get(documentId)).thenReturn(Optional.of(document));
+    when(instanceReader.getByDocumentId(documentId)).thenReturn(Optional.of(reviewInstance));
+
+    AtomicInteger writeAttempts = new AtomicInteger();
+    doAnswer(
+            inv -> {
+              if (writeAttempts.incrementAndGet() == 1) {
+                return null;
+              }
+              throw new StaleWorkflowStateException(documentId, STAGE_REVIEW);
+            })
+        .when(instanceWriter)
+        .advanceStage(documentId, STAGE_MANAGER, catalog, ORG_ID, DOC_TYPE_ID);
+
+    int callers = 4;
+    ExecutorService pool = Executors.newFixedThreadPool(callers);
+    CountDownLatch start = new CountDownLatch(1);
+    List<Future<WorkflowOutcome>> futures = new ArrayList<>();
+    for (int i = 0; i < callers; i++) {
+      futures.add(
+          pool.submit(
+              () -> {
+                start.await();
+                return engine.applyAction(documentId, new WorkflowAction.Approve());
+              }));
+    }
+    start.countDown();
+    int successes = 0;
+    int invalidAction = 0;
+    for (Future<WorkflowOutcome> f : futures) {
+      WorkflowOutcome outcome = f.get(5, TimeUnit.SECONDS);
+      if (outcome instanceof WorkflowOutcome.Success) {
+        successes++;
+      } else if (outcome instanceof WorkflowOutcome.Failure failure
+          && failure.error() instanceof WorkflowError.InvalidAction) {
+        invalidAction++;
+      }
+    }
+    pool.shutdown();
+
+    assertThat(successes).isEqualTo(1);
+    assertThat(invalidAction).isEqualTo(callers - 1);
+    verify(eventBus, times(1)).publish(any(DocumentEvent.class));
   }
 
   private Document document(ReextractionStatus status) {

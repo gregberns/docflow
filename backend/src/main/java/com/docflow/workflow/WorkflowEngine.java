@@ -99,7 +99,12 @@ public class WorkflowEngine {
       return new WorkflowOutcome.Failure(invalid.error());
     }
     String originStage = instance.currentStageId();
-    instanceWriter.setFlag(document.id(), originStage, action.comment(), catalog, orgId, docTypeId);
+    try {
+      instanceWriter.setFlag(
+          document.id(), originStage, action.comment(), catalog, orgId, docTypeId);
+    } catch (StaleWorkflowStateException stale) {
+      return staleAsInvalidAction(stale, "FLAG");
+    }
     WorkflowInstance updated = requireUpdatedInstance(document.id());
     publish(document, updated, "FLAG", action.comment());
     return new WorkflowOutcome.Success(updated);
@@ -125,7 +130,11 @@ public class WorkflowEngine {
 
     String orgId = document.organizationId();
     String docTypeId = document.detectedDocumentType();
-    instanceWriter.clearFlag(document.id(), catalog, orgId, docTypeId);
+    try {
+      instanceWriter.clearFlag(document.id(), catalog, orgId, docTypeId);
+    } catch (StaleWorkflowStateException stale) {
+      return staleAsInvalidAction(stale, "RESOLVE");
+    }
     WorkflowInstance updated = requireUpdatedInstance(document.id());
     publish(document, updated, "RESOLVE", null);
     return new WorkflowOutcome.Success(updated);
@@ -172,10 +181,19 @@ public class WorkflowEngine {
       return new WorkflowOutcome.Failure(invalid.error());
     }
     TransitionView transition = ((TransitionResolver.Result.Match) resolution).transition();
-    instanceWriter.advanceStage(document.id(), transition.toStage(), catalog, orgId, docTypeId);
+    try {
+      instanceWriter.advanceStage(document.id(), transition.toStage(), catalog, orgId, docTypeId);
+    } catch (StaleWorkflowStateException stale) {
+      return staleAsInvalidAction(stale, actionName);
+    }
     WorkflowInstance updated = requireUpdatedInstance(document.id());
     publish(document, updated, actionName, comment);
     return new WorkflowOutcome.Success(updated);
+  }
+
+  private WorkflowOutcome staleAsInvalidAction(StaleWorkflowStateException stale, String action) {
+    return new WorkflowOutcome.Failure(
+        new WorkflowError.InvalidAction(stale.observedFromStageId(), action));
   }
 
   private WorkflowInstance requireUpdatedInstance(UUID documentId) {

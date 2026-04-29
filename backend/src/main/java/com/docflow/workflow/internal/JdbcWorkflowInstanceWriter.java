@@ -3,6 +3,7 @@ package com.docflow.workflow.internal;
 import com.docflow.config.catalog.StageView;
 import com.docflow.config.catalog.WorkflowCatalog;
 import com.docflow.config.catalog.WorkflowView;
+import com.docflow.workflow.StaleWorkflowStateException;
 import com.docflow.workflow.WorkflowInstance;
 import com.docflow.workflow.WorkflowInstanceWriter;
 import com.docflow.workflow.WorkflowStatus;
@@ -12,7 +13,6 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 import org.springframework.stereotype.Component;
@@ -27,7 +27,9 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
           + "workflow_origin_stage = :workflowOriginStage, "
           + "flag_comment = :flagComment, "
           + "updated_at = :newUpdatedAt "
-          + "WHERE document_id = :documentId AND updated_at = :priorUpdatedAt";
+          + "WHERE document_id = :documentId "
+          + "AND updated_at = :priorUpdatedAt "
+          + "AND current_stage_id = :priorStageId";
 
   public static final String CLEAR_ORIGIN_KEEP_STAGE_SQL =
       "UPDATE workflow_instances SET "
@@ -80,7 +82,7 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
     StageView target = requireStage(catalog, orgId, docTypeId, newStageId);
     State prior = readState(documentId);
     WorkflowStatus status = deriveStatus(target, prior.workflowOriginStage());
-    writeWithRetry(
+    writeGuarded(
         documentId, newStageId, status, prior.workflowOriginStage(), prior.flagComment(), prior);
   }
 
@@ -95,7 +97,7 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
     State prior = readState(documentId);
     StageView reviewStage = findReviewStage(catalog, orgId, docTypeId);
     WorkflowStatus status = deriveStatus(reviewStage, originStageId);
-    writeWithRetry(documentId, reviewStage.id(), status, originStageId, comment, prior);
+    writeGuarded(documentId, reviewStage.id(), status, originStageId, comment, prior);
   }
 
   @Override
@@ -112,7 +114,7 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
     }
     StageView target = requireStage(catalog, orgId, docTypeId, targetStageId);
     WorkflowStatus status = deriveStatus(target, null);
-    writeWithRetry(documentId, targetStageId, status, null, null, prior);
+    writeGuarded(documentId, targetStageId, status, null, null, prior);
   }
 
   @Override
@@ -125,32 +127,13 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
     jdbc.update(CLEAR_ORIGIN_KEEP_STAGE_SQL, params);
   }
 
-  private void writeWithRetry(
+  private void writeGuarded(
       UUID documentId,
       String newStageId,
       WorkflowStatus status,
       String originStage,
       String comment,
       State prior) {
-    if (tryWrite(documentId, newStageId, status, originStage, comment, prior.updatedAt()) == 1) {
-      return;
-    }
-    State refreshed = readState(documentId);
-    if (tryWrite(documentId, newStageId, status, originStage, comment, refreshed.updatedAt())
-        == 1) {
-      return;
-    }
-    throw new OptimisticLockingFailureException(
-        "workflow_instances row for document_id=" + documentId + " changed during update");
-  }
-
-  private int tryWrite(
-      UUID documentId,
-      String newStageId,
-      WorkflowStatus status,
-      String originStage,
-      String comment,
-      Instant priorUpdatedAt) {
     Instant newUpdatedAt = Instant.now(clock);
     MapSqlParameterSource params =
         new MapSqlParameterSource()
@@ -160,8 +143,12 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
             .addValue("workflowOriginStage", originStage)
             .addValue("flagComment", comment)
             .addValue("newUpdatedAt", Timestamp.from(newUpdatedAt))
-            .addValue("priorUpdatedAt", Timestamp.from(priorUpdatedAt));
-    return jdbc.update(UPDATE_SQL, params);
+            .addValue("priorUpdatedAt", Timestamp.from(prior.updatedAt()))
+            .addValue("priorStageId", prior.currentStageId());
+    int rows = jdbc.update(UPDATE_SQL, params);
+    if (rows != 1) {
+      throw new StaleWorkflowStateException(documentId, prior.currentStageId());
+    }
   }
 
   private State readState(UUID documentId) {

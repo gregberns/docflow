@@ -27,7 +27,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 
@@ -49,7 +48,6 @@ class WorkflowInstanceWriterTest {
 
   private static final Instant FIXED_NOW = Instant.parse("2026-04-28T12:00:00Z");
   private static final Instant PRIOR_AT = Instant.parse("2026-04-28T11:00:00Z");
-  private static final Instant REFRESHED_AT = Instant.parse("2026-04-28T11:30:00Z");
 
   private NamedParameterJdbcOperations jdbc;
   private WorkflowCatalog catalog;
@@ -84,6 +82,7 @@ class WorkflowInstanceWriterTest {
     assertThat(params).containsEntry("flagComment", null);
     assertThat(params).containsEntry("documentId", documentId);
     assertThat(params).containsEntry("priorUpdatedAt", Timestamp.from(PRIOR_AT));
+    assertThat(params).containsEntry("priorStageId", STAGE_REVIEW_ID);
     assertThat(params).containsEntry("newUpdatedAt", Timestamp.from(FIXED_NOW));
     verify(jdbc, times(1))
         .update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class));
@@ -148,35 +147,49 @@ class WorkflowInstanceWriterTest {
   }
 
   @Test
-  void optimisticLock_retriesOnceAndSucceedsOnSecondAttempt() {
-    seedSelectSequence(
-        new Row(STAGE_REVIEW_ID, null, null, PRIOR_AT),
-        new Row(STAGE_REVIEW_ID, null, null, REFRESHED_AT));
-    when(jdbc.update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class)))
-        .thenReturn(0)
-        .thenReturn(1);
-
-    writer.advanceStage(documentId, STAGE_MGR_ID, catalog, ORG_ID, DOC_TYPE_ID);
-
-    ArgumentCaptor<MapSqlParameterSource> captor =
-        ArgumentCaptor.forClass(MapSqlParameterSource.class);
-    verify(jdbc, times(2)).update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), captor.capture());
-    List<MapSqlParameterSource> all = captor.getAllValues();
-    assertThat(toMap(all.get(0))).containsEntry("priorUpdatedAt", Timestamp.from(PRIOR_AT));
-    assertThat(toMap(all.get(1))).containsEntry("priorUpdatedAt", Timestamp.from(REFRESHED_AT));
-  }
-
-  @Test
-  void optimisticLock_throwsAfterTwoConsecutiveZeroRowUpdates() {
-    seedSelectSequence(
-        new Row(STAGE_REVIEW_ID, null, null, PRIOR_AT),
-        new Row(STAGE_REVIEW_ID, null, null, REFRESHED_AT));
+  void zeroRowUpdate_throwsStaleWorkflowStateExceptionWithoutRetry() {
+    seedSelect(STAGE_REVIEW_ID, null, null);
     when(jdbc.update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class)))
         .thenReturn(0);
 
     assertThatThrownBy(
             () -> writer.advanceStage(documentId, STAGE_MGR_ID, catalog, ORG_ID, DOC_TYPE_ID))
-        .isInstanceOf(OptimisticLockingFailureException.class);
+        .isInstanceOf(StaleWorkflowStateException.class)
+        .satisfies(
+            ex -> {
+              StaleWorkflowStateException stale = (StaleWorkflowStateException) ex;
+              assertThat(stale.documentId()).isEqualTo(documentId);
+              assertThat(stale.observedFromStageId()).isEqualTo(STAGE_REVIEW_ID);
+            });
+    verify(jdbc, times(1))
+        .update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class));
+  }
+
+  @Test
+  void concurrentWriters_simulated_onlyOneUpdateSucceeds() {
+    seedSelectSequence(
+        new Row(STAGE_REVIEW_ID, null, null, PRIOR_AT),
+        new Row(STAGE_REVIEW_ID, null, null, PRIOR_AT),
+        new Row(STAGE_REVIEW_ID, null, null, PRIOR_AT),
+        new Row(STAGE_REVIEW_ID, null, null, PRIOR_AT));
+    when(jdbc.update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class)))
+        .thenReturn(1)
+        .thenReturn(0)
+        .thenReturn(0)
+        .thenReturn(0);
+
+    int successes = 0;
+    int stale = 0;
+    for (int i = 0; i < 4; i++) {
+      try {
+        writer.advanceStage(documentId, STAGE_MGR_ID, catalog, ORG_ID, DOC_TYPE_ID);
+        successes++;
+      } catch (StaleWorkflowStateException ignored) {
+        stale++;
+      }
+    }
+    assertThat(successes).isEqualTo(1);
+    assertThat(stale).isEqualTo(3);
   }
 
   private void seedSelect(String stageId, String origin, String comment) {
