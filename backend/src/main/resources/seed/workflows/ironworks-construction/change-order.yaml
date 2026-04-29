@@ -36,9 +36,15 @@ transitions:
   - from: Project Manager Approval
     action: REJECT
     to: Rejected
+  - from: Project Manager Approval
+    action: FLAG
+    to: Review
   - from: Client Approval
     action: APPROVE
     to: Filed
   - from: Client Approval
     action: REJECT
     to: Rejected
+  - from: Client Approval
+    action: FLAG
+    to: Review

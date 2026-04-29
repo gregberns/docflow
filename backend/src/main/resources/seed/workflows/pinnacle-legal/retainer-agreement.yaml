@@ -31,3 +31,6 @@ transitions:
   - from: Partner Approval
     action: REJECT
     to: Rejected
+  - from: Partner Approval
+    action: FLAG
+    to: Review
