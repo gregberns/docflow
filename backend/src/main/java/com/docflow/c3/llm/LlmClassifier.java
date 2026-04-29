@@ -18,7 +18,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 @Component
-public final class LlmClassifier {
+public class LlmClassifier {
 
   private static final int CLASSIFY_MAX_TOKENS = 512;
   private static final String ALLOWED_DOC_TYPES_PLACEHOLDER = "ALLOWED_DOC_TYPES";

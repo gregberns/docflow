@@ -22,7 +22,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 @Component
-public final class LlmExtractor {
+public class LlmExtractor {
 
   private final DocumentTypeCatalog documentTypeCatalog;
   private final ExtractRequestBuilder requestBuilder;
