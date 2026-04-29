@@ -1,0 +1,46 @@
+organizationId: riverside-bistro
+id: invoice
+displayName: Invoice
+inputModality: PDF
+fields:
+  - name: vendor
+    type: STRING
+    required: true
+  - name: invoiceNumber
+    type: STRING
+    required: true
+  - name: invoiceDate
+    type: DATE
+    required: true
+  - name: dueDate
+    type: DATE
+    required: true
+  - name: subtotal
+    type: DECIMAL
+    required: true
+  - name: tax
+    type: DECIMAL
+    required: true
+  - name: totalAmount
+    type: DECIMAL
+    required: true
+  - name: paymentTerms
+    type: STRING
+    required: true
+  - name: lineItems
+    type: ARRAY
+    required: true
+    itemSchema:
+      fields:
+        - name: description
+          type: STRING
+          required: true
+        - name: quantity
+          type: DECIMAL
+          required: true
+        - name: unitPrice
+          type: DECIMAL
+          required: true
+        - name: total
+          type: DECIMAL
+          required: true

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" && make test",
+            "command": "export JAVA_HOME=\"/opt/homebrew/opt/openjdk\" && export PATH=\"/opt/homebrew/opt/openjdk/bin:$PATH\" && cd \"$CLAUDE_PROJECT_DIR\" && make test",
             "timeout": 600
           }
         ]

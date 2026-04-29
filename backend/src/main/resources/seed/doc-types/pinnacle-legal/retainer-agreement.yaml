@@ -1,0 +1,26 @@
+organizationId: pinnacle-legal
+id: retainer-agreement
+displayName: Retainer Agreement
+inputModality: TEXT
+fields:
+  - name: clientName
+    type: STRING
+    required: true
+  - name: matterType
+    type: STRING
+    required: true
+  - name: hourlyRate
+    type: DECIMAL
+    required: true
+  - name: retainerAmount
+    type: DECIMAL
+    required: true
+  - name: effectiveDate
+    type: DATE
+    required: true
+  - name: termLength
+    type: STRING
+    required: true
+  - name: scope
+    type: STRING
+    required: true
