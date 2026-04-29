@@ -9,17 +9,15 @@ import com.docflow.document.ReextractionStatus;
 import com.docflow.platform.DocumentEventBus;
 import com.docflow.workflow.WorkflowInstance;
 import com.docflow.workflow.WorkflowInstanceReader;
+import com.docflow.workflow.WorkflowInstanceWriter;
 import com.docflow.workflow.WorkflowStatus;
 import com.docflow.workflow.events.DocumentStateChanged;
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -30,18 +28,10 @@ public class ExtractionEventListener {
 
   private static final Logger LOG = LoggerFactory.getLogger(ExtractionEventListener.class);
 
-  private static final String CLEAR_FLAG_KEEP_STAGE_SQL =
-      "UPDATE workflow_instances SET "
-          + "current_status = :currentStatus, "
-          + "workflow_origin_stage = NULL, "
-          + "flag_comment = NULL, "
-          + "updated_at = :newUpdatedAt "
-          + "WHERE document_id = :documentId";
-
   private final DocumentReader documentReader;
   private final DocumentWriter documentWriter;
   private final WorkflowInstanceReader workflowInstanceReader;
-  private final NamedParameterJdbcOperations jdbc;
+  private final WorkflowInstanceWriter workflowInstanceWriter;
   private final DocumentEventBus eventBus;
   private final TransactionTemplate transactionTemplate;
   private final Clock clock;
@@ -50,14 +40,14 @@ public class ExtractionEventListener {
       DocumentReader documentReader,
       DocumentWriter documentWriter,
       WorkflowInstanceReader workflowInstanceReader,
-      NamedParameterJdbcOperations jdbc,
+      WorkflowInstanceWriter workflowInstanceWriter,
       DocumentEventBus eventBus,
       PlatformTransactionManager transactionManager,
       Clock clock) {
     this.documentReader = documentReader;
     this.documentWriter = documentWriter;
     this.workflowInstanceReader = workflowInstanceReader;
-    this.jdbc = jdbc;
+    this.workflowInstanceWriter = workflowInstanceWriter;
     this.eventBus = eventBus;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.clock = clock;
@@ -94,12 +84,7 @@ public class ExtractionEventListener {
           status -> {
             documentWriter.updateExtraction(documentId, newDocTypeId, event.extractedFields());
             documentWriter.setReextractionStatus(documentId, ReextractionStatus.NONE);
-            jdbc.update(
-                CLEAR_FLAG_KEEP_STAGE_SQL,
-                new MapSqlParameterSource()
-                    .addValue("documentId", documentId)
-                    .addValue("currentStatus", WorkflowStatus.AWAITING_REVIEW.name())
-                    .addValue("newUpdatedAt", Timestamp.from(Instant.now(clock))));
+            workflowInstanceWriter.clearOriginKeepStage(documentId, WorkflowStatus.AWAITING_REVIEW);
           });
 
       eventBus.publish(

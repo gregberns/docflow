@@ -506,6 +506,21 @@ class FlagOriginRestorationTest {
               null,
               FIXED_NOW));
     }
+
+    @Override
+    public void clearOriginKeepStage(UUID documentId, WorkflowStatus newStatus) {
+      WorkflowInstance prior = store.instance(documentId);
+      store.putInstance(
+          new WorkflowInstance(
+              prior.id(),
+              prior.documentId(),
+              prior.organizationId(),
+              prior.currentStageId(),
+              newStatus,
+              null,
+              null,
+              FIXED_NOW));
+    }
   }
 
   private static final class RecordingEventBus extends DocumentEventBus {

@@ -429,6 +429,12 @@ class ProcessingCompletedListenerIT {
         String docTypeId) {
       delegate.clearFlag(documentId, catalog, orgId, docTypeId);
     }
+
+    @Override
+    public void clearOriginKeepStage(
+        UUID documentId, com.docflow.workflow.WorkflowStatus newStatus) {
+      delegate.clearOriginKeepStage(documentId, newStatus);
+    }
   }
 
   @SpringBootApplication

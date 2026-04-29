@@ -29,6 +29,14 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
           + "updated_at = :newUpdatedAt "
           + "WHERE document_id = :documentId AND updated_at = :priorUpdatedAt";
 
+  public static final String CLEAR_ORIGIN_KEEP_STAGE_SQL =
+      "UPDATE workflow_instances SET "
+          + "current_status = :currentStatus, "
+          + "workflow_origin_stage = NULL, "
+          + "flag_comment = NULL, "
+          + "updated_at = :newUpdatedAt "
+          + "WHERE document_id = :documentId";
+
   public static final String INSERT_SQL =
       "INSERT INTO workflow_instances "
           + "(id, document_id, organization_id, document_type_id, current_stage_id, "
@@ -105,6 +113,16 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
     StageView target = requireStage(catalog, orgId, docTypeId, targetStageId);
     WorkflowStatus status = deriveStatus(target, null);
     writeWithRetry(documentId, targetStageId, status, null, null, prior);
+  }
+
+  @Override
+  public void clearOriginKeepStage(UUID documentId, WorkflowStatus newStatus) {
+    MapSqlParameterSource params =
+        new MapSqlParameterSource()
+            .addValue("documentId", documentId)
+            .addValue("currentStatus", newStatus.name())
+            .addValue("newUpdatedAt", Timestamp.from(Instant.now(clock)));
+    jdbc.update(CLEAR_ORIGIN_KEEP_STAGE_SQL, params);
   }
 
   private void writeWithRetry(
