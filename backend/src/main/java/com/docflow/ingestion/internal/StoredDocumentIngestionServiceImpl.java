@@ -29,7 +29,9 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-// df-n03: drop @ConditionalOnBean once C7.4 baseline removes the fragment-IT containment need
+// @ConditionalOnBean here is a test-only accommodation: a handful of integration tests
+// load a narrow Spring slice that intentionally excludes OrganizationCatalog. In production,
+// OrganizationCatalog is always present, so this conditional is a no-op at runtime.
 @Service
 @ConditionalOnBean(OrganizationCatalog.class)
 class StoredDocumentIngestionServiceImpl implements StoredDocumentIngestionService {
