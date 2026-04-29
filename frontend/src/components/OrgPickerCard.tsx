@@ -13,6 +13,30 @@ const PASTEL_TILES = [
   "bg-stage-filed-bg",
 ] as const;
 
+const ICON_GLYPHS: Record<string, string> = {
+  "icon-bistro": "\u{1F37D}",
+  "icon-legal": "⚖",
+  "icon-construction": "\u{1F6A7}",
+  bistro: "\u{1F37D}",
+  legal: "⚖",
+  construction: "\u{1F6A7}",
+  hardhat: "\u{1F477}",
+  "knife-fork": "\u{1F37D}",
+  briefcase: "\u{1F4BC}",
+  hammer: "\u{1F528}",
+  toolbox: "\u{1F9F0}",
+  scales: "⚖",
+  building: "\u{1F3E2}",
+  shop: "\u{1F3EA}",
+};
+
+const FALLBACK_GLYPH = "\u{1F4C1}";
+
+function glyphFor(icon: string | null | undefined): string {
+  if (!icon) return FALLBACK_GLYPH;
+  return ICON_GLYPHS[icon] ?? FALLBACK_GLYPH;
+}
+
 function tileClassFor(orgId: string): string {
   let hash = 0;
   for (let i = 0; i < orgId.length; i += 1) {
@@ -25,6 +49,7 @@ function tileClassFor(orgId: string): string {
 export function OrgPickerCard({ organization, onSelect }: OrgPickerCardProps) {
   const { id, name, icon, docTypes, inProgressCount, filedCount } = organization;
   const tileClass = tileClassFor(id);
+  const glyph = glyphFor(icon);
 
   return (
     <article data-testid="org-card" data-org-id={id}>
@@ -34,9 +59,10 @@ export function OrgPickerCard({ organization, onSelect }: OrgPickerCardProps) {
         className="group flex h-full w-full flex-col items-center rounded-xl border-2 border-neutral-200 bg-card px-6 py-7 text-center transition-all duration-150 hover:-translate-y-0.5 hover:border-brand-blue hover:shadow-[0_4px_12px_rgba(108,155,255,0.15)]"
       >
         <span
-          className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl text-24 ${tileClass}`}
+          aria-hidden="true"
+          className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl text-24 leading-none ${tileClass}`}
         >
-          <img src={icon} alt="" className="h-6 w-6 object-contain" />
+          {glyph}
         </span>
         <h2 className="mb-1 text-16 font-bold text-brand-navy">{name}</h2>
         <ul className="mb-4 list-none text-12 leading-snug text-neutral-500">

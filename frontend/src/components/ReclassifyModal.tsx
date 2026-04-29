@@ -1,4 +1,5 @@
 import { useDocumentActions } from "../hooks/useDocumentActions";
+import { WarningIcon } from "./icons/Icons";
 
 interface ReclassifyModalProps {
   documentId: string;
@@ -43,7 +44,9 @@ export function ReclassifyModal({
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
             style={{ background: "#fef3c7", color: "#f59e0b" }}
             aria-hidden="true"
-          />
+          >
+            <WarningIcon />
+          </div>
           <div>
             <h2
               data-testid="reclassify-modal-heading"

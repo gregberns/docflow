@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Document, Page } from "react-pdf";
+import { MinusIcon, PlusIcon } from "./icons/Icons";
 
 interface PdfViewerProps {
   fileUrl: string;
@@ -46,16 +47,16 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
         <button
           type="button"
           aria-label="Zoom out"
-          className="flex h-7 w-7 items-center justify-center rounded-sm bg-white/[0.08] text-14 text-neutral-300 transition-colors hover:bg-white/[0.15]"
+          className="flex h-7 w-7 items-center justify-center rounded-sm bg-white/[0.08] text-neutral-300 transition-colors hover:bg-white/[0.15]"
         >
-          {"−"}
+          <MinusIcon />
         </button>
         <button
           type="button"
           aria-label="Zoom in"
-          className="flex h-7 w-7 items-center justify-center rounded-sm bg-white/[0.08] text-14 text-neutral-300 transition-colors hover:bg-white/[0.15]"
+          className="flex h-7 w-7 items-center justify-center rounded-sm bg-white/[0.08] text-neutral-300 transition-colors hover:bg-white/[0.15]"
         >
-          {"+"}
+          <PlusIcon />
         </button>
         <span className="ml-2 flex-1 truncate text-12 text-neutral-400">{fileName}</span>
         {numPages > 0 ? (

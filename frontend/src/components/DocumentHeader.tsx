@@ -1,4 +1,5 @@
 import type { DocumentView, WorkflowStatus } from "../types/readModels";
+import { ChevronLeftIcon } from "./icons/Icons";
 
 interface DocumentHeaderProps {
   document: DocumentView;
@@ -39,6 +40,7 @@ export function DocumentHeader({ document }: DocumentHeaderProps) {
       className="flex-shrink-0 border-b border-neutral-100 px-6 pb-4 pt-5"
     >
       <a className="mb-3 inline-flex cursor-pointer items-center gap-1 text-12 text-neutral-500 transition-colors hover:text-brand-blue">
+        <ChevronLeftIcon />
         Back to Documents
       </a>
       <h1

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useDocumentActions } from "../hooks/useDocumentActions";
+import { FlagIcon } from "./icons/Icons";
 
 interface FlagModalProps {
   documentId: string;
@@ -43,7 +44,9 @@ export function FlagModal({ documentId, organizationId, onCancel, onSubmitted }:
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
             style={{ background: "#fef3c7", color: "#f59e0b" }}
             aria-hidden="true"
-          />
+          >
+            <FlagIcon />
+          </div>
           <div>
             <div className="text-16 font-bold text-brand-navy">Flag for Review</div>
             <div className="mt-0.5 text-12 text-neutral-500">

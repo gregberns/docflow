@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import type { DocumentView, WorkflowStatus } from "../types/readModels";
+import { ChevronRightIcon } from "./icons/Icons";
 
 interface DocumentsSectionProps {
   documents: DocumentView[];
@@ -115,8 +116,11 @@ export function DocumentsSection({ documents }: DocumentsSectionProps) {
                   <td className="px-4 py-3 text-12 text-neutral-500 align-middle">
                     {doc.processedAt ?? doc.uploadedAt}
                   </td>
-                  <td className="px-4 py-3 text-neutral-300 align-middle" aria-hidden="true">
-                    ›
+                  <td
+                    className="px-4 py-3 text-neutral-300 align-middle group-hover:text-brand-blue"
+                    aria-hidden="true"
+                  >
+                    <ChevronRightIcon />
                   </td>
                 </tr>
               ))}

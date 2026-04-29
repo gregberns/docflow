@@ -1,4 +1,5 @@
 import type { WorkflowStatus } from "../types/readModels";
+import { UploadIcon } from "./icons/Icons";
 
 const STATUS_LABELS: Record<WorkflowStatus, string> = {
   AWAITING_REVIEW: "Awaiting Review",
@@ -78,6 +79,7 @@ export function DashboardFilterBar({
           disabled={uploadDisabled}
           className="inline-flex h-[34px] items-center gap-1.5 rounded-md bg-brand-blue px-4 text-13 font-semibold text-white transition-colors hover:bg-brand-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
+          <UploadIcon />
           Upload Document
         </button>
       )}
