@@ -89,9 +89,13 @@ export function DashboardPage() {
   };
 
   return (
-    <main data-testid="dashboard-page" data-org-id={orgId}>
-      <header>
-        <h1>Documents</h1>
+    <main
+      data-testid="dashboard-page"
+      data-org-id={orgId}
+      className="mx-auto max-w-[1400px] px-8 py-6"
+    >
+      <header className="mb-5 flex items-center justify-between">
+        <h1 className="text-22 font-bold text-brand-navy">Documents</h1>
       </header>
       {isLoading && (
         <p
@@ -119,7 +123,11 @@ export function DashboardPage() {
         onChange={onFileSelected}
       />
       {uploadError && (
-        <p data-testid="upload-error" role="alert">
+        <p
+          data-testid="upload-error"
+          role="alert"
+          className="mb-4 rounded-md border border-danger-soft bg-stage-rejected-bg px-4 py-2.5 text-13 text-danger"
+        >
           {uploadError}
         </p>
       )}
