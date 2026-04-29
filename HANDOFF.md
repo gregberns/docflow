@@ -1,29 +1,27 @@
 <!-- PP-TRIAL:v2 2026-04-29 implementation -->
 # Session Handoff — implementation phase
 
-**Status:** clean. Branch `implementation` at `bdaeffc`. `make test` GREEN end-to-end (full backend `./gradlew build` + frontend `npm run check`). 7 beads closed this session via parallel worktree-agent orchestration; 1 newly blocked.
+**Status:** clean, both lanes idle. Branch `implementation` at `e30df23`. Backend `./gradlew check` and frontend `npm run check` (105 tests, gate 70/60/70/70) both green. **C6 frontend epic complete** — all 14 children closed (12 numbered + StageProgress mount + onApprove wire-up). 19 beads closed this session; 5 new beads filed (3 already closed same-session).
 
-**What we're doing.** DocFlow take-home, multi-tenant doc processing. Working through kerf plan + beads (`br`). Backend is feature-complete and well-covered. Frontend now has its first two real pages (OrgPicker, Dashboard skeleton).
+**Two-lane orchestration in effect.** This session ran as orchestrator with two parallel agents: a backend lane (this session: df-rar P1 boot fix) and a single-stream UI lane (this session: df-6m8.5 → .12 + df-u7q + df-01n). **Cap UI to one agent at a time** — vitest memory was a problem when multiple frontend worktrees ran concurrently. `frontend/vitest.config.ts` now sets `pool: "threads"` with `maxThreads: 2` (commit `92722f3`); a single test pass takes ~55s on cold cache, but memory stays bounded. Backend agents can still run alongside the UI agent — different toolchain.
 
-**This session, in one paragraph.** Ran as orchestrator: dispatched 8 worktree agents in three waves (mostly 2–3 in parallel, backend + frontend mixed), cherry-picked their commits back to `implementation`, ran beads bookkeeping. Closed: **df-g1x** (seed FLAG transitions added to all 8 production approval stages), **df-ln9.10 / C4.10** (`EngineForbiddenStringsTest` test-time sweep), **df-6m8.3 / C6.3** (OrgPickerPage), **df-6m8.4 / C6.4** (Dashboard skeleton + stats bar + filters), **df-fwr** (moved `CLEAR_FLAG_KEEP_STAGE_SQL` off the listener onto `WorkflowInstanceWriter#clearOriginKeepStage`), **df-2zl.10 / C3.10** (`PipelineSmokeIT` live-API smoke, key-gated), **df-2zl.11 / C3.11** (eval harness + `./gradlew evalRun`). **df-n03** marked **blocked** — see below.
+**There is another agent working on backend/scenario/docs.** Their lane covers df-8x4 (P1), the scenario harness chain (df-sup → df-gum → {df-97e, df-skw, df-efg}), and docs (df-x01, df-if4). They also committed eval tooling and kerf "evals" work this session (commits `a7678f2`, `c1825af`, `cd26477`) and ship the live port-mapping changes (`.env.example` / `docker-compose.yml` / `frontend/vite.config.ts` published backend on host port 18080 to avoid conflicts). **Do not pick up their beads** unless coordinated.
 
-**Next step.** Run `br ready`. The remaining open ready work:
-- **df-6m8.5** (P2) — `useOrgEvents` SSE hook + upload mutation. Frontend, builds on the API client + the two pages just landed.
-- **df-sxq / df-lws / df-2zl / df-ln9 / df-eiu** — these are the C1–C5 **epics**. They're showing as "ready" but their constituent tasks are mostly done; likely just need closing-out / squaring. Worth a `br show <id>` on each to confirm before assuming work remains.
+**Unclaimed adjacent work** — fair game if no UI is queued:
+- **df-9c2.11** (P2) — `.github/workflows/ci.yml`. Spec at `c7-platform-spec.md §3.5`. Run `make test`, `make build`, then `make start &` + healthcheck wait + `make e2e` + `make stop`. Don't invoke `make eval`.
+- **df-9c2.12** (P2, blocked on .11) — `README.md` per `c7-platform-spec.md §4`. Memory feedback `feedback_no_unprompted_prod_caveats.md` applies — keep "Production Considerations" scoped, no padding.
 
-**Blocked — df-n03.** Removing `@ConditionalOnBean(OrganizationCatalog.class)` from `StoredDocumentIngestionServiceImpl` breaks 7 fragment ITs (`StoredDocumentPersistenceFragmentIT`, `ProcessingDocumentWriterTest`) that scan a narrow slice of `com.docflow.ingestion.internal` without bringing in `com.docflow.config`. The class-comment "drop once C7.4 baseline removes the fragment-IT containment need" is accurate. There is no C7.4 bead today — the prerequisite is implicit. Either restructure those fragment ITs to provide a stub `OrganizationCatalog`, or close df-n03 as wontfix.
+**Two latent bugs filed mid-session** (df-rar agent uncovered while writing the regression test, didn't fix):
+- **df-xqh** (P2 bug) — `OrganizationCatalogImpl.loadOnReady` and `PromptLibrary.validateOnReady` share `@Order(LOWEST_PRECEDENCE)`. Production happy-path works deterministically by bean-name ordering; with `seedOnBoot=false` it's ambiguous and crashes.
+- **df-9kx** (P3 bug) — `FlywayConfig` conditionals don't activate Flyway under `@SpringBootTest` in Spring Boot 4. `make start` works because the `@Bean(initMethod="migrate")` runs during refresh; only test contexts are affected.
 
-**Heads-up — gradle daemon contention.** When you run more than one gradle build simultaneously (multiple worktree agents + the local repo + the Stop hook's `make test`), `~/.gradle/.tmp/` worker temp files race and you can get an opaque Checkstyle "Premature end of file" XML transformer error. It's not a real failure — it goes away with one clean serial run. The Stop hook's `make test` is a particular trap; consider gating it on "no agent worktrees running" if it bites again.
+**Next step.** Run `br ready`. If UI work is queued → take exactly one in a worktree. Otherwise df-9c2.11 (CI) → df-9c2.12 (README) is the natural pickup, after a quick check that the other agent isn't already on it (`git log --oneline -5` and look for fresh commits in `.github/` or `README.md`).
 
-**Heads-up — known LLM/Spring quirks (still relevant).** `TestRestTemplate` is gone in Spring Boot 4 — use `RestTemplate` + `@LocalServerPort` (`HappyPathSmokeTest` is the canonical example). Narrow `@SpringBootTest` configs whose `scanBasePackages` includes `com.docflow.workflow` but not `com.docflow.c3` need a `@Bean Mockito.mock(LlmExtractor.class)` to wire — see `SeedManifestTest`.
+**Files to open first** for the likely paths:
+- For CI: `Makefile` (existing targets), `c7-platform-spec.md §3.5`, `frontend/playwright.config.ts` (just landed in commit `56d6144`).
+- For README: `c7-platform-spec.md §4`, `03-components.md` C7-R9 production-considerations enumeration.
+- For any new UI: `frontend/src/routes/DocumentDetailPage.tsx` is the central page; `FormPanel.tsx` is the dispatcher; `useDocumentActions.ts` owns the mutations.
 
-**Files to open first.**
-- For df-6m8.5: `frontend/src/api/` (existing typed client), `frontend/src/routes/DashboardPage.tsx` (the consumer), and look in `problem-statement/mockups/` for upload UX. Server-side, the SSE endpoint is part of C5.
-- For epic squaring: `br show <epic-id>` on each, then `kerf show docflow` for the higher-level state.
-- For df-n03: `backend/src/main/java/com/docflow/ingestion/internal/StoredDocumentIngestionServiceImpl.java` (the conditional, with the existing TODO comment) and `StoredDocumentPersistenceFragmentIT.java` / `ProcessingDocumentWriterTest.java` (the seven failing tests).
-
-**Toolchain.** `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"; export JAVA_HOME="/opt/homebrew/opt/openjdk"`. Backend from `backend/`. Frontend: `cd frontend && npm run check`. Whole thing: `make test`.
-
-**Worktrees.** This session's `.claude/worktrees/agent-*` were used and are still present (locked) — clean at leisure. `git worktree list` shows the inventory.
+**Heads-up — known LLM/Spring quirks (still relevant).** Spring Boot 4: no `TestRestTemplate`, use `RestTemplate` + `@LocalServerPort`. Narrow `@SpringBootTest` configs that include `com.docflow.workflow` but not `com.docflow.c3` need a `@Bean Mockito.mock(LlmExtractor.class)`. AppConfig's nested records (`Storage`, `Llm`, `Database`, `OrgConfigBootstrap`) are now exposed via `AppConfigBeans` — don't remove that file.
 
 **No blocking questions.**
