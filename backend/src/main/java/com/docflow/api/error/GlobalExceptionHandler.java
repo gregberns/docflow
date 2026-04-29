@@ -1,5 +1,6 @@
 package com.docflow.api.error;
 
+import com.docflow.ingestion.UnsupportedMediaTypeException;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
   public ResponseEntity<ProblemDetail> handleUnsupportedMediaType(
       HttpMediaTypeNotSupportedException ex) {
+    return build(ErrorCode.UNSUPPORTED_MEDIA_TYPE, ex.getMessage(), List.of());
+  }
+
+  @ExceptionHandler(UnsupportedMediaTypeException.class)
+  public ResponseEntity<ProblemDetail> handleIngestionUnsupportedMediaType(
+      UnsupportedMediaTypeException ex) {
     return build(ErrorCode.UNSUPPORTED_MEDIA_TYPE, ex.getMessage(), List.of());
   }
 

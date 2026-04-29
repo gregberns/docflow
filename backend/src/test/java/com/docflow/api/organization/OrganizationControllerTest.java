@@ -286,7 +286,10 @@ class OrganizationControllerTest {
       basePackages = {"com.docflow.config", "com.docflow.api"},
       excludeFilters = {
         @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com\\.docflow\\..*Test\\$.*"),
-        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com\\.docflow\\..*IT\\$.*")
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com\\.docflow\\..*IT\\$.*"),
+        @ComponentScan.Filter(
+            type = FilterType.REGEX,
+            pattern = "com\\.docflow\\.api\\.document\\..*")
       })
   @EntityScan("com.docflow.config.persistence")
   @EnableJpaRepositories("com.docflow.config.persistence")
