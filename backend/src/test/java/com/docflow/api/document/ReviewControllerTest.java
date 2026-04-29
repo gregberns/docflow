@@ -188,8 +188,7 @@ class ReviewControllerTest {
     when(documentTypeCatalog.getDocumentTypeSchema(ORG_ID, OTHER_DOC_TYPE_ID))
         .thenReturn(
             Optional.of(
-                new DocumentTypeSchemaView(
-                    ORG_ID, OTHER_DOC_TYPE_ID, "Receipt", "TEXT", List.of())));
+                new DocumentTypeSchemaView(ORG_ID, OTHER_DOC_TYPE_ID, "Receipt", List.of())));
     when(workflowEngine.applyAction(eq(documentId), any(WorkflowAction.class)))
         .thenReturn(
             new WorkflowOutcome.Success(
@@ -262,8 +261,7 @@ class ReviewControllerTest {
     when(documentTypeCatalog.getDocumentTypeSchema(ORG_ID, OTHER_DOC_TYPE_ID))
         .thenReturn(
             Optional.of(
-                new DocumentTypeSchemaView(
-                    ORG_ID, OTHER_DOC_TYPE_ID, "Receipt", "TEXT", List.of())));
+                new DocumentTypeSchemaView(ORG_ID, OTHER_DOC_TYPE_ID, "Receipt", List.of())));
     when(workflowEngine.applyAction(eq(documentId), any(WorkflowAction.class)))
         .thenReturn(
             new WorkflowOutcome.Failure(
@@ -323,7 +321,6 @@ class ReviewControllerTest {
 
   private void seedSchema(String docTypeId, List<FieldView> fields) {
     when(documentTypeCatalog.getDocumentTypeSchema(ORG_ID, docTypeId))
-        .thenReturn(
-            Optional.of(new DocumentTypeSchemaView(ORG_ID, docTypeId, "Doc Type", "TEXT", fields)));
+        .thenReturn(Optional.of(new DocumentTypeSchemaView(ORG_ID, docTypeId, "Doc Type", fields)));
   }
 }

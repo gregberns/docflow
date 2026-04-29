@@ -1,7 +1,6 @@
 organizationId: bad-org
 id: thing
 displayName: Thing
-inputModality: TEXT
 fields:
   - name: foo
     type: STRING

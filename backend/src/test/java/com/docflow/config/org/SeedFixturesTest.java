@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import com.docflow.config.org.loader.ConfigLoader;
 import com.docflow.config.org.validation.ConfigValidator;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class SeedFixturesTest {
@@ -78,28 +77,6 @@ class SeedFixturesTest {
     assertThat(reviewApprove)
         .extracting(t -> t.guard().op())
         .containsExactlyInAnyOrder(GuardOp.EQ, GuardOp.NEQ);
-  }
-
-  @Test
-  void inputModalityIsPdfForNestedArrayDocTypesAndTextForTheRest() {
-    OrgConfig config = loader.load(SEED_ROOT);
-
-    Map<String, InputModality> modalityByKey =
-        config.docTypes().stream()
-            .collect(
-                java.util.stream.Collectors.toMap(
-                    dt -> dt.organizationId() + "/" + dt.id(), DocTypeDefinition::inputModality));
-
-    assertThat(modalityByKey)
-        .containsEntry("riverside-bistro/invoice", InputModality.PDF)
-        .containsEntry("riverside-bistro/expense-report", InputModality.PDF)
-        .containsEntry("pinnacle-legal/expense-report", InputModality.PDF)
-        .containsEntry("ironworks-construction/invoice", InputModality.PDF)
-        .containsEntry("riverside-bistro/receipt", InputModality.TEXT)
-        .containsEntry("pinnacle-legal/invoice", InputModality.TEXT)
-        .containsEntry("pinnacle-legal/retainer-agreement", InputModality.TEXT)
-        .containsEntry("ironworks-construction/change-order", InputModality.TEXT)
-        .containsEntry("ironworks-construction/lien-waiver", InputModality.TEXT);
   }
 
   private static DocTypeDefinition lookupDocType(OrgConfig config, String orgId, String docTypeId) {

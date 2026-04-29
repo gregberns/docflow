@@ -2,7 +2,6 @@ package com.docflow.config.org.seeder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.docflow.config.persistence.DocumentTypeEntity;
 import com.docflow.config.persistence.DocumentTypeRepository;
 import com.docflow.config.persistence.OrganizationDocTypeRepository;
 import com.docflow.config.persistence.OrganizationRepository;
@@ -90,18 +89,6 @@ class OrgConfigSeederIT {
               assertThat(t.getGuardValue()).isEqualTo("unconditional");
               assertThat(t.getGuardOp()).isIn("EQ", "NEQ");
             });
-  }
-
-  @Test
-  void acS1_documentTypeWritesInputModalityAndFieldSchema() {
-    DocumentTypeEntity invoice =
-        documentTypeRepository.findByOrganizationId("riverside-bistro").stream()
-            .filter(d -> "invoice".equals(d.getId()))
-            .findFirst()
-            .orElseThrow();
-
-    assertThat(invoice.getInputModality()).isEqualTo("PDF");
-    assertThat(invoice.getFieldSchema()).containsKey("fields");
   }
 
   @Test

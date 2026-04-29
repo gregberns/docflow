@@ -60,7 +60,6 @@ class OrgConfigPersistenceFragmentIT {
             "riverside-bistro",
             "invoice",
             "Invoice",
-            "PDF",
             Map.of("fields", List.of(Map.of("name", "vendor", "type", "STRING"))));
     documentTypeRepository.saveAndFlush(docType);
 
@@ -120,7 +119,6 @@ class OrgConfigPersistenceFragmentIT {
         documentTypeRepository
             .findById(new DocumentTypeId("riverside-bistro", "invoice"))
             .orElseThrow();
-    assertThat(loaded.getInputModality()).isEqualTo("PDF");
     assertThat(loaded.getFieldSchema()).containsKey("fields");
   }
 

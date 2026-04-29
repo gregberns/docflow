@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.docflow.config.org.DocTypeDefinition;
 import com.docflow.config.org.FieldDefinition;
 import com.docflow.config.org.FieldType;
-import com.docflow.config.org.InputModality;
 import com.docflow.config.org.OrgConfig;
 import com.docflow.config.org.OrganizationDefinition;
 import com.docflow.config.org.StageDefinition;
@@ -110,7 +109,6 @@ class ConfigValidatorTest {
             "test-org",
             "widget",
             "Widget",
-            InputModality.TEXT,
             List.of(
                 new FieldDefinition(
                     "color", FieldType.ENUM, true, List.of("red", "blue", "red"), null)));
@@ -231,7 +229,6 @@ class ConfigValidatorTest {
             "test-org",
             "widget",
             "Widget",
-            InputModality.TEXT,
             List.of(new FieldDefinition("color", FieldType.ENUM, true, List.of(), null)));
     OrganizationDefinition org =
         new OrganizationDefinition("test-org", "Test Org", "icon-test", List.of("widget"));
@@ -257,7 +254,6 @@ class ConfigValidatorTest {
             "test-org",
             "widget",
             "Widget",
-            InputModality.TEXT,
             List.of(new FieldDefinition("items", FieldType.ARRAY, true, null, null)));
     OrganizationDefinition org =
         new OrganizationDefinition("test-org", "Test Org", "icon-test", List.of("widget"));
@@ -283,7 +279,6 @@ class ConfigValidatorTest {
             "test-org",
             "widget",
             "Widget",
-            InputModality.TEXT,
             List.of(new FieldDefinition("name", FieldType.STRING, true, List.of("a", "b"), null)));
     OrganizationDefinition org =
         new OrganizationDefinition("test-org", "Test Org", "icon-test", List.of("widget"));
@@ -311,7 +306,6 @@ class ConfigValidatorTest {
             "test-org-2",
             "widget",
             "Widget",
-            InputModality.TEXT,
             List.of(
                 new FieldDefinition("color", FieldType.ENUM, true, List.of("red", "red"), null)));
     OrganizationDefinition orgForDocType =

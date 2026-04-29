@@ -89,11 +89,7 @@ public class DocumentTypeCatalogImpl implements DocumentTypeCatalog {
     Map<String, Object> schema = entity.getFieldSchema();
     List<FieldView> fields = parseFields(schema);
     return new DocumentTypeSchemaView(
-        entity.getOrganizationId(),
-        entity.getId(),
-        entity.getDisplayName(),
-        entity.getInputModality(),
-        fields);
+        entity.getOrganizationId(), entity.getId(), entity.getDisplayName(), fields);
   }
 
   @SuppressWarnings("unchecked")

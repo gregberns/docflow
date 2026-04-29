@@ -1,7 +1,6 @@
 organizationId: riverside-bistro
 id: invoice
 displayName: Invoice
-inputModality: PDF
 fields:
   - name: vendor
     type: STRING

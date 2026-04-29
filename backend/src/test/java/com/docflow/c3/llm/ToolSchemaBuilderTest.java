@@ -45,7 +45,6 @@ class ToolSchemaBuilderTest {
             "pinnacle-legal",
             "pinnacle_invoice",
             "Pinnacle Invoice",
-            "PDF",
             List.of(new FieldView("vendor", "STRING", true, null, null)));
     ToolSchema schema = builder.buildExtractSchema(docType);
     assertThat(schema.toolName()).isEqualTo("extract_pinnacle_invoice");
@@ -70,7 +69,6 @@ class ToolSchemaBuilderTest {
             "ironworks-construction",
             "change_order",
             "Change Order",
-            "TEXT",
             List.of(
                 new FieldView("vendor", "STRING", true, null, null),
                 new FieldView("notes", "STRING", false, null, null),
@@ -90,7 +88,6 @@ class ToolSchemaBuilderTest {
             "riverside-bistro",
             "receipt",
             "Receipt",
-            "TEXT",
             List.of(
                 new FieldView(
                     "paymentMethod",
@@ -114,7 +111,6 @@ class ToolSchemaBuilderTest {
             "ironworks-construction",
             "invoice",
             "Invoice",
-            "PDF",
             List.of(
                 new FieldView("vendor", "STRING", true, null, null),
                 new FieldView(
@@ -146,7 +142,6 @@ class ToolSchemaBuilderTest {
             "pinnacle-legal",
             "retainer_agreement",
             "Retainer Agreement",
-            "TEXT",
             List.of(
                 new FieldView("clientName", "STRING", true, null, null),
                 new FieldView("retainerAmount", "DECIMAL", true, null, null),
@@ -171,7 +166,6 @@ class ToolSchemaBuilderTest {
             "riverside-bistro",
             "receipt",
             "Receipt",
-            "TEXT",
             List.of(new FieldView("paymentMethod", "ENUM", true, null, null)));
 
     assertThatThrownBy(() -> builder.buildExtractSchema(docType))
@@ -186,7 +180,6 @@ class ToolSchemaBuilderTest {
             "ironworks-construction",
             "invoice",
             "Invoice",
-            "PDF",
             List.of(new FieldView("materials", "ARRAY", true, null, null)));
 
     assertThatThrownBy(() -> builder.buildExtractSchema(docType))
@@ -201,7 +194,6 @@ class ToolSchemaBuilderTest {
             "riverside-bistro",
             "receipt",
             "Receipt",
-            "TEXT",
             List.of(new FieldView("weirdField", "MYSTERY", true, null, null)));
 
     assertThatThrownBy(() -> builder.buildExtractSchema(docType))
@@ -214,7 +206,6 @@ class ToolSchemaBuilderTest {
         "ironworks-construction",
         "invoice",
         "Invoice",
-        "PDF",
         List.of(
             new FieldView("vendor", "STRING", true, null, null),
             new FieldView("invoiceNumber", "STRING", true, null, null),

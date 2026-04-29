@@ -15,7 +15,7 @@ at the section of this spec that delivers it.
 | ID | Requirement (summary) | Coverage |
 |---|---|---|
 | **C1-R1** | Organizations defined in committed config: slug, displayName, icon, ordered docTypes | §3.2 records, §4 `organizations.yaml`, §3.5 `OrganizationCatalog.getOrganization` |
-| **C1-R2** | Doc-type field schemas: name, type ∈ {string,date,decimal,enum,array}, required, enum values, nested array-of-object sub-schemas; per-doc-type `inputModality ∈ {TEXT, PDF}` (default TEXT) consumed by C3 §3.5 | §3.2 `FieldSchema` / `FieldDefinition` / `ArrayItemSchema` / `InputModality`, §4 `doc-types/**/*.yaml` |
+| **C1-R2** | Doc-type field schemas: name, type ∈ {string,date,decimal,enum,array}, required, enum values, nested array-of-object sub-schemas | §3.2 `FieldSchema` / `FieldDefinition` / `ArrayItemSchema`, §4 `doc-types/**/*.yaml` |
 | **C1-R3** | Workflows keyed by `(organizationId, documentTypeId)`; ordered Stages starting at `Review`, terminal `Filed`/`Rejected`; each stage has `id`, `displayName`, `kind ∈ {review,approval,terminal}`, `canonicalStatus`, optional `role`; declares Transitions | §3.2 `WorkflowDefinition` / `StageDefinition`, §4 `workflows/**/*.yaml` |
 | **C1-R4** | Transition shape `(fromStage, action, toStage, guard?)`, `action ∈ {AutoAdvance, Approve, Reject, Flag, Resolve}`; guards drive Lien Waiver branch — never stage-name or slug introspection | §3.2 `TransitionDefinition` / `TransitionAction`, §3.3 guard evaluation |
 | **C1-R4a** | StageGuard references field by identifier and compares to literal | §3.3 tiny-AST `{field, op, value}` per research Q2 |
@@ -85,11 +85,8 @@ public record DocTypeDefinition(
     @NotBlank String organizationId,
     @NotBlank String id,
     @NotBlank String displayName,
-    @NotNull InputModality inputModality,
     @NotEmpty @Valid List<FieldDefinition> fields
 ) {}
-
-public enum InputModality { TEXT, PDF }
 
 public record FieldDefinition(
     @NotBlank String name,
@@ -323,7 +320,6 @@ read appears anywhere under `com.docflow.config.org.*`.
 - `backend/src/main/java/com/docflow/config/org/OrgConfig.java` — record (root container).
 - `backend/src/main/java/com/docflow/config/org/OrganizationDefinition.java`
 - `backend/src/main/java/com/docflow/config/org/DocTypeDefinition.java`
-- `backend/src/main/java/com/docflow/config/org/InputModality.java`
 - `backend/src/main/java/com/docflow/config/org/FieldDefinition.java`
 - `backend/src/main/java/com/docflow/config/org/FieldType.java`
 - `backend/src/main/java/com/docflow/config/org/ArrayItemSchema.java`
@@ -359,7 +355,7 @@ Reflect the C1-R11 schema. Entity package
 
 - `OrganizationEntity` — table `organizations` (`id PK varchar`, `display_name`, `icon_id`).
 - `OrganizationDocTypeEntity` — join table `organization_doc_types` (`organization_id FK`, `document_type_id FK`, `ordinal int`); composite PK + index on `organization_id`.
-- `DocumentTypeEntity` — table `document_types` (`organization_id FK`, `id`, `display_name`, `input_modality varchar` ∈ `{TEXT, PDF}` default `TEXT`, `field_schema JSONB`); composite PK `(organization_id, id)`.
+- `DocumentTypeEntity` — table `document_types` (`organization_id FK`, `id`, `display_name`, `field_schema JSONB`); composite PK `(organization_id, id)`.
 - `WorkflowEntity` — table `workflows` (`organization_id FK`, `document_type_id`, composite FK to `document_types`, PK `(organization_id, document_type_id)`).
 - `StageEntity` — table `stages` (`organization_id`, `document_type_id`, `id`, `display_name`, `kind`, `canonical_status`, `role`, `ordinal int`); composite PK `(organization_id, document_type_id, id)`; composite FK to `workflows`.
 - `TransitionEntity` — table `transitions` (`organization_id`, `document_type_id`, `from_stage`, `to_stage`, `action`, `guard_field`, `guard_op`, `guard_value`, `ordinal int`); composite FK to `workflows`; FK on `(organization_id, document_type_id, from_stage)` and `(organization_id, document_type_id, to_stage)` to `stages`.
@@ -393,7 +389,7 @@ not by the migration):
 - Indexes per §4.2 (every FK; plus `idx_stages_workflow (organization_id,
   document_type_id, ordinal)`).
 - `CHECK` constraints on the enum-valued columns (`kind`, `canonical_status`,
-  `action`, `guard_op`, `input_modality`).
+  `action`, `guard_op`).
 
 The fragments are committed at
 `backend/src/main/resources/db/migration/fragments/c1-org-config.sql` (a
@@ -417,14 +413,6 @@ Field schemas mirror `02-analysis.md` §1.1 verbatim. Workflows mirror
 `02-analysis.md` §1.2 minus the Upload/Classify/Extract prefix (which are C3
 pipeline steps, per post-research revision §4 of findings); each workflow
 starts at `Review` and ends at `Filed`/`Rejected`.
-
-Each doc-type YAML carries an `inputModality` key (default `TEXT`). The
-four doc-types with nested-array schemas — Riverside Invoice, Riverside
-Expense Report, Pinnacle Expense Report, Ironworks Invoice — set
-`inputModality: PDF`. The remaining five (Riverside Receipt, Pinnacle
-Invoice, Pinnacle Retainer Agreement, Ironworks Change Order, Ironworks
-Lien Waiver) omit the key and inherit the `TEXT` default. C3 reads
-`DocTypeDefinition.inputModality` per the C3 spec §3.5 hybrid decision.
 
 The Ironworks Lien Waiver workflow encodes the conditional via two
 `Review → ...` Approve transitions with inverse `waiverType`-eq guards
@@ -465,7 +453,6 @@ Each is concrete and verifiable.
 - **AC-L3.** Workflow `(ironworks-construction, lien-waiver)` has exactly 2 transitions out of `Review` with `action == APPROVE`, one with guard `{waiverType, EQ, unconditional}`, the other with `{waiverType, NEQ, unconditional}`. Tested.
 - **AC-L4.** `StageDefinition.role` is non-null for every stage with `kind == APPROVAL` in the seed fixtures, null for `kind ∈ {REVIEW, TERMINAL}`. Tested.
 - **AC-L5.** `WorkflowStatus` enum has exactly 5 values in the order `AWAITING_REVIEW, FLAGGED, AWAITING_APPROVAL, FILED, REJECTED`. Tested.
-- **AC-L6.** `InputModality` enum has exactly two values `TEXT, PDF`. After loading `seed/`, `inputModality == PDF` for `(riverside-bistro, invoice)`, `(riverside-bistro, expense-report)`, `(pinnacle-legal, expense-report)`, `(ironworks-construction, invoice)`; the remaining five doc-types report `TEXT`. Tested.
 
 ### Validation (C1-R5)
 

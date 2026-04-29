@@ -1,7 +1,6 @@
 organizationId: test-legal
 id: retainer
 displayName: Retainer Agreement
-inputModality: TEXT
 fields:
   - name: clientName
     type: STRING

@@ -1,7 +1,6 @@
 organizationId: pinnacle-legal
 id: retainer-agreement
 displayName: Retainer Agreement
-inputModality: TEXT
 fields:
   - name: clientName
     type: STRING

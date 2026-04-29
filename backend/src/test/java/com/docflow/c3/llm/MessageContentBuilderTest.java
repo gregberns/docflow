@@ -6,9 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.anthropic.models.messages.ContentBlockParam;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.MessageParam;
-import com.docflow.c3.llm.MessageContentBuilder.InputModality;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -26,10 +23,9 @@ class MessageContentBuilderTest {
   private final MessageContentBuilder builder = new MessageContentBuilder();
 
   @Test
-  void textModalityProducesSingleTextBlock() {
+  void textProducesSingleTextBlock() {
     MessageCreateParams params =
-        builder.build(
-            MODEL, SYSTEM_PROMPT, CLASSIFY_SCHEMA, InputModality.TEXT, 512, null, "raw text body");
+        builder.build(MODEL, SYSTEM_PROMPT, CLASSIFY_SCHEMA, 512, "raw text body");
 
     assertThat(params.maxTokens()).isEqualTo(512L);
     assertThat(params.system()).isPresent();
@@ -43,25 +39,8 @@ class MessageContentBuilderTest {
   }
 
   @Test
-  void pdfModalityProducesDocumentBlockWithBase64Source() {
-    byte[] pdfBytes = "%PDF-1.4 fake".getBytes(StandardCharsets.UTF_8);
-    String expectedBase64 = Base64.getEncoder().encodeToString(pdfBytes);
-
-    MessageCreateParams params =
-        builder.build(
-            MODEL, SYSTEM_PROMPT, CLASSIFY_SCHEMA, InputModality.PDF, 2048, pdfBytes, null);
-
-    List<ContentBlockParam> blocks = params.messages().get(0).content().asBlockParams();
-    assertThat(blocks).hasSize(1);
-    assertThat(blocks.get(0).isDocument()).isTrue();
-    assertThat(blocks.get(0).asDocument().source().isBase64()).isTrue();
-    assertThat(blocks.get(0).asDocument().source().asBase64().data()).isEqualTo(expectedBase64);
-  }
-
-  @Test
   void toolChoiceForcesNamedTool() {
-    MessageCreateParams params =
-        builder.build(MODEL, SYSTEM_PROMPT, CLASSIFY_SCHEMA, InputModality.TEXT, 512, null, "text");
+    MessageCreateParams params = builder.build(MODEL, SYSTEM_PROMPT, CLASSIFY_SCHEMA, 512, "text");
 
     assertThat(params.toolChoice()).isPresent();
     assertThat(params.toolChoice().get().isTool()).isTrue();
@@ -70,8 +49,7 @@ class MessageContentBuilderTest {
 
   @Test
   void toolListContainsNamedToolWithInputSchema() {
-    MessageCreateParams params =
-        builder.build(MODEL, SYSTEM_PROMPT, CLASSIFY_SCHEMA, InputModality.TEXT, 512, null, "text");
+    MessageCreateParams params = builder.build(MODEL, SYSTEM_PROMPT, CLASSIFY_SCHEMA, 512, "text");
 
     assertThat(params.tools()).isPresent();
     assertThat(params.tools().get()).hasSize(1);
@@ -83,26 +61,8 @@ class MessageContentBuilderTest {
   }
 
   @Test
-  void textModalityRejectsBlankText() {
-    assertThatThrownBy(
-            () ->
-                builder.build(
-                    MODEL, SYSTEM_PROMPT, CLASSIFY_SCHEMA, InputModality.TEXT, 512, null, ""))
-        .isInstanceOf(IllegalArgumentException.class);
-  }
-
-  @Test
-  void pdfModalityRejectsEmptyBytes() {
-    assertThatThrownBy(
-            () ->
-                builder.build(
-                    MODEL,
-                    SYSTEM_PROMPT,
-                    CLASSIFY_SCHEMA,
-                    InputModality.PDF,
-                    2048,
-                    new byte[0],
-                    null))
+  void blankTextIsRejected() {
+    assertThatThrownBy(() -> builder.build(MODEL, SYSTEM_PROMPT, CLASSIFY_SCHEMA, 512, ""))
         .isInstanceOf(IllegalArgumentException.class);
   }
 }

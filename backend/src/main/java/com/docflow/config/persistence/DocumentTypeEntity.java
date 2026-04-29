@@ -25,9 +25,6 @@ public class DocumentTypeEntity {
   @Column(name = "display_name", nullable = false)
   private String displayName;
 
-  @Column(name = "input_modality", nullable = false)
-  private String inputModality;
-
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "field_schema", nullable = false, columnDefinition = "jsonb")
   private Map<String, Object> fieldSchema;
@@ -35,15 +32,10 @@ public class DocumentTypeEntity {
   protected DocumentTypeEntity() {}
 
   public DocumentTypeEntity(
-      String organizationId,
-      String id,
-      String displayName,
-      String inputModality,
-      Map<String, Object> fieldSchema) {
+      String organizationId, String id, String displayName, Map<String, Object> fieldSchema) {
     this.organizationId = organizationId;
     this.id = id;
     this.displayName = displayName;
-    this.inputModality = inputModality;
     this.fieldSchema = fieldSchema;
   }
 
@@ -57,10 +49,6 @@ public class DocumentTypeEntity {
 
   public String getDisplayName() {
     return displayName;
-  }
-
-  public String getInputModality() {
-    return inputModality;
   }
 
   public Map<String, Object> getFieldSchema() {

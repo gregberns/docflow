@@ -1,10 +1,10 @@
 INSERT INTO organizations (id, display_name, icon_id, ordinal)
 VALUES ('test-org', 'Test Org', 'icon-test', 0);
 
-INSERT INTO document_types (organization_id, id, display_name, input_modality, field_schema)
+INSERT INTO document_types (organization_id, id, display_name, field_schema)
 VALUES
-    ('test-org', 'invoice', 'Invoice', 'PDF', '{"fields": []}'),
-    ('test-org', 'receipt', 'Receipt', 'PDF', '{"fields": []}');
+    ('test-org', 'invoice', 'Invoice', '{"fields": []}'),
+    ('test-org', 'receipt', 'Receipt', '{"fields": []}');
 
 INSERT INTO organization_doc_types (organization_id, document_type_id, ordinal)
 VALUES

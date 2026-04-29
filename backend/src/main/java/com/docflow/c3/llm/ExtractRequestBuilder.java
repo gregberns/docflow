@@ -1,7 +1,6 @@
 package com.docflow.c3.llm;
 
 import com.anthropic.models.messages.MessageCreateParams;
-import com.docflow.c3.llm.MessageContentBuilder.InputModality;
 import com.docflow.config.catalog.DocumentTypeSchemaView;
 import java.util.Map;
 import org.springframework.stereotype.Component;
@@ -28,14 +27,7 @@ final class ExtractRequestBuilder {
     ToolSchema toolSchema = toolSchemaBuilder.buildExtractSchema(schema);
     String systemPrompt = promptLibrary.getExtract(schema.id()).render(Map.of());
     MessageCreateParams params =
-        messageContentBuilder.build(
-            modelId,
-            systemPrompt,
-            toolSchema,
-            InputModality.TEXT,
-            EXTRACT_MAX_TOKENS,
-            null,
-            rawText);
+        messageContentBuilder.build(modelId, systemPrompt, toolSchema, EXTRACT_MAX_TOKENS, rawText);
     return new Built(params, toolSchema);
   }
 

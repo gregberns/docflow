@@ -1,7 +1,6 @@
 organizationId: pinnacle-legal
 id: invoice
 displayName: Invoice
-inputModality: TEXT
 fields:
   - name: vendor
     type: STRING

@@ -1,7 +1,6 @@
 organizationId: riverside-bistro
 id: expense-report
 displayName: Expense Report
-inputModality: PDF
 fields:
   - name: employeeName
     type: STRING

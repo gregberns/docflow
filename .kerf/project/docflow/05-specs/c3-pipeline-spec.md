@@ -34,7 +34,7 @@ Locked decisions (from `03-components.md`): model `claude-sonnet-4-6` for both c
 
 From `04-research/c3-llm/findings.md` — load-bearing facts that shape this spec:
 
-1. **Input modality.** Claude PDFs are converted page-by-page to image+text and provided to the model. Hybrid (text for classify, PDF for extract on doc-types with nested arrays) is the recommended default; text-only is the cheap fallback if the eval shows hybrid offers no measurable lift on the corpus. Base64 inline beats Files-API for take-home (Files-API still beta, single extra call, marginal cache benefit at our document sizes).
+1. **Input modality.** Text-only is the chosen modality. PDFBox extraction quality on the sample corpus has been validated independently (eval/pdfbox-check/REPORT.md); the additional latency and token cost of hybrid PDF input is not justified.
 2. **Prompt management.** Resource files keyed by identifier; prompt change = edit the file; reviewer sees a plain-text diff. Per `03-components.md` §C3-R5, this take-home explicitly does **not** introduce in-app prompt versioning — git is the version store. Research's `<identifier>/<version>.txt` layout is therefore simplified to `<identifier>.txt`.
 3. **Tool-use SDK shape.** Use `Tool.builder().inputSchema(InputSchema.builder()…)` with `JsonValue.from(Map.of(…))` because schemas come from C1 config (not Jackson POJOs). Force a tool with `ToolChoice.ofTool(ToolChoiceTool.builder().name(toolName).build())`. Read via `response.content().stream().flatMap(cb -> cb.toolUse().stream())._input()`.
 4. **Eval scoring.** Per `03-components.md` §C3-R8 the take-home reports two aggregate numbers only — classification accuracy and mean extract field-level exact-match. Research's richer per-field-type metric palette (parsed-equal dates, numeric-equal amounts, Levenshtein-ratio narratives, row-level P/R/F1 nested arrays) is *not* in scope for this spec; field comparison is normalized exact match across all field types. Recorded in §3 as a deliberate scope cut.
@@ -148,11 +148,7 @@ Two prompt families:
 
 ### 3.5 Input modality
 
-**Decision: hybrid (text for classify, PDF for extract on doc-types with nested arrays; text for extract on flat doc-types).** Per-doc-type modality is a metadata flag on the C1 doc-type record (`inputModality ∈ {TEXT, PDF}`, default `TEXT`). Doc-types with a nested-array field (`lineItems`, `materials`, `items`) set `PDF`. Base64 inline; no Files-API.
-
-**Rationale.** Research §1 documented this as the recommended default; the table-heavy doc-types (Riverside Invoice, Pinnacle Invoice, Ironworks Invoice, both Expense Reports) benefit from preserved column alignment, while flat doc-types (Riverside Receipt, Pinnacle Retainer, Ironworks Change Order, Ironworks Lien Waiver) get nothing from the image channel and don't pay the token cost.
-
-If the eval reports lower-than-expected aggregate field accuracy after first run, the next mitigation is to flip all doc-types to `pdf` and re-run — a config change, not code.
+Text-only. PDFBox-extracted rawText is the sole input to both classify and extract calls.
 
 ### 3.6 Retry & error handling
 

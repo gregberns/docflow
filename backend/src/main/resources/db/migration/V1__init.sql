@@ -16,13 +16,10 @@ CREATE TABLE document_types (
     organization_id VARCHAR(255) NOT NULL,
     id              VARCHAR(255) NOT NULL,
     display_name    VARCHAR(255) NOT NULL,
-    input_modality  VARCHAR(16)  NOT NULL DEFAULT 'TEXT',
     field_schema    JSONB        NOT NULL,
     PRIMARY KEY (organization_id, id),
     CONSTRAINT fk_document_types_organization
-        FOREIGN KEY (organization_id) REFERENCES organizations (id),
-    CONSTRAINT ck_document_types_input_modality
-        CHECK (input_modality IN ('TEXT', 'PDF'))
+        FOREIGN KEY (organization_id) REFERENCES organizations (id)
 );
 
 CREATE INDEX idx_document_types_organization

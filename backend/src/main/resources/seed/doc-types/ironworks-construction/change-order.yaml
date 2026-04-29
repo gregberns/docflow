@@ -1,7 +1,6 @@
 organizationId: ironworks-construction
 id: change-order
 displayName: Change Order
-inputModality: TEXT
 fields:
   - name: projectCode
     type: STRING

@@ -1,8 +1,8 @@
 INSERT INTO organizations (id, display_name, icon_id, ordinal)
 VALUES ('test-org', 'Test Org', 'icon-test', 0);
 
-INSERT INTO document_types (organization_id, id, display_name, input_modality, field_schema)
-VALUES ('test-org', 'test-doc-type', 'Test Doc Type', 'PDF', '{"fields": []}');
+INSERT INTO document_types (organization_id, id, display_name, field_schema)
+VALUES ('test-org', 'test-doc-type', 'Test Doc Type', '{"fields": []}');
 
 INSERT INTO organization_doc_types (organization_id, document_type_id, ordinal)
 VALUES ('test-org', 'test-doc-type', 0);

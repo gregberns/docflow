@@ -6,7 +6,6 @@ import com.docflow.c3.audit.CallType;
 import com.docflow.c3.audit.LlmCallAudit;
 import com.docflow.c3.audit.LlmCallAuditId;
 import com.docflow.c3.audit.LlmCallAuditWriter;
-import com.docflow.c3.llm.MessageContentBuilder.InputModality;
 import com.docflow.config.AppConfig;
 import com.docflow.config.catalog.OrganizationCatalog;
 import com.docflow.ingestion.StoredDocumentId;
@@ -74,13 +73,7 @@ public final class LlmClassifier {
 
     MessageCreateParams params =
         messageContentBuilder.build(
-            modelId,
-            systemPrompt,
-            toolSchema,
-            InputModality.TEXT,
-            CLASSIFY_MAX_TOKENS,
-            null,
-            rawText);
+            modelId, systemPrompt, toolSchema, CLASSIFY_MAX_TOKENS, rawText);
 
     String error = null;
     try {

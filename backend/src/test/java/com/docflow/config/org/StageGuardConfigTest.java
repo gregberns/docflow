@@ -92,11 +92,6 @@ class StageGuardConfigTest {
   }
 
   @Test
-  void inputModalityEnumExposesExactlyTextAndPdf() {
-    assertThat(InputModality.values()).containsExactly(InputModality.TEXT, InputModality.PDF);
-  }
-
-  @Test
   void stageDefinitionRoleNullableForReviewAndTerminalNonNullForApproval() {
     StageDefinition review =
         new StageDefinition(

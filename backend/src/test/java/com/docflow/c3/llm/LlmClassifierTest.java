@@ -61,7 +61,7 @@ class LlmClassifierTest {
     MessageCreateParams params =
         MessageCreateParams.builder().model(MODEL_ID).maxTokens(512).addUserMessage("x").build();
     when(messageContentBuilder.build(
-            any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+            any(), any(), any(), org.mockito.ArgumentMatchers.anyInt(), any()))
         .thenReturn(params);
 
     AppConfig appConfig =

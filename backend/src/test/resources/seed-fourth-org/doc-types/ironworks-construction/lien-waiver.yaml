@@ -1,7 +1,6 @@
 organizationId: ironworks-construction
 id: lien-waiver
 displayName: Lien Waiver
-inputModality: TEXT
 fields:
   - name: subcontractor
     type: STRING

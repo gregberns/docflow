@@ -1,7 +1,6 @@
 organizationId: riverside-bistro
 id: receipt
 displayName: Receipt
-inputModality: TEXT
 fields:
   - name: merchant
     type: STRING

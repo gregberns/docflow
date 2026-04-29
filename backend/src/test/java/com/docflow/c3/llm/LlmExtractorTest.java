@@ -75,14 +75,12 @@ class LlmExtractorTest {
             ORG_ID,
             DOC_TYPE_ID,
             "Invoice",
-            "TEXT",
             List.of(new FieldView("vendor", "STRING", true, null, null)));
     DocumentTypeSchemaView receiptSchema =
         new DocumentTypeSchemaView(
             ORG_ID,
             NEW_DOC_TYPE_ID,
             "Receipt",
-            "TEXT",
             List.of(new FieldView("merchant", "STRING", true, null, null)));
 
     when(documentTypeCatalog.getDocumentTypeSchema(ORG_ID, DOC_TYPE_ID))

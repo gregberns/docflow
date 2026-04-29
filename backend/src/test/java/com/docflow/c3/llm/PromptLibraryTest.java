@@ -168,8 +168,7 @@ class PromptLibraryTest {
       if (allowed == null || !allowed.contains(docTypeId)) {
         return Optional.empty();
       }
-      return Optional.of(
-          new DocumentTypeSchemaView(orgId, docTypeId, docTypeId, "TEXT", List.of()));
+      return Optional.of(new DocumentTypeSchemaView(orgId, docTypeId, docTypeId, List.of()));
     }
 
     @Override
@@ -177,7 +176,7 @@ class PromptLibraryTest {
       List<String> allowed = orgToDocTypes.getOrDefault(orgId, List.of());
       List<DocumentTypeSchemaView> views = new ArrayList<>(allowed.size());
       for (String docTypeId : allowed) {
-        views.add(new DocumentTypeSchemaView(orgId, docTypeId, docTypeId, "TEXT", List.of()));
+        views.add(new DocumentTypeSchemaView(orgId, docTypeId, docTypeId, List.of()));
       }
       return List.copyOf(views);
     }

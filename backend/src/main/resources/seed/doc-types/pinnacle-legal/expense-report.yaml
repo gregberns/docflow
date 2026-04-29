@@ -1,7 +1,6 @@
 organizationId: pinnacle-legal
 id: expense-report
 displayName: Expense Report
-inputModality: PDF
 fields:
   - name: attorneyName
     type: STRING

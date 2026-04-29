@@ -75,11 +75,7 @@ public class OrgConfigSeedWriter {
     for (DocTypeDefinition dt : docTypes) {
       documentTypeRepository.save(
           new DocumentTypeEntity(
-              dt.organizationId(),
-              dt.id(),
-              dt.displayName(),
-              dt.inputModality().name(),
-              fieldSchemaMap(dt.fields())));
+              dt.organizationId(), dt.id(), dt.displayName(), fieldSchemaMap(dt.fields())));
     }
   }
 

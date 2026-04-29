@@ -2,7 +2,6 @@ package com.docflow.c3.llm;
 
 import com.anthropic.core.JsonValue;
 import com.anthropic.models.messages.ContentBlockParam;
-import com.anthropic.models.messages.DocumentBlockParam;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.anthropic.models.messages.TextBlockParam;
@@ -10,7 +9,6 @@ import com.anthropic.models.messages.Tool;
 import com.anthropic.models.messages.ToolChoice;
 import com.anthropic.models.messages.ToolChoiceTool;
 import com.anthropic.models.messages.ToolUnion;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,24 +20,13 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 public class MessageContentBuilder {
 
-  public enum InputModality {
-    TEXT,
-    PDF
-  }
-
   private static final String SCHEMA_PROPERTIES = "properties";
   private static final String SCHEMA_REQUIRED = "required";
 
   private final ObjectMapper mapper = JsonMapper.builder().build();
 
   public MessageCreateParams build(
-      String modelId,
-      String systemPrompt,
-      ToolSchema toolSchema,
-      InputModality modality,
-      int maxTokens,
-      byte[] pdfBytes,
-      String text) {
+      String modelId, String systemPrompt, ToolSchema toolSchema, int maxTokens, String text) {
     if (modelId == null || modelId.isBlank()) {
       throw new IllegalArgumentException("modelId must not be blank");
     }
@@ -49,14 +36,11 @@ public class MessageContentBuilder {
     if (toolSchema == null) {
       throw new IllegalArgumentException("toolSchema must not be null");
     }
-    if (modality == null) {
-      throw new IllegalArgumentException("modality must not be null");
-    }
     if (maxTokens <= 0) {
       throw new IllegalArgumentException("maxTokens must be positive");
     }
 
-    List<ContentBlockParam> blocks = buildContentBlocks(modality, pdfBytes, text);
+    List<ContentBlockParam> blocks = buildContentBlocks(text);
     Tool tool = buildTool(toolSchema);
     ToolChoice toolChoice =
         ToolChoice.ofTool(ToolChoiceTool.builder().name(toolSchema.toolName()).build());
@@ -71,18 +55,9 @@ public class MessageContentBuilder {
         .build();
   }
 
-  private static List<ContentBlockParam> buildContentBlocks(
-      InputModality modality, byte[] pdfBytes, String text) {
-    if (modality == InputModality.PDF) {
-      if (pdfBytes == null || pdfBytes.length == 0) {
-        throw new IllegalArgumentException("pdfBytes must be non-empty for PDF modality");
-      }
-      String base64 = Base64.getEncoder().encodeToString(pdfBytes);
-      DocumentBlockParam document = DocumentBlockParam.builder().base64Source(base64).build();
-      return List.of(ContentBlockParam.ofDocument(document));
-    }
+  private static List<ContentBlockParam> buildContentBlocks(String text) {
     if (text == null || text.isBlank()) {
-      throw new IllegalArgumentException("text must be non-blank for TEXT modality");
+      throw new IllegalArgumentException("text must be non-blank");
     }
     TextBlockParam textBlock = TextBlockParam.builder().text(text).build();
     return List.of(ContentBlockParam.ofText(textBlock));

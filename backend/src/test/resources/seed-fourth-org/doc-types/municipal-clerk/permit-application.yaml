@@ -1,7 +1,6 @@
 organizationId: municipal-clerk
 id: permit-application
 displayName: Permit Application
-inputModality: PDF
 fields:
   - name: applicantName
     type: STRING
