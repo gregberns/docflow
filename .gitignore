@@ -30,3 +30,7 @@ frontend/test-results/
 
 # Claude Code agent worktrees (ephemeral; see .claude/settings.json for hooks)
 .claude/worktrees/
+
+# Eval harness
+eval/harness/__pycache__/
+eval/reports/
