@@ -3,7 +3,6 @@ package com.docflow.api.dto;
 import com.docflow.document.ReextractionStatus;
 import com.docflow.workflow.WorkflowStatus;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,9 +22,7 @@ public record DocumentView(
     String detectedDocumentType,
     Map<String, Object> extractedFields,
     ReextractionStatus reextractionStatus) {
-
   public DocumentView {
-    extractedFields =
-        extractedFields == null ? Map.of() : Map.copyOf(new HashMap<>(extractedFields));
+    extractedFields = extractedFields == null ? Map.of() : Map.copyOf(extractedFields);
   }
 }
