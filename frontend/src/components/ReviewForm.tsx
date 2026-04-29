@@ -113,6 +113,11 @@ export function ReviewForm({
   const arrayFields = fields.filter((f) => f.type.toUpperCase() === "ARRAY");
   const scalarFields = fields.filter((f) => f.type.toUpperCase() !== "ARRAY");
 
+  const docTypeChanged =
+    selectedDocumentType != null &&
+    selectedDocumentType !== "" &&
+    selectedDocumentType !== document.detectedDocumentType;
+
   return (
     <FormProvider {...methods}>
       <form
@@ -122,7 +127,15 @@ export function ReviewForm({
         className="flex min-h-0 flex-1 flex-col"
       >
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          <div className="mb-5 rounded-lg border border-neutral-200 bg-[#f9fafb] px-4 py-3.5">
+          <div
+            data-testid="category-confirm"
+            data-changed={docTypeChanged ? "true" : "false"}
+            className={
+              docTypeChanged
+                ? "mb-5 rounded-lg border border-warn bg-[#fffbeb] px-4 py-3.5"
+                : "mb-5 rounded-lg border border-neutral-200 bg-[#f9fafb] px-4 py-3.5"
+            }
+          >
             <label data-testid="doctype-field" className="block">
               <span className="mb-2 block text-11 font-bold uppercase tracking-[0.5px] text-neutral-500">
                 Document Type

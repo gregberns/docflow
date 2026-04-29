@@ -41,8 +41,7 @@ export function FlagModal({ documentId, organizationId, onCancel, onSubmitted }:
       >
         <div className="flex items-center gap-2.5 border-b border-neutral-100 px-6 pb-4 pt-5">
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
-            style={{ background: "#fef3c7", color: "#f59e0b" }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#fef3c7] text-warn"
             aria-hidden="true"
           >
             <FlagIcon />
