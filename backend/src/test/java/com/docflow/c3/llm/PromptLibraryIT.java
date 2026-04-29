@@ -6,6 +6,9 @@ import static org.mockito.Mockito.mock;
 import com.docflow.c3.audit.LlmCallAuditWriter;
 import com.docflow.config.catalog.OrganizationCatalog;
 import com.docflow.config.catalog.OrganizationView;
+import com.docflow.document.DocumentReader;
+import com.docflow.document.DocumentWriter;
+import com.docflow.platform.DocumentEventBus;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
@@ -93,6 +96,21 @@ class PromptLibraryIT {
     @Bean
     LlmCallAuditWriter llmCallAuditWriter() {
       return mock(LlmCallAuditWriter.class);
+    }
+
+    @Bean
+    DocumentReader documentReader() {
+      return mock(DocumentReader.class);
+    }
+
+    @Bean
+    DocumentWriter documentWriter() {
+      return mock(DocumentWriter.class);
+    }
+
+    @Bean
+    DocumentEventBus documentEventBus() {
+      return mock(DocumentEventBus.class);
     }
 
     @Bean
