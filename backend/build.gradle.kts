@@ -43,12 +43,15 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("net.jqwik:jqwik:1.9.3")
 
     errorprone("com.google.errorprone:error_prone_core:2.36.0")
 }
 
 tasks.withType<Test> {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        includeEngines("junit-jupiter", "jqwik")
+    }
     finalizedBy(tasks.jacocoTestReport)
 }
 

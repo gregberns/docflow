@@ -12,6 +12,7 @@ backend/build/
 backend/out/
 backend/bin/
 backend/*.log
+backend/.jqwik-database
 
 # Frontend (Node / Vite)
 frontend/node_modules/
