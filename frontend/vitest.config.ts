@@ -8,6 +8,16 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.ts"],
+    // Cap concurrent workers to bound memory. Threads share heap more
+    // efficiently than forks; 2 is enough for parallelism on this suite
+    // without each run blowing past ~1GB. Tune lower if memory is still tight.
+    pool: "threads",
+    poolOptions: {
+      threads: {
+        minThreads: 1,
+        maxThreads: 2,
+      },
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
