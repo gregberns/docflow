@@ -1,0 +1,27 @@
+Concrete Jungle Suppliers
+"We Pour, You Score"
+8800 Aggregate Way, Mesa, AZ 85201
+INVOICE
+INV-CJS-2024-1847
+BILL TO
+Ironworks Construction Co. 2100 Steel Canyon Blvd, Phoenix, AZ 85004
+INVOICE DATE
+March 8, 2024
+PROJECT
+RC-2024-017 — Riverside Commons
+DELIVERY DATE
+March 6, 2024
+PAYMENT TERMS
+Net 45
+Material Qty Unit Cost Amount
+Ready-mix concrete, 4000 PSI (cubic yards) 85 $165.00 $14,025.00
+Rebar #5, Grade 60 (20ft lengths) 240 $18.50 $4,440.00
+Concrete pump rental — 42m boom (full day) 2 $2,800.00 $5,600.00
+Vapor barrier, 15mil (1,200 sq ft rolls) 4 $285.00 $1,140.00
+Delivery & placement surcharge (weekend) — — $1,500.00
+SUBTOTAL
+$26,705.00
+TAX (8.6%)
+$2,296.63
+TOTAL DUE: $29,001.63
+Payment due within 45 days. 1.5% monthly finance charge on overdue balances. Material certifications and batch tickets available upon request.

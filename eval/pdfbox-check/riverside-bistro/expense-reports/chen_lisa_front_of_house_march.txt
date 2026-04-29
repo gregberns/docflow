@@ -1,0 +1,16 @@
+Riverside Bistro
+2200 River Road, Phoenix, AZ 85008
+EXPENSE REPORT
+EMPLOYEE
+Chen, Lisa
+DEPARTMENT
+Front of House
+SUBMISSION DATE
+March 22, 2024
+Date Description Category Amount
+03/08 Wine tasting "research" — Napa Valley Imports showcase Food $85.00
+03/11 Replacement tablecloths (red wine incident, table 7) Supplies $142.00
+03/14 Uber to sommelier certification exam Services $32.50
+03/19 Guest comment cards and fancy pens Supplies $28.75
+TOTAL: $288.25
+Employee certifies that these expenses were incurred for legitimate business purposes. Receipts attached where applicable.

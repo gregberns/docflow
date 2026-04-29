@@ -1,0 +1,267 @@
+# Hand-authored labels for the 23 sample PDFs under problem-statement/samples/.
+#
+# Per-sample we record 3-5 fields that are clearly extractable from the document
+# (printed in the body, no inference required). Numeric fields are written as
+# decimal strings without thousands separators / currency symbols. Dates are
+# ISO-8601. Strings are matched case-insensitively after light normalization
+# (whitespace stripped, smart-quotes/em-dashes folded to ASCII, currency and
+# thousand-separators stripped on numeric fields).
+#
+# `pdf_path` is relative to the repo's `problem-statement/samples/` directory.
+# `org_slug` is the C1 organization id; `doc_type` is the C1 doc-type id.
+
+samples:
+  # -------------------- ironworks-construction --------------------
+
+  - id: ironworks-change-infinity-pool
+    org_slug: ironworks-construction
+    doc_type: change-order
+    pdf_path: ironworks-construction/change-orders/infinity_pool_to_moat_change_order.pdf
+    expected_fields:
+      projectCode: "RC-2024-017"
+      projectName: "Riverside Commons - Phase 3 Amenities"
+      costImpact: "45000.00"
+      scheduleImpact: "+18 calendar days"
+      requestedBy: "Marcus Wellington, Owner"
+
+  - id: ironworks-change-underground-spring
+    org_slug: ironworks-construction
+    doc_type: change-order
+    pdf_path: ironworks-construction/change-orders/underground_spring_foundation_change_order.pdf
+    expected_fields:
+      projectCode: "RC-2024-017"
+      projectName: "Riverside Commons - Phase 2 Structural"
+      costImpact: "82500.00"
+      scheduleImpact: "+12 calendar days"
+      requestedBy: "Sarah Chen, Project Manager"
+
+  - id: ironworks-invoice-concrete-jungle
+    org_slug: ironworks-construction
+    doc_type: invoice
+    pdf_path: ironworks-construction/invoices/concrete_jungle_phase2_foundation_inv.pdf
+    expected_fields:
+      vendor: "Concrete Jungle Suppliers"
+      invoiceNumber: "INV-CJS-2024-1847"
+      invoiceDate: "2024-03-08"
+      projectCode: "RC-2024-017"
+      paymentTerms: "Net 45"
+
+  - id: ironworks-invoice-exotic-aquatic
+    org_slug: ironworks-construction
+    doc_type: invoice
+    pdf_path: ironworks-construction/invoices/exotic_aquatic_moat_materials_inv.pdf
+    expected_fields:
+      vendor: "Exotic Aquatic Enclosures LLC"
+      invoiceNumber: "INV-EAE-2024-0088"
+      invoiceDate: "2024-03-22"
+      amount: "44678.04"
+      paymentTerms: "Net 30"
+
+  - id: ironworks-invoice-thunderbolt
+    org_slug: ironworks-construction
+    doc_type: invoice
+    pdf_path: ironworks-construction/invoices/thunderbolt_electrical_phase2_inv.pdf
+    expected_fields:
+      vendor: "Thunderbolt Electrical Contractors"
+      invoiceNumber: "INV-TEC-2024-0744"
+      invoiceDate: "2024-03-12"
+      amount: "15284.36"
+      paymentTerms: "Net 30"
+
+  - id: ironworks-waiver-concrete-jungle
+    org_slug: ironworks-construction
+    doc_type: lien-waiver
+    pdf_path: ironworks-construction/lien-waivers/concrete_jungle_unconditional_waiver.pdf
+    expected_fields:
+      subcontractor: "Concrete Jungle Suppliers"
+      projectCode: "RC-2024-017"
+      amount: "29001.63"
+      throughDate: "2024-03-15"
+      waiverType: "unconditional"
+
+  - id: ironworks-waiver-exotic-aquatic
+    org_slug: ironworks-construction
+    doc_type: lien-waiver
+    pdf_path: ironworks-construction/lien-waivers/exotic_aquatic_conditional_waiver.pdf
+    expected_fields:
+      subcontractor: "Exotic Aquatic Enclosures LLC"
+      projectCode: "RC-2024-017"
+      amount: "44678.04"
+      throughDate: "2024-03-31"
+      waiverType: "conditional"
+
+  - id: ironworks-waiver-thunderbolt
+    org_slug: ironworks-construction
+    doc_type: lien-waiver
+    pdf_path: ironworks-construction/lien-waivers/thunderbolt_electrical_conditional_waiver.pdf
+    expected_fields:
+      subcontractor: "Thunderbolt Electrical Contractors"
+      projectCode: "RC-2024-017"
+      amount: "15284.36"
+      throughDate: "2024-03-31"
+      waiverType: "conditional"
+
+  # -------------------- pinnacle-legal --------------------
+
+  - id: pinnacle-expense-chen-david
+    org_slug: pinnacle-legal
+    doc_type: expense-report
+    pdf_path: pinnacle-legal/expense-reports/chen_david_wellington_trust_march.pdf
+    expected_fields:
+      attorneyName: "Chen, David"
+      matterNumber: "4417"
+      submissionDate: "2024-03-18"
+      totalAmount: "742.80"
+
+  - id: pinnacle-expense-park-james
+    org_slug: pinnacle-legal
+    doc_type: expense-report
+    pdf_path: pinnacle-legal/expense-reports/park_james_henderson_ip_march.pdf
+    expected_fields:
+      attorneyName: "Park, James"
+      matterNumber: "4392"
+      submissionDate: "2024-03-22"
+      totalAmount: "1576.50"
+
+  - id: pinnacle-invoice-absolutely-legitimate
+    org_slug: pinnacle-legal
+    doc_type: invoice
+    pdf_path: pinnacle-legal/invoices/absolutely_legitimate_court_reporting_feb2024.pdf
+    expected_fields:
+      vendor: "Absolutely Legitimate Court Reporting Services"
+      invoiceNumber: "INV-ALCRS-2024-0553"
+      invoiceDate: "2024-02-28"
+      matterNumber: "4389"
+      amount: "7362.50"
+
+  - id: pinnacle-invoice-dewey-cheatham
+    org_slug: pinnacle-legal
+    doc_type: invoice
+    pdf_path: pinnacle-legal/invoices/dewey_cheatham_howe_feb_2024.pdf
+    expected_fields:
+      vendor: "Dewey, Cheatham & Howe"
+      invoiceNumber: "INV-DCH-2024-0891"
+      invoiceDate: "2024-02-15"
+      matterNumber: "4401"
+      amount: "20360.10"
+
+  - id: pinnacle-invoice-von-stuffington
+    org_slug: pinnacle-legal
+    doc_type: invoice
+    pdf_path: pinnacle-legal/invoices/von_stuffington_expert_witness_jan2024.pdf
+    expected_fields:
+      vendor: "Dr. Reginald Von Stuffington III, Esq., PhD"
+      invoiceNumber: "INV-VS-2024-0047"
+      invoiceDate: "2024-01-28"
+      matterNumber: "4389"
+      amount: "51987.50"
+
+  - id: pinnacle-retainer-bigglesworth
+    org_slug: pinnacle-legal
+    doc_type: retainer-agreement
+    pdf_path: pinnacle-legal/retainer-agreements/bigglesworth_estate_retainer_2024.pdf
+    expected_fields:
+      clientName: "Estate of Reginald P. Bigglesworth"
+      matterType: "Estate Litigation"
+      hourlyRate: "650.00"
+      retainerAmount: "25000.00"
+      effectiveDate: "2024-03-01"
+
+  - id: pinnacle-retainer-tanaka
+    org_slug: pinnacle-legal
+    doc_type: retainer-agreement
+    pdf_path: pinnacle-legal/retainer-agreements/tanaka_corp_restructuring_retainer_2024.pdf
+    expected_fields:
+      clientName: "Tanaka Corporation"
+      matterType: "Corporate Restructuring"
+      hourlyRate: "575.00"
+      retainerAmount: "50000.00"
+      effectiveDate: "2024-03-15"
+
+  # -------------------- riverside-bistro --------------------
+
+  - id: riverside-expense-chen-lisa
+    org_slug: riverside-bistro
+    doc_type: expense-report
+    pdf_path: riverside-bistro/expense-reports/chen_lisa_front_of_house_march.pdf
+    expected_fields:
+      employeeName: "Chen, Lisa"
+      department: "Front of House"
+      submissionDate: "2024-03-22"
+      totalAmount: "288.25"
+
+  - id: riverside-expense-martinez-sofia
+    org_slug: riverside-bistro
+    doc_type: expense-report
+    pdf_path: riverside-bistro/expense-reports/martinez_sofia_kitchen_ops_march.pdf
+    expected_fields:
+      employeeName: "Martinez, Sofia"
+      department: "Kitchen Operations"
+      submissionDate: "2024-03-20"
+      totalAmount: "522.09"
+
+  - id: riverside-invoice-artisanal-ice-cube
+    org_slug: riverside-bistro
+    doc_type: invoice
+    pdf_path: riverside-bistro/invoices/artisanal_ice_cube_march_2024.pdf
+    expected_fields:
+      vendor: "Artisanal Ice Cube Collective"
+      invoiceNumber: "INV-AICC-2024-0182"
+      invoiceDate: "2024-03-05"
+      totalAmount: "1178.31"
+      paymentTerms: "Net 15"
+
+  - id: riverside-invoice-senor-tacos
+    org_slug: riverside-bistro
+    doc_type: invoice
+    pdf_path: riverside-bistro/invoices/senor_tacos_wholesale_march_2024.pdf
+    expected_fields:
+      vendor: "Senor Taco's Wholesale Tortillas"
+      invoiceNumber: "INV-ST-2024-3847"
+      invoiceDate: "2024-03-10"
+      totalAmount: "917.97"
+      paymentTerms: "Net 30"
+
+  - id: riverside-invoice-truffle-whisperer
+    org_slug: riverside-bistro
+    doc_type: invoice
+    pdf_path: riverside-bistro/invoices/truffle_whisperer_march_2024.pdf
+    expected_fields:
+      vendor: "The Truffle Whisperer Mushroom Co."
+      invoiceNumber: "INV-TW-2024-0294"
+      invoiceDate: "2024-03-14"
+      totalAmount: "1391.36"
+      paymentTerms: "Net 30"
+
+  - id: riverside-receipt-comically-large-spoon
+    org_slug: riverside-bistro
+    doc_type: receipt
+    pdf_path: riverside-bistro/receipts/comically_large_spoon_receipt_0318.pdf
+    expected_fields:
+      merchant: "Comically Large Spoon Warehouse"
+      date: "2024-03-18"
+      amount: "199.73"
+      paymentMethod: "Corporate Card ending 4477"
+      category: "equipment"
+
+  - id: riverside-receipt-margarita-machine
+    org_slug: riverside-bistro
+    doc_type: receipt
+    pdf_path: riverside-bistro/receipts/margarita_machine_parts_receipt_0315.pdf
+    expected_fields:
+      merchant: "Industrial Margarita Machine Parts LLC"
+      date: "2024-03-15"
+      amount: "721.15"
+      paymentMethod: "Corporate Card ending 4477"
+      category: "equipment"
+
+  - id: riverside-receipt-suspicious-butter
+    org_slug: riverside-bistro
+    doc_type: receipt
+    pdf_path: riverside-bistro/receipts/suspicious_butter_receipt_0312.pdf
+    expected_fields:
+      merchant: "Suspicious Amount of Butter Inc."
+      date: "2024-03-12"
+      amount: "601.83"
+      paymentMethod: "Corporate Card ending 4477"
+      category: "food"

@@ -1,0 +1,17 @@
+Riverside Bistro
+2200 River Road, Phoenix, AZ 85008
+EXPENSE REPORT
+EMPLOYEE
+Martinez, Sofia
+DEPARTMENT
+Kitchen Operations
+SUBMISSION DATE
+March 20, 2024
+Date Description Category Amount
+03/04 Emergency whisk replacement (the big one broke mid-service) Equipment $34.99
+03/07 Farmers market produce run — heirloom tomatoes, basil, suspicious peppers Food $127.50
+03/12 Uber to/from Restaurant Supply Expo Services $48.20
+03/15 Knife sharpening service (12 knives) Services $96.00
+03/18 Team lunch at competitor restaurant (research purposes, obviously) Food $215.40
+TOTAL: $522.09
+Employee certifies that these expenses were incurred for legitimate business purposes. Receipts attached where applicable.
