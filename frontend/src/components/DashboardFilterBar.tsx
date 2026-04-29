@@ -15,6 +15,8 @@ interface DashboardFilterBarProps {
   docTypeOptions: ReadonlyArray<string>;
   onStatusChange: (status: WorkflowStatus | "ALL") => void;
   onDocTypeChange: (docType: string | "ALL") => void;
+  onUploadClick?: () => void;
+  uploadDisabled?: boolean;
 }
 
 export function DashboardFilterBar({
@@ -24,6 +26,8 @@ export function DashboardFilterBar({
   docTypeOptions,
   onStatusChange,
   onDocTypeChange,
+  onUploadClick,
+  uploadDisabled,
 }: DashboardFilterBarProps) {
   return (
     <section data-testid="dashboard-filters">
@@ -57,6 +61,16 @@ export function DashboardFilterBar({
           ))}
         </select>
       </label>
+      {onUploadClick && (
+        <button
+          type="button"
+          data-testid="upload-button"
+          onClick={onUploadClick}
+          disabled={uploadDisabled}
+        >
+          Upload Document
+        </button>
+      )}
     </section>
   );
 }
