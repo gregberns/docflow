@@ -281,9 +281,10 @@ class OrganizationControllerTest {
     return Long.parseLong(json.substring(valStart, valEnd));
   }
 
-  @SpringBootApplication(scanBasePackages = {"com.docflow.config", "com.docflow.api"})
+  @SpringBootApplication(
+      scanBasePackages = {"com.docflow.config", "com.docflow.api", "com.docflow.platform"})
   @ComponentScan(
-      basePackages = {"com.docflow.config", "com.docflow.api"},
+      basePackages = {"com.docflow.config", "com.docflow.api", "com.docflow.platform"},
       excludeFilters = {
         @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com\\.docflow\\..*Test\\$.*"),
         @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com\\.docflow\\..*IT\\$.*"),

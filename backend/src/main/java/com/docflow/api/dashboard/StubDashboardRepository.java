@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(
     name = "docflow.feature.dashboard-stub",
     havingValue = "true",
-    matchIfMissing = true)
+    matchIfMissing = false)
 class StubDashboardRepository implements DashboardRepository {
 
   @Override
