@@ -1,0 +1,1 @@
+Classify into one of: {{ALLOWED_DOC_TYPES}}.
