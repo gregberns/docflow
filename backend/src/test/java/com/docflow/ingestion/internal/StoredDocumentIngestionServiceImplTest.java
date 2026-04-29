@@ -113,6 +113,16 @@ class StoredDocumentIngestionServiceImplTest {
   }
 
   @Test
+  void mintedProcessingDocumentIdIsUuidV7() throws IOException {
+    byte[] bytes = readFixture("fixtures/sample-invoice.pdf");
+
+    IngestionResult result = service.upload(ORG_ID, "invoice.pdf", "application/pdf", bytes);
+
+    assertThat(result.processingDocumentId().version()).isEqualTo(7);
+    assertThat(result.storedDocumentId().version()).isEqualTo(7);
+  }
+
+  @Test
   void acR1_textBytesRejectedAs415() throws IOException {
     byte[] bytes = readFixture("fixtures/not-a-pdf.txt");
 

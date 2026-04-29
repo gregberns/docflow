@@ -2,6 +2,7 @@ package com.docflow.ingestion.internal;
 
 import com.docflow.api.error.UnknownOrganizationException;
 import com.docflow.c3.events.StoredDocumentIngested;
+import com.docflow.c3.pipeline.ProcessingDocumentId;
 import com.docflow.config.AppConfig;
 import com.docflow.config.catalog.OrganizationCatalog;
 import com.docflow.ingestion.IngestionResult;
@@ -81,7 +82,7 @@ class StoredDocumentIngestionServiceImpl implements StoredDocumentIngestionServi
     String mimeType = sniff(bytes, sourceFilename, claimedContentType);
 
     StoredDocumentId storedId = StoredDocumentId.generate();
-    UUID processingId = UUID.randomUUID();
+    UUID processingId = ProcessingDocumentId.generate().value();
     Instant uploadedAt = Instant.now();
     String storagePath = storageRoot.resolve(storedId.value() + FILE_SUFFIX).toString();
 
