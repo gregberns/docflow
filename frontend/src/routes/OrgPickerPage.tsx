@@ -11,12 +11,15 @@ export function OrgPickerPage() {
   });
 
   return (
-    <main data-testid="org-picker-page">
-      <header>
-        <h1>
-          Doc<span>Flow</span>
+    <main
+      data-testid="org-picker-page"
+      className="flex min-h-screen flex-col items-center justify-center bg-surface px-6 py-12"
+    >
+      <header className="mb-10 flex flex-col items-center">
+        <h1 className="mb-2 text-32 font-bold tracking-[-1px] text-brand-navy">
+          Doc<span className="text-brand-blue">Flow</span>
         </h1>
-        <p>Select an organization to continue</p>
+        <p className="text-14 text-neutral-500">Select an organization to continue</p>
       </header>
       {isLoading && (
         <p
@@ -36,7 +39,10 @@ export function OrgPickerPage() {
         </p>
       )}
       {data && (
-        <section data-testid="org-grid">
+        <section
+          data-testid="org-grid"
+          className="grid w-full max-w-[780px] grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        >
           {data.map((organization) => (
             <OrgPickerCard
               key={organization.id}
