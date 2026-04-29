@@ -137,7 +137,45 @@ class GlobalExceptionHandlerContractTest {
         .andExpect(content().contentType(PROBLEM_JSON))
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
         .andExpect(jsonPath("$.status").value(400))
-        .andExpect(jsonPath("$.details[0].path").value("action"));
+        .andExpect(
+            jsonPath("$.message")
+                .value("action is required and must be one of: Approve, Reject, Flag, Resolve"))
+        .andExpect(jsonPath("$.details[0].path").value("action"))
+        .andExpect(
+            jsonPath("$.details[0].message")
+                .value(
+                    org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("com.docflow"))))
+        .andExpect(
+            jsonPath("$.details[0].message")
+                .value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("subtype"))))
+        .andExpect(
+            jsonPath("$.details[0].message")
+                .value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("type id"))));
+  }
+
+  @Test
+  void validationFailedFromJacksonMissingDiscriminator() throws Exception {
+    String body = "{}";
+    mockMvc
+        .perform(post("/test/echo").contentType(MediaType.APPLICATION_JSON).content(body))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(
+            jsonPath("$.message")
+                .value("action is required and must be one of: Approve, Reject, Flag, Resolve"))
+        .andExpect(jsonPath("$.details[0].path").value("action"))
+        .andExpect(
+            jsonPath("$.details[0].message")
+                .value(
+                    org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("com.docflow"))))
+        .andExpect(
+            jsonPath("$.details[0].message")
+                .value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("subtype"))))
+        .andExpect(
+            jsonPath("$.details[0].message")
+                .value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("type id"))));
   }
 
   @Test

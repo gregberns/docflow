@@ -58,8 +58,10 @@ public class GlobalExceptionHandler {
       String path = pathFromInvalidTypeId(polymorphismFailure);
       return build(
           ErrorCode.VALIDATION_FAILED,
-          "Unknown discriminator for polymorphic field",
-          List.of(new DetailEntry(path, polymorphismFailure.getOriginalMessage())));
+          "action is required and must be one of: Approve, Reject, Flag, Resolve",
+          List.of(
+              new DetailEntry(
+                  path, "unknown value; expected one of: Approve, Reject, Flag, Resolve")));
     }
     return build(ErrorCode.VALIDATION_FAILED, "Malformed request body", List.of());
   }
