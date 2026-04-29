@@ -94,23 +94,27 @@ export function DocumentDetailPage() {
         </p>
       )}
       {data && documentId && (
-        <>
-          <DocumentHeader document={data} />
-          {workflow &&
-            (data.currentStageId === null ? (
-              <StageProgress mode="in-flight" currentStep="EXTRACTING" stages={workflow.stages} />
-            ) : (
-              <StageProgress
-                mode="processed"
-                stages={workflow.stages}
-                currentStageId={data.currentStageId}
-                currentStatus={data.currentStatus}
-                originStage={data.workflowOriginStage}
-              />
-            ))}
-          <DetailLayout
-            left={<PdfViewer fileUrl={getDocumentFileUrl(documentId)} />}
-            right={
+        <DetailLayout
+          left={<PdfViewer fileUrl={getDocumentFileUrl(documentId)} />}
+          right={
+            <>
+              <DocumentHeader document={data} />
+              {workflow &&
+                (data.currentStageId === null ? (
+                  <StageProgress
+                    mode="in-flight"
+                    currentStep="EXTRACTING"
+                    stages={workflow.stages}
+                  />
+                ) : (
+                  <StageProgress
+                    mode="processed"
+                    stages={workflow.stages}
+                    currentStageId={data.currentStageId}
+                    currentStatus={data.currentStatus}
+                    originStage={data.workflowOriginStage}
+                  />
+                ))}
               <FormPanel
                 document={data}
                 fields={fields}
@@ -122,9 +126,9 @@ export function DocumentDetailPage() {
                     navigate(`/org/${encodeURIComponent(data.organizationId)}/dashboard`),
                 }}
               />
-            }
-          />
-        </>
+            </>
+          }
+        />
       )}
     </main>
   );

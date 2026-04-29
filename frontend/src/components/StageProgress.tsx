@@ -300,26 +300,103 @@ function lastReachedIdxBeforeRejection(
 }
 
 function colorClass(state: StageState): string {
+  const itemBase = "relative flex flex-1 flex-col items-center min-w-0";
+  switch (state) {
+    case "failed":
+      return `${itemBase} stage-state-failed text-red-600`;
+    case "rejected-edge":
+      return `${itemBase} stage-state-rejected-edge text-red-600`;
+    case "rejected-current":
+      return `${itemBase} stage-state-rejected-current text-red-600 font-semibold`;
+    case "regressed-amber":
+      return `${itemBase} stage-state-regressed-amber text-amber-500`;
+    case "highlighted-pink":
+      return `${itemBase} stage-state-highlighted-pink text-pink-700 font-semibold`;
+    case "muted":
+      return `${itemBase} stage-state-muted text-neutral-300`;
+    case "muted-green":
+      return `${itemBase} stage-state-muted-green text-emerald-500`;
+    case "done":
+      return `${itemBase} stage-state-done text-emerald-500`;
+    case "current":
+      return `${itemBase} stage-state-current text-violet-600 font-semibold`;
+    case "upcoming":
+    default:
+      return `${itemBase} stage-state-upcoming text-neutral-400`;
+  }
+}
+
+function dotClass(state: StageState): string {
+  const base = "h-[10px] w-[10px] flex-shrink-0 rounded-full";
+  switch (state) {
+    case "failed":
+      return `${base} bg-[#dc2626] ring-[3px] ring-[rgba(220,38,38,0.2)]`;
+    case "rejected-edge":
+      return `${base} bg-[#dc2626]`;
+    case "rejected-current":
+      return `${base} bg-[#dc2626] ring-[3px] ring-[rgba(220,38,38,0.2)]`;
+    case "regressed-amber":
+      return `${base} bg-[#e5e7eb] ring-2 ring-[#f59e0b]`;
+    case "highlighted-pink":
+      return `${base} bg-[#be185d] ring-[3px] ring-[rgba(190,24,93,0.2)]`;
+    case "muted":
+      return `${base} bg-[#e5e7eb]`;
+    case "muted-green":
+      return `${base} bg-[#10b981] opacity-50`;
+    case "done":
+      return `${base} bg-[#10b981]`;
+    case "current":
+      return `${base} bg-[#7c3aed] ring-[3px] ring-[rgba(124,58,237,0.2)]`;
+    case "upcoming":
+    default:
+      return `${base} bg-[#e5e7eb]`;
+  }
+}
+
+function isDoneLike(state: StageState): boolean {
+  return state === "done" || state === "muted-green";
+}
+
+function isRejectedSide(state: StageState): boolean {
+  return state === "rejected-edge" || state === "rejected-current";
+}
+
+function connectorClass(left: StageState, right: StageState): string {
+  const base = "h-[2px] flex-1";
+  if (isRejectedSide(left) || isRejectedSide(right)) {
+    return `${base} bg-[#fecaca]`;
+  }
+  if (
+    isDoneLike(left) &&
+    (isDoneLike(right) || right === "current" || right === "highlighted-pink")
+  ) {
+    return `${base} bg-[#10b981]`;
+  }
+  return `${base} bg-[#e5e7eb]`;
+}
+
+function labelClass(state: StageState): string {
+  const base = "mt-2 text-9 text-center leading-tight";
   switch (state) {
     case "failed":
     case "rejected-edge":
     case "rejected-current":
-      return "stage-segment-red";
+      return `${base} text-[#dc2626]`;
     case "regressed-amber":
-      return "stage-segment-amber";
+      return `${base} text-[#f59e0b]`;
     case "highlighted-pink":
-      return "stage-segment-pink";
+      return `${base} text-[#be185d] font-semibold`;
     case "muted":
-      return "stage-segment-muted";
+      return `${base} text-[#d1d5db] line-through`;
     case "muted-green":
-      return "stage-segment-muted-green";
+      return `${base} text-[#10b981]`;
     case "done":
-      return "stage-segment-done";
+      return `${base} text-[#10b981]`;
     case "current":
-      return "stage-segment-current";
+      return `${base} text-[#7c3aed] font-semibold`;
     case "upcoming":
     default:
-      return "stage-segment-upcoming";
+      return `${base} text-neutral-400`;
   }
 }
 
@@ -341,19 +418,29 @@ export function StageProgress(props: StageProgressProps) {
         ];
 
   return (
-    <ol data-testid="stage-progress">
-      {segments.map((seg) => (
-        <li
-          key={seg.key}
-          data-testid={`stage-${seg.segment}-${seg.stageId ?? seg.key}`}
-          data-segment={seg.segment}
-          data-state={seg.state}
-          data-stage-id={seg.stageId ?? null}
-          className={colorClass(seg.state)}
-        >
-          {seg.label}
-        </li>
-      ))}
+    <ol
+      data-testid="stage-progress"
+      className="flex flex-shrink-0 items-start border-b border-neutral-100 px-6 py-4"
+    >
+      {segments.map((seg, idx) => {
+        const next = segments[idx + 1];
+        return (
+          <li
+            key={seg.key}
+            data-testid={`stage-${seg.segment}-${seg.stageId ?? seg.key}`}
+            data-segment={seg.segment}
+            data-state={seg.state}
+            data-stage-id={seg.stageId ?? null}
+            className={colorClass(seg.state)}
+          >
+            <div className="flex w-full items-center">
+              <span className={dotClass(seg.state)} />
+              {next ? <span className={connectorClass(seg.state, next.state)} /> : null}
+            </div>
+            <span className={labelClass(seg.state)}>{seg.label}</span>
+          </li>
+        );
+      })}
     </ol>
   );
 }
