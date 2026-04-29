@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
@@ -176,5 +176,35 @@ describe("DocumentDetailPage", () => {
       "highlighted-pink",
     );
     expect(screen.getByTestId("stage-workflow-filed")).toHaveAttribute("data-state", "upcoming");
+  });
+
+  it("wires the FormPanel APPROVAL-branch onApprove handler to applyAction", async () => {
+    const approvalDocument = {
+      ...fixtures.document,
+      currentStageId: "approval",
+      currentStageDisplayName: "Approval",
+      currentStatus: "AWAITING_APPROVAL" as const,
+      workflowOriginStage: null,
+    };
+    let observedBody: unknown = null;
+    let actionCallCount = 0;
+    server.use(
+      http.get("/api/documents/:documentId", () => HttpResponse.json(approvalDocument)),
+      http.post("/api/documents/:documentId/actions", async ({ request }) => {
+        actionCallCount += 1;
+        observedBody = await request.json();
+        return HttpResponse.json(approvalDocument);
+      }),
+    );
+
+    renderPage();
+
+    const approveButton = await screen.findByTestId("approve-button");
+    fireEvent.click(approveButton);
+
+    await waitFor(() => {
+      expect(actionCallCount).toBe(1);
+    });
+    expect(observedBody).toEqual({ action: "Approve" });
   });
 });

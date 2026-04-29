@@ -8,6 +8,7 @@ import { PdfViewer } from "../components/PdfViewer";
 import { DocumentHeader } from "../components/DocumentHeader";
 import { FormPanel } from "../components/FormPanel";
 import { StageProgress } from "../components/StageProgress";
+import { useDocumentActions } from "../hooks/useDocumentActions";
 import { useOrgEvents } from "../hooks/useOrgEvents";
 import type { FieldSchema } from "../types/schema";
 
@@ -61,6 +62,11 @@ export function DocumentDetailPage() {
     enabled: typeof orgId === "string" && orgId.length > 0 && typeof docTypeId === "string",
   });
 
+  const actions = useDocumentActions({
+    documentId: documentId ?? "",
+    organizationId: orgId ?? "",
+  });
+
   const fields = useMemo(() => (data ? deriveFallbackFields(data.extractedFields) : []), [data]);
 
   const docTypeOptions = useMemo(
@@ -98,7 +104,9 @@ export function DocumentDetailPage() {
                 document={data}
                 fields={fields}
                 docTypeOptions={docTypeOptions}
+                isSubmitting={actions.approve.isPending}
                 handlers={{
+                  onApprove: () => actions.approve.mutate(),
                   onBackToDocuments: () =>
                     navigate(`/org/${encodeURIComponent(data.organizationId)}/dashboard`),
                 }}
