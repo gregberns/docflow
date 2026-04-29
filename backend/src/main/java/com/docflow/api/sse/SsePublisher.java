@@ -33,16 +33,28 @@ public class SsePublisher {
   @Async
   @EventListener
   public void onProcessingStepChanged(ProcessingStepChanged event) {
-    fanOut(event, ProcessingStepChanged.class.getSimpleName());
+    try {
+      fanOut(event, ProcessingStepChanged.class.getSimpleName());
+    } catch (AsyncRequestNotUsableException | ClientAbortException ex) {
+      LOG.debug("SSE: client gone during fanOut ({})", ex.getClass().getSimpleName());
+    } catch (IOException ex) {
+      LOG.debug("SSE: I/O during fanOut ({})", ex.getClass().getSimpleName());
+    }
   }
 
   @Async
   @EventListener
   public void onDocumentStateChanged(DocumentStateChanged event) {
-    fanOut(event, DocumentStateChanged.class.getSimpleName());
+    try {
+      fanOut(event, DocumentStateChanged.class.getSimpleName());
+    } catch (AsyncRequestNotUsableException | ClientAbortException ex) {
+      LOG.debug("SSE: client gone during fanOut ({})", ex.getClass().getSimpleName());
+    } catch (IOException ex) {
+      LOG.debug("SSE: I/O during fanOut ({})", ex.getClass().getSimpleName());
+    }
   }
 
-  private void fanOut(DocumentEvent event, String eventName) {
+  private void fanOut(DocumentEvent event, String eventName) throws IOException {
     Set<SseEmitter> emitters = registry.emittersFor(event.organizationId());
     if (emitters.isEmpty()) {
       return;
