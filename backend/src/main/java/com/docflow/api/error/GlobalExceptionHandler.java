@@ -4,6 +4,7 @@ import com.docflow.ingestion.UnsupportedMediaTypeException;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -14,6 +15,8 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import tools.jackson.databind.exc.InvalidTypeIdException;
 
 @RestControllerAdvice
@@ -59,6 +62,29 @@ public class GlobalExceptionHandler {
           List.of(new DetailEntry(path, polymorphismFailure.getOriginalMessage())));
     }
     return build(ErrorCode.VALIDATION_FAILED, "Malformed request body", List.of());
+  }
+
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ProblemDetail> handleNoResourceFound(NoResourceFoundException ex) {
+    return build(ErrorCode.NOT_FOUND, "Resource not found", List.of());
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ProblemDetail> handlePathTypeMismatch(
+      MethodArgumentTypeMismatchException ex) {
+    return build(
+        ErrorCode.VALIDATION_FAILED,
+        "Invalid path parameter",
+        List.of(new DetailEntry(ex.getName(), "invalid value")));
+  }
+
+  @ExceptionHandler(OptimisticLockingFailureException.class)
+  public ResponseEntity<ProblemDetail> handleOptimisticLock(OptimisticLockingFailureException ex) {
+    LOG.warn("Optimistic locking failure: {}", ex.getMessage());
+    return build(
+        ErrorCode.CONCURRENT_MODIFICATION,
+        "Resource was modified concurrently; please retry",
+        List.of());
   }
 
   @ExceptionHandler(Exception.class)

@@ -59,8 +59,8 @@ class ActionRequestDeserializationTest {
   }
 
   @Test
-  void errorCodeCountIsExactlyEleven() {
-    assertEquals(11, ErrorCode.values().length);
+  void errorCodeCountIsExactlyThirteen() {
+    assertEquals(13, ErrorCode.values().length);
   }
 
   @Test
@@ -69,11 +69,13 @@ class ActionRequestDeserializationTest {
     assertEquals(404, ErrorCode.UNKNOWN_DOCUMENT.httpStatus());
     assertEquals(404, ErrorCode.UNKNOWN_PROCESSING_DOCUMENT.httpStatus());
     assertEquals(404, ErrorCode.UNKNOWN_DOC_TYPE.httpStatus());
+    assertEquals(404, ErrorCode.NOT_FOUND.httpStatus());
     assertEquals(415, ErrorCode.UNSUPPORTED_MEDIA_TYPE.httpStatus());
     assertEquals(400, ErrorCode.INVALID_FILE.httpStatus());
     assertEquals(400, ErrorCode.VALIDATION_FAILED.httpStatus());
     assertEquals(409, ErrorCode.INVALID_ACTION.httpStatus());
     assertEquals(409, ErrorCode.REEXTRACTION_IN_PROGRESS.httpStatus());
+    assertEquals(409, ErrorCode.CONCURRENT_MODIFICATION.httpStatus());
     assertEquals(502, ErrorCode.LLM_UNAVAILABLE.httpStatus());
     assertEquals(500, ErrorCode.INTERNAL_ERROR.httpStatus());
   }

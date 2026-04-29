@@ -12,15 +12,19 @@ import com.docflow.api.error.DocflowException.FieldError;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 class GlobalExceptionHandlerContractTest {
 
@@ -167,6 +171,41 @@ class GlobalExceptionHandlerContractTest {
   }
 
   @Test
+  void noResourceFoundReturns404() throws Exception {
+    mockMvc
+        .perform(get("/test/throw").param("kind", "noResource"))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+        .andExpect(jsonPath("$.status").value(404))
+        .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not("INTERNAL_ERROR")));
+  }
+
+  @Test
+  void methodArgumentTypeMismatchReturns400() throws Exception {
+    mockMvc
+        .perform(post("/test/uuid/not-a-uuid"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(jsonPath("$.message").value("Invalid path parameter"))
+        .andExpect(jsonPath("$.details[0].path").value("id"))
+        .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not("INTERNAL_ERROR")));
+  }
+
+  @Test
+  void optimisticLockingFailureReturns409() throws Exception {
+    mockMvc
+        .perform(get("/test/throw").param("kind", "optimisticLock"))
+        .andExpect(status().isConflict())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("CONCURRENT_MODIFICATION"))
+        .andExpect(jsonPath("$.status").value(409))
+        .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not("INTERNAL_ERROR")));
+  }
+
+  @Test
   void internalErrorFromCatchAll() throws Exception {
     mockMvc
         .perform(get("/test/throw").param("kind", "internal"))
@@ -182,7 +221,7 @@ class GlobalExceptionHandlerContractTest {
   static final class ThrowingController {
 
     @org.springframework.web.bind.annotation.GetMapping("/throw")
-    public String throwIt(@RequestParam String kind) {
+    public String throwIt(@RequestParam String kind) throws NoResourceFoundException {
       switch (kind) {
         case "unknownOrg" -> throw new UnknownOrganizationException("org-x");
         case "unknownDoc" -> throw new UnknownDocumentException("doc-x");
@@ -195,6 +234,12 @@ class GlobalExceptionHandlerContractTest {
         case "invalidAction" -> throw new InvalidActionException("Action not allowed");
         case "reextractionInProgress" -> throw new ReextractionInProgressException("doc-x");
         case "llmUnavailable" -> throw new LlmUnavailableException("upstream 503");
+        case "optimisticLock" ->
+            throw new OptimisticLockingFailureException(
+                "workflow_instances row for document_id=abc changed during update");
+        case "noResource" ->
+            throw new NoResourceFoundException(
+                org.springframework.http.HttpMethod.GET, "/api/health", "/api/health");
         case "internal" -> throw new IllegalStateException("boom");
         default -> throw new IllegalArgumentException("unknown kind: " + kind);
       }
@@ -203,6 +248,11 @@ class GlobalExceptionHandlerContractTest {
     @PostMapping(value = "/echo", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ActionRequest echo(@Valid @RequestBody ActionRequest body) {
       return body;
+    }
+
+    @PostMapping("/uuid/{id}")
+    public String uuidPath(@PathVariable UUID id) {
+      return id.toString();
     }
   }
 }
