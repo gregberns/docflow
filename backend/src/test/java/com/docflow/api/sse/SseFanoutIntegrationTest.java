@@ -44,7 +44,7 @@ class SseFanoutIntegrationTest {
   void register_emitsRetryFrameAndTextEventStreamContentType() throws Exception {
     MvcResult mvc =
         mockMvc
-            .perform(get("/api/orgs/{orgId}/events", ORG_A))
+            .perform(get("/api/organizations/{orgId}/stream", ORG_A))
             .andExpect(request().asyncStarted())
             .andReturn();
 

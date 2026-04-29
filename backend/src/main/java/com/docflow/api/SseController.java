@@ -20,7 +20,9 @@ public class SseController {
     this.registry = registry;
   }
 
-  @GetMapping(value = "/api/orgs/{orgId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+  @GetMapping(
+      value = "/api/organizations/{orgId}/stream",
+      produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   public SseEmitter stream(@PathVariable String orgId) throws IOException {
     SseEmitter emitter = new SseEmitter(0L);
     registry.register(orgId, emitter);
