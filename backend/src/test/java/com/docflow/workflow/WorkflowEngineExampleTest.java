@@ -353,15 +353,32 @@ class WorkflowEngineExampleTest {
         .when(llmExtractor)
         .extract(eq(documentId), eq(NEW_DOC_TYPE_ID));
 
+    org.mockito.InOrder order = org.mockito.Mockito.inOrder(eventBus, llmExtractor);
+
     WorkflowOutcome outcome =
         engine.applyAction(documentId, new WorkflowAction.Resolve(NEW_DOC_TYPE_ID));
 
     assertThat(outcome).isInstanceOf(WorkflowOutcome.Success.class);
-    verify(llmExtractor, times(1)).extract(eq(documentId), eq(NEW_DOC_TYPE_ID));
     verify(instanceWriter, never()).clearFlag(any(), any(WorkflowCatalog.class), any(), any());
     verify(instanceWriter, never())
         .advanceStage(any(), any(), any(WorkflowCatalog.class), any(), any());
-    verifyNoInteractions(eventBus);
+
+    DocumentStateChanged inProgressEvent = capturePublishedEvent();
+    assertThat(inProgressEvent.documentId()).isEqualTo(documentId);
+    assertThat(inProgressEvent.storedDocumentId()).isEqualTo(storedDocumentId);
+    assertThat(inProgressEvent.organizationId()).isEqualTo(ORG_ID);
+    assertThat(inProgressEvent.currentStage()).isEqualTo(STAGE_REVIEW);
+    assertThat(inProgressEvent.currentStatus()).isEqualTo(WorkflowStatus.FLAGGED.name());
+    assertThat(inProgressEvent.reextractionStatus())
+        .isEqualTo(ReextractionStatus.IN_PROGRESS.name());
+    assertThat(inProgressEvent.action()).isEqualTo("RESOLVE");
+    assertThat(inProgressEvent.comment()).isNull();
+    assertThat(inProgressEvent.occurredAt()).isEqualTo(FIXED_NOW);
+    verify(eventBus, times(1)).publish(any(DocumentEvent.class));
+    verifyEventShape(inProgressEvent);
+
+    order.verify(eventBus).publish(any(DocumentEvent.class));
+    order.verify(llmExtractor).extract(eq(documentId), eq(NEW_DOC_TYPE_ID));
   }
 
   private Document document(ReextractionStatus status) {

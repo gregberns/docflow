@@ -134,6 +134,19 @@ public class WorkflowEngine {
       return new WorkflowOutcome.Failure(new WorkflowError.ExtractionInProgress(document.id()));
     }
 
+    WorkflowInstance instance = requireUpdatedInstance(document.id());
+    eventBus.publish(
+        new DocumentStateChanged(
+            document.id(),
+            document.storedDocumentId(),
+            document.organizationId(),
+            instance.currentStageId(),
+            instance.currentStatus().name(),
+            ReextractionStatus.IN_PROGRESS.name(),
+            "RESOLVE",
+            null,
+            Instant.now(clock)));
+
     try {
       llmExtractor.extract(document.id(), newDocTypeId);
     } catch (RetypeAlreadyInProgressException e) {
