@@ -80,3 +80,13 @@ com/docflow/config/org/StageKind.class
 com/docflow/config/org/WorkflowStatus.class
 com/docflow/config/org/TransitionAction.class
 com/docflow/config/org/GuardOp.class
+
+# C1 catalog views: pure value records (accessors only). The catalog impls
+# carry the load/projection logic and are covered by OrganizationCatalogIT.
+com/docflow/config/catalog/OrganizationView.class
+com/docflow/config/catalog/DocumentTypeSchemaView.class
+com/docflow/config/catalog/FieldView.class
+com/docflow/config/catalog/WorkflowView.class
+com/docflow/config/catalog/StageView.class
+com/docflow/config/catalog/TransitionView.class
+com/docflow/config/catalog/GuardView.class

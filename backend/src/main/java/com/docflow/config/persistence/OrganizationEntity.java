@@ -19,12 +19,16 @@ public class OrganizationEntity {
   @Column(name = "icon_id", nullable = false)
   private String iconId;
 
+  @Column(name = "ordinal", nullable = false)
+  private int ordinal;
+
   protected OrganizationEntity() {}
 
-  public OrganizationEntity(String id, String displayName, String iconId) {
+  public OrganizationEntity(String id, String displayName, String iconId, int ordinal) {
     this.id = id;
     this.displayName = displayName;
     this.iconId = iconId;
+    this.ordinal = ordinal;
   }
 
   public String getId() {
@@ -37,5 +41,9 @@ public class OrganizationEntity {
 
   public String getIconId() {
     return iconId;
+  }
+
+  public int getOrdinal() {
+    return ordinal;
   }
 }

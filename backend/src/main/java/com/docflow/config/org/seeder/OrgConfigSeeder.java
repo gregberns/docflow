@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -36,6 +38,7 @@ public class OrgConfigSeeder {
   }
 
   @EventListener(ApplicationReadyEvent.class)
+  @Order(Ordered.HIGHEST_PRECEDENCE + 100)
   public void seedOnReady() {
     if (!appConfig.config().seedOnBoot()) {
       LOG.info("OrgConfigSeeder: seedOnBoot=false, skipping");

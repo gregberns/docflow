@@ -147,11 +147,12 @@ class ProcessingDocumentWriterTest {
 
   private static void insertOrganization(JdbcTemplate jdbc, String organizationId) {
     jdbc.update(
-        "INSERT INTO organizations (id, display_name, icon_id) VALUES (?, ?, ?) "
+        "INSERT INTO organizations (id, display_name, icon_id, ordinal) VALUES (?, ?, ?, ?) "
             + "ON CONFLICT (id) DO NOTHING",
         organizationId,
         organizationId,
-        "icon-" + organizationId);
+        "icon-" + organizationId,
+        0);
   }
 
   private record Fixture(

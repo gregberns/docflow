@@ -73,10 +73,11 @@ class LlmCallAuditWriterTest {
     jdbc.update("DELETE FROM organizations");
 
     jdbc.update(
-        "INSERT INTO organizations (id, display_name, icon_id) VALUES (?, ?, ?)",
+        "INSERT INTO organizations (id, display_name, icon_id, ordinal) VALUES (?, ?, ?, ?)",
         ORG_ID,
         "Riverside Construction",
-        "icon-riverside");
+        "icon-riverside",
+        0);
     jdbc.update(
         "INSERT INTO document_types (organization_id, id, display_name, field_schema)"
             + " VALUES (?, ?, ?, '{}'::jsonb)",

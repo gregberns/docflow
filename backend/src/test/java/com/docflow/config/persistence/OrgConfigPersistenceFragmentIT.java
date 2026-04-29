@@ -52,7 +52,7 @@ class OrgConfigPersistenceFragmentIT {
   @Test
   void roundTripsCompleteOrganizationGraph() {
     OrganizationEntity org =
-        new OrganizationEntity("riverside-bistro", "Riverside Bistro", "icon-riverside");
+        new OrganizationEntity("riverside-bistro", "Riverside Bistro", "icon-riverside", 0);
     organizationRepository.saveAndFlush(org);
 
     DocumentTypeEntity docType =

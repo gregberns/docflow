@@ -88,10 +88,11 @@ class StoredDocumentPersistenceFragmentIT {
     String orgId = "pinnacle-legal";
     new JdbcTemplate(dataSource)
         .update(
-            "INSERT INTO organizations (id, display_name, icon_id) VALUES (?, ?, ?)",
+            "INSERT INTO organizations (id, display_name, icon_id, ordinal) VALUES (?, ?, ?, ?)",
             orgId,
             "Pinnacle Legal",
-            "icon-pinnacle-legal");
+            "icon-pinnacle-legal",
+            0);
 
     StoredDocumentId id = StoredDocumentId.generate();
     Instant uploadedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);

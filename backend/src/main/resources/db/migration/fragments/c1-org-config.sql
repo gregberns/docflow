@@ -4,7 +4,8 @@
 CREATE TABLE organizations (
     id           VARCHAR(255) PRIMARY KEY,
     display_name VARCHAR(255) NOT NULL,
-    icon_id      VARCHAR(255) NOT NULL
+    icon_id      VARCHAR(255) NOT NULL,
+    ordinal      INT          NOT NULL
 );
 
 CREATE TABLE document_types (

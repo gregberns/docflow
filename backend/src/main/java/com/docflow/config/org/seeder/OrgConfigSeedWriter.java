@@ -64,9 +64,10 @@ public class OrgConfigSeedWriter {
   }
 
   private void persistOrganizations(List<OrganizationDefinition> organizations) {
-    for (OrganizationDefinition org : organizations) {
+    for (int i = 0; i < organizations.size(); i++) {
+      OrganizationDefinition org = organizations.get(i);
       organizationRepository.save(
-          new OrganizationEntity(org.id(), org.displayName(), org.iconId()));
+          new OrganizationEntity(org.id(), org.displayName(), org.iconId(), i));
     }
   }
 
