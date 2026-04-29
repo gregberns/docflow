@@ -6,7 +6,6 @@ import com.docflow.config.catalog.TransitionView;
 import com.docflow.config.catalog.WorkflowCatalog;
 import com.docflow.document.Document;
 import com.docflow.document.DocumentReader;
-import com.docflow.document.DocumentWriter;
 import com.docflow.document.ReextractionStatus;
 import com.docflow.platform.DocumentEventBus;
 import com.docflow.workflow.events.DocumentStateChanged;
@@ -21,7 +20,6 @@ public class WorkflowEngine {
 
   private final WorkflowCatalog catalog;
   private final DocumentReader documentReader;
-  private final DocumentWriter documentWriter;
   private final WorkflowInstanceReader instanceReader;
   private final WorkflowInstanceWriter instanceWriter;
   private final LlmExtractor llmExtractor;
@@ -32,7 +30,6 @@ public class WorkflowEngine {
   public WorkflowEngine(
       WorkflowCatalog catalog,
       DocumentReader documentReader,
-      DocumentWriter documentWriter,
       WorkflowInstanceReader instanceReader,
       WorkflowInstanceWriter instanceWriter,
       LlmExtractor llmExtractor,
@@ -40,7 +37,6 @@ public class WorkflowEngine {
       Clock clock) {
     this.catalog = Objects.requireNonNull(catalog, "catalog");
     this.documentReader = Objects.requireNonNull(documentReader, "documentReader");
-    this.documentWriter = Objects.requireNonNull(documentWriter, "documentWriter");
     this.instanceReader = Objects.requireNonNull(instanceReader, "instanceReader");
     this.instanceWriter = Objects.requireNonNull(instanceWriter, "instanceWriter");
     this.llmExtractor = Objects.requireNonNull(llmExtractor, "llmExtractor");
@@ -138,27 +134,12 @@ public class WorkflowEngine {
       return new WorkflowOutcome.Failure(new WorkflowError.ExtractionInProgress(document.id()));
     }
 
-    documentWriter.setReextractionStatus(document.id(), ReextractionStatus.IN_PROGRESS);
-    WorkflowInstance latest = requireUpdatedInstance(document.id());
-    DocumentStateChanged event =
-        new DocumentStateChanged(
-            document.id(),
-            document.storedDocumentId(),
-            document.organizationId(),
-            latest.currentStageId(),
-            latest.currentStatus().name(),
-            ReextractionStatus.IN_PROGRESS.name(),
-            "RESOLVE",
-            null,
-            Instant.now(clock));
-    eventBus.publish(event);
-
     try {
       llmExtractor.extract(document.id(), newDocTypeId);
     } catch (RetypeAlreadyInProgressException e) {
       return new WorkflowOutcome.Failure(new WorkflowError.ExtractionInProgress(document.id()));
     }
-    return new WorkflowOutcome.Success(latest);
+    return new WorkflowOutcome.Success(requireUpdatedInstance(document.id()));
   }
 
   private WorkflowOutcome advanceViaResolver(
