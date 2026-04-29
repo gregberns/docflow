@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { DocumentView, WorkflowStatus } from "../types/readModels";
 import type { FieldSchema } from "../types/schema";
 import type { StageSummary } from "../types/workflow";
@@ -7,6 +8,8 @@ import { FlagBanner } from "./FlagBanner";
 import { ReextractionInProgressBanner } from "./ReextractionInProgressBanner";
 import { ReextractionFailedBanner } from "./ReextractionFailedBanner";
 import { ReviewForm, type ReviewFormCallbacks } from "./ReviewForm";
+import { ReclassifyModal } from "./ReclassifyModal";
+import { FlagModal } from "./FlagModal";
 
 type FormValues = Record<string, unknown>;
 
@@ -56,13 +59,6 @@ function pickBranch(
   return "REVIEW";
 }
 
-function reviewCallbacks(handlers?: FormPanelHandlers): ReviewFormCallbacks {
-  const out: ReviewFormCallbacks = {};
-  if (handlers?.onSubmitFields) out.onSubmitFields = handlers.onSubmitFields;
-  if (handlers?.onDocumentTypeChange) out.onDocumentTypeChange = handlers.onDocumentTypeChange;
-  return out;
-}
-
 export function FormPanel({
   document,
   fields,
@@ -76,7 +72,24 @@ export function FormPanel({
   const { reextractionStatus, currentStatus, workflowOriginStage } = document;
 
   const branch = pickBranch(reextractionStatus, currentStatus, workflowOriginStage);
-  const callbacks = reviewCallbacks(handlers);
+
+  const [pendingDocType, setPendingDocType] = useState<string | null>(null);
+  const [flagOpen, setFlagOpen] = useState(false);
+
+  const reviewCallbacks: ReviewFormCallbacks = {
+    onDocumentTypeChange: (newType: string) => {
+      if (newType && newType !== document.detectedDocumentType) {
+        setPendingDocType(newType);
+      }
+      handlers?.onDocumentTypeChange?.(newType);
+    },
+  };
+  if (handlers?.onSubmitFields) reviewCallbacks.onSubmitFields = handlers.onSubmitFields;
+
+  const onFlag = (): void => {
+    setFlagOpen(true);
+    handlers?.onFlag?.();
+  };
 
   return (
     <div data-testid="form-panel" data-branch={branch}>
@@ -91,7 +104,7 @@ export function FormPanel({
             disabled={true}
             hideActions={true}
             isSubmitting={Boolean(isSubmitting)}
-            callbacks={callbacks}
+            callbacks={reviewCallbacks}
           />
         </>
       )}
@@ -105,7 +118,8 @@ export function FormPanel({
             flagged={Boolean(workflowOriginStage)}
             disabled={false}
             isSubmitting={Boolean(isSubmitting)}
-            callbacks={callbacks}
+            selectedDocumentType={pendingDocType}
+            callbacks={reviewCallbacks}
           />
         </>
       )}
@@ -117,7 +131,8 @@ export function FormPanel({
           flagged={false}
           disabled={false}
           isSubmitting={Boolean(isSubmitting)}
-          callbacks={callbacks}
+          selectedDocumentType={pendingDocType}
+          callbacks={reviewCallbacks}
         />
       )}
       {branch === "REVIEW_FLAGGED" && (
@@ -130,7 +145,8 @@ export function FormPanel({
             flagged={true}
             disabled={false}
             isSubmitting={Boolean(isSubmitting)}
-            callbacks={callbacks}
+            selectedDocumentType={pendingDocType}
+            callbacks={reviewCallbacks}
           />
         </>
       )}
@@ -141,7 +157,7 @@ export function FormPanel({
           stageDisplayName={document.currentStageDisplayName}
           role={stage?.role ?? null}
           onApprove={handlers?.onApprove ?? noop}
-          onFlag={handlers?.onFlag ?? noop}
+          onFlag={onFlag}
           isSubmitting={isSubmitting ?? false}
         />
       )}
@@ -152,6 +168,24 @@ export function FormPanel({
           status={currentStatus}
           stageDisplayName={document.currentStageDisplayName}
           onBackToDocuments={handlers?.onBackToDocuments ?? noop}
+        />
+      )}
+      {pendingDocType && (
+        <ReclassifyModal
+          documentId={document.documentId}
+          organizationId={document.organizationId}
+          newDocumentType={pendingDocType}
+          previousDocumentType={document.detectedDocumentType ?? ""}
+          onCancel={() => setPendingDocType(null)}
+          onConfirmed={() => setPendingDocType(null)}
+        />
+      )}
+      {flagOpen && (
+        <FlagModal
+          documentId={document.documentId}
+          organizationId={document.organizationId}
+          onCancel={() => setFlagOpen(false)}
+          onSubmitted={() => setFlagOpen(false)}
         />
       )}
     </div>

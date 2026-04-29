@@ -22,6 +22,7 @@ interface ReviewFormProps {
   disabled: boolean;
   hideActions?: boolean;
   isSubmitting?: boolean;
+  selectedDocumentType?: string | null;
   callbacks?: ReviewFormCallbacks;
 }
 
@@ -50,6 +51,7 @@ export function ReviewForm({
   disabled,
   hideActions,
   isSubmitting,
+  selectedDocumentType,
   callbacks,
 }: ReviewFormProps) {
   const schema = useMemo(() => buildZodFromFieldSchema(fields), [fields]);
@@ -114,7 +116,7 @@ export function ReviewForm({
           <span>Document Type</span>
           <select
             data-testid="doctype-select"
-            value={document.detectedDocumentType ?? ""}
+            value={selectedDocumentType ?? document.detectedDocumentType ?? ""}
             disabled={disabled}
             onChange={(event) => callbacks?.onDocumentTypeChange?.(event.target.value)}
           >
