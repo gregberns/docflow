@@ -18,6 +18,7 @@ export default defineConfig({
         maxThreads: 2,
       },
     },
+    exclude: ["node_modules", "dist", "e2e/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
