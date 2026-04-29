@@ -347,7 +347,7 @@ Each is concrete and testable — DOM elements, events, transitions.
 
 - AC9.1 Clicking `Flag` on an approval stage opens `<div role="dialog" data-testid="flag-modal">` with a required `<textarea>`.
 - AC9.2 The submit button has `disabled` while the textarea value is empty or whitespace-only; it becomes enabled when non-whitespace is present.
-- AC9.3 On submit, POST `/api/documents/{id}/{stageId}/flag` is fired with the comment in the body; on success, the modal closes and the document query is invalidated.
+- AC9.3 On submit, POST `/api/documents/{id}/actions` is fired with body `{ "action": "Flag", "comment": <textarea> }`; on success, the modal closes and the document query is invalidated. (The earlier `/{id}/{stageId}/flag` URL was a Pass-5 spec drift; the C5 `/actions` endpoint is canonical.)
 
 ---
 
