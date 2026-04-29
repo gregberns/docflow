@@ -27,6 +27,7 @@ Carried forward from `03-components.md` §C4. Each is verifiable.
 | C4-R11 | `WorkflowInstance` schema: `id, document_id FK unique, organization_id, current_stage_id, current_status, workflow_origin_stage (nullable), flag_comment (nullable), updated_at`. Status rule: review + origin → `FLAGGED`; else `currentStage.canonicalStatus`. Indexes: `(organization_id, current_status, updated_at DESC)`, `(document_id)` unique. Always starts at `Review`. | Migration SQL + Flyway test + index-existence assertion |
 | C4-R12 | `advanceStage` / `setFlag` / `clearFlag` set `currentStageId` and `currentStatus` together. Unit test asserts canonical-status mapping for every seeded stage; property test asserts the rule across random workflows. | Unit + property test |
 | C4-R13 | On `ProcessingCompleted`, in one DB transaction: INSERT `Document` (carrying `reextractionStatus = NONE` and the event's `extractedFields` / `rawText` / `detectedDocumentType`), INSERT `WorkflowInstance` (Review stage, `AWAITING_REVIEW`, no origin, no flag), emit `DocumentStateChanged`. `ProcessingDocument` row is left in place; C5 dashboard query filters out completed-but-undeleted rows by joining against `documents`. Atomicity tested. | Integration test with simulated mid-transaction failure |
+| C4-R14 | Workflow scenarios cover happy path, wrong-type flag, missing-field flag, retype paths (no-op, success, failed), and origin restoration. | Scenario suite (C-EVAL-4) includes the corresponding fixtures. |
 
 ---
 

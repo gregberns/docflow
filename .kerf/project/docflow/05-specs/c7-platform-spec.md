@@ -23,6 +23,7 @@ Pass 5 implementation spec for the connective tissue: Makefile, docker-compose, 
 | **C7-R12** | docker-compose runs frontend + backend on a shared network; the host-side dev server (`npm run dev`) uses Vite proxy to forward `/api/**` and `/api/**/stream` to `http://localhost:8080`. CORS denies by default. | Manual smoke ; CORS contract test. |
 | **C7-R13** | Startup-only external-input loading. All env vars / external configuration are read once into a typed immutable `AppConfig` (records + `@ConfigurationProperties` + `@Validated`) and injected. Missing/invalid config fails startup, never a runtime 500. Model ID is `AppConfig.llm.modelId = "claude-sonnet-4-6"`. No code outside the `AppConfig` package may reference `System.getenv`, `@Value`, or read `.env` directly — enforced by `grepForbiddenStrings`. | `MissingApiKeyStartupTest` asserts startup fails on empty key ; `grepForbiddenStrings` rejects an injected `@Value` outside `AppConfig`. |
 | **C7-R14** | `Makefile` at repo root provides the unified developer surface: `make build`, `make start` (alias `up`), `make stop` (alias `down`), `make test`, `make e2e`, `make eval`. The Stop hook (C7-R7) and CI (C7-R10) both invoke `make test` — one source of truth for the fast gate. | Each target's exit code matches the underlying tool ; aliases resolve. |
+| **C7-R15** | Scenario tests are part of the `make test` fast gate; excluded from `make e2e` and `make eval`. | `./gradlew check` runs them; `make e2e` and `make eval` do not invoke the scenario suite. |
 
 ---
 

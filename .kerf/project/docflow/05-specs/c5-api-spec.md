@@ -16,6 +16,7 @@ Implementation plan for the HTTP + SSE boundary specified in `03-components.md` 
 | **C5-R8** | `GET /api/organizations/{orgId}/stream` SSE; carries exactly `ProcessingStepChanged` and `DocumentStateChanged`. Frames have `id:`, `event:`, initial `retry: 5000`. No `Last-Event-ID` resume. | SSE integration test |
 | **C5-R9** | Structured error body `{ code, message, details? }` for all 4xx/5xx. | Contract test (per code) |
 | **C5-R9a** | Eleven-code error taxonomy (`UNKNOWN_ORGANIZATION`, `UNKNOWN_DOCUMENT`, `UNKNOWN_PROCESSING_DOCUMENT`, `UNKNOWN_DOC_TYPE`, `UNSUPPORTED_MEDIA_TYPE`, `INVALID_FILE`, `VALIDATION_FAILED`, `INVALID_ACTION`, `REEXTRACTION_IN_PROGRESS`, `LLM_UNAVAILABLE`, `INTERNAL_ERROR`). Note: 11 codes total; the "8-code" label in `03-components.md` §C5-R9a is a misnomer carried over from earlier drafts — the canonical list has 11 entries. | Contract test |
+| **C5-R10** | SSE scenario covers two concurrent uploads on a single subscriber stream. | Scenario `05-concurrent-uploads` asserts both documents' events appear on a single SSE GET. |
 
 ## 2. Research summary (C5-relevant)
 
@@ -261,7 +262,7 @@ This runs `./gradlew check` (which transitively runs the spec's HTTP-seam smoke 
 3. `GET /api/organizations/pinnacle-legal/documents` → assert `documents` contains an entry with the matching `storedDocumentId` and `currentStatus = AWAITING_REVIEW`.
 4. `POST /api/documents/{documentId}/actions` with `{ "action": "Approve" }` → 200 + updated `DocumentView` advanced one stage.
 
-This is the only HTTP-seam integration test (per scope cut). Other layers — controllers, error handler, read-model, SSE fan-out — are tested independently in unit / contract tests.
+This is the only **live-API** HTTP-seam integration test (per scope cut). Other layers — controllers, error handler, read-model, SSE fan-out — are tested independently in unit / contract tests.
 
 ### Manual smoke
 
