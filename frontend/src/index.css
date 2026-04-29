@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+/* Custom px-derived text sizes use the --text-{px} convention so children can
+   reference exact mockup values via text-12, text-13, etc. Tailwind's default
+   text-base/text-lg scale remains available for non-mockup usage. */
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --color-surface: #f5f6f8;
+  --color-card: #ffffff;
+  --color-table-head: #f9fafb;
+  --color-brand-navy: #1a1a2e;
+
+  --color-brand-blue: #6c9bff;
+  --color-brand-blue-hover: #5a8af2;
+  --color-brand-blue-soft: #c4c9d9;
+  --color-brand-blue-avatar: #6c9bff;
+
+  --color-success: #10b981;
+  --color-success-strong: #059669;
+  --color-warn: #f59e0b;
+  --color-danger: #dc2626;
+  --color-danger-soft: #ef4444;
+
+  --color-neutral-700: #374151;
+  --color-neutral-500: #6b7280;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-100: #f3f4f6;
+
+  --color-stage-classify-bg: #eff6ff;
+  --color-stage-classify-fg: #3b82f6;
+  --color-stage-extract-bg: #fef3c7;
+  --color-stage-extract-fg: #b45309;
+  --color-stage-review-bg: #ede9fe;
+  --color-stage-review-fg: #7c3aed;
+  --color-stage-approval-bg: #fce7f3;
+  --color-stage-approval-fg: #be185d;
+  --color-stage-filed-bg: #d1fae5;
+  --color-stage-filed-fg: #059669;
+  --color-stage-rejected-bg: #fee2e2;
+  --color-stage-rejected-fg: #dc2626;
+  --color-stage-flagged-bg: #fff1f2;
+  --color-stage-flagged-fg: #e11d48;
+  --color-stage-processing-bg: #f3f4f6;
+  --color-stage-processing-fg: #9ca3af;
+  --color-stage-type-neutral-bg: #f3f4f6;
+  --color-stage-type-neutral-fg: #374151;
+
+  --color-pdf-panel: #2a2a2e;
+  --color-pdf-toolbar-bg: #3a3a3e;
+  --color-pdf-toolbar-border: #4a4a4e;
+
+  --color-white-08: rgba(255, 255, 255, 0.08);
+  --color-white-12: rgba(255, 255, 255, 0.12);
+
+  --text-9: 0.5625rem;
+  --text-10: 0.625rem;
+  --text-11: 0.6875rem;
+  --text-12: 0.75rem;
+  --text-13: 0.8125rem;
+  --text-14: 0.875rem;
+  --text-16: 1rem;
+  --text-18: 1.125rem;
+  --text-20: 1.25rem;
+  --text-22: 1.375rem;
+  --text-24: 1.5rem;
+  --text-32: 2rem;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-neutral-700);
+  font-family: var(--font-sans);
+}
