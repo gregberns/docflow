@@ -1,33 +1,23 @@
 <!-- PP-TRIAL:v2 2026-04-28 implementation -->
 # Session Handoff — implementation phase
 
-**Status:** clean. 5 tasks closed this session, repo on `implementation`, working tree clean, last commit `9ea3638`. `./gradlew check` + `make test` both BUILD SUCCESSFUL. **Stop hook is now live** — `make test` runs on every agent Stop and blocks "done" on failure (C7.10 / `.claude/settings.json`).
+**Status:** clean. Branch `implementation` at `d69c43e`. `make test` GREEN. **8 tasks landed this session** in three orchestrated parallel batches: `cdf606c` C4.2, `af4cce3` C4.4, `7fdad15` C3.5, `4d5861b` C3.6, `7db7930` C5.4, `176068e` C5.5, `e0db3c6` C2.5, `d69c43e` C3.7.
 
-**What we're doing.** DocFlow take-home — multi-tenant document processing, kerf plan in `.kerf/docflow/`, beads (`br`) tracker.
+**What we're doing.** DocFlow take-home, multi-tenant doc processing. Working through kerf plan + beads (`br`). C1 done end-to-end; C2 has upload + integration test; C3 has prompt config + tool schema + Anthropic client + classifier; C4 has the Document/WorkflowInstance writer + TransitionResolver; C5 has org/upload/document/dashboard controllers.
 
-**Closed this session (commit order):** C3.2 (ProcessingDocument entity/writer/reader), C3.3 (LlmCallAudit + INSERT-only writer), C1.3 (ConfigValidator CV-1..CV-8), df-5my (forbidden-strings env-read patterns + section parser), C7.10 (Stop hook). All landed via the orchestrator + ralph-loop pattern from the prior handoff: 3-way parallel implementers in worktrees → independent verifiers → sequential merge with `./gradlew check` between each.
+**Next step.** Run `br ready`. **6 open tasks** unblocked, biggest two are P2:
+- **C3.8** (`df-2zl.8`) — LlmExtractor (initial-pipeline + retype + retry). 16h. `com.docflow.c3.llm`.
+- **C7.9** (`df-9c2.9`) — SeedDataLoader + SeedManifestTest. 16h. `com.docflow.platform`.
+- Plus: C4.5 WorkflowEngine, C5.6 Action/Review controllers, C3.9 pipeline orchestrator, P3 chore.
 
-**Two cumulative things to know.**
-1. **`forbidden-strings.txt` now drives the whole grep contract.** New `[bare-tokens]` section holds env-reads (`System.getenv`, `@Value`); the default section gained `.env`. The `com.docflow.config.**` exemption now applies to **both** literal and bare-token patterns (the literal exemption was previously missing per c1-config-spec.md §3.6 — strict tightening, no production code currently trips). C7.6's task is now config-file-driven, no hard-coded patterns.
-2. **C1.3 has a leftover workaround.** CV-5 uses `capitalize(StageKind.REVIEW.name())` to dodge the literal `"Review"`. Now that df-5my exempts the config package, the workaround is unnecessary — the validator could just write `"Review"` directly. Optional one-line cleanup; the code is correct either way.
+Both C3.8 and C7.9 were attempted this session but their agents auto-backgrounded and stomped the main worktree (see heads-up). They were rolled back. Re-dispatch with corrected briefs.
 
-**Heads-up: the Stop hook will fire.** When you finish a turn, Claude Code automatically runs `cd "$CLAUDE_PROJECT_DIR" && make test` (timeout 600s). If it fails, your "done" is blocked and you'll see the failure in the transcript. This is the project's enforcement of "done means green" — don't try to bypass it; fix the underlying break.
+**Heads-up — important.** Stop hook runs `make test` after every turn (timeout 600s). When orchestrating parallel sub-agents with `isolation: "worktree"`, **never embed `/Users/gb/github/basata/...` absolute paths in the brief** — auto-backgrounded agents take them literally and write to the main repo, breaking the build. Use repo-relative paths and a `pwd` preflight. Detail saved at `~/.claude/projects/-Users-gb-github-basata/memory/feedback_worktree_relative_paths.md` — read it. Cap parallel batch size at ~3 to keep agents in foreground.
 
-**Next step.** Run `br ready`. Only **1** task is unblocked:
-- **C1.4** (df-sxq.6) — Author seed YAML fixtures, 3 orgs × 3 doc-types each. Pure resources work (no Java), depends on the now-landed C1.1 records and C1.3 validator. Once it lands, several downstream tasks (C1.7 seeder, C2 ingestion validation, C3 prompts) likely unblock — re-check `br ready` after.
+**Files to open first.** For C3.8: `backend/src/main/java/com/docflow/c3/llm/LlmClassifier.java` (sibling, mirror its try/finally audit pattern), `LlmCallExecutor.java`, `MessageContentBuilder.java`. For C7.9: `backend/src/main/resources/seed/manifest.yaml`, `WorkflowInstanceWriter.java` (needs an `insert(WorkflowInstance)` method added — interface + JDBC impl).
 
-**Toolchain gotchas (cumulative, unchanged).**
-- PATH/JAVA_HOME for gradle: `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"; export JAVA_HOME="/opt/homebrew/opt/openjdk"`. Build from `/Users/gb/github/basata/backend/`.
-- Jackson 3 namespace: `tools.jackson.*`.
-- Testcontainers 2.0 artifacts: `testcontainers-postgresql` / `testcontainers-junit-jupiter`.
-- `organizationId` is a `String` slug, NOT a UUID. Surrogate IDs (stored_documents, processing_documents, llm_call_audit, documents) are UUID.
-- **CWD trap on `br`**: always run from `/Users/gb/github/basata` (or `git -C <main>`), never from inside a worktree path.
-- `br sync --flush-only --force` after `br create`/`br close` if `--flush-only` says "Nothing to export".
-- `.claude/worktrees/` is gitignored; agent-isolation worktrees are ephemeral.
+**Toolchain (unchanged).** `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"; export JAVA_HOME="/opt/homebrew/opt/openjdk"`. Build from `backend/`. Spring Boot 4 quirks: `tools.jackson.*`, `org.springframework.boot.persistence.autoconfigure.EntityScan`, `MockMvcBuilders.webAppContextSetup`. `organizationId` is a String slug; surrogate IDs are UUID. `@SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")` precedent for per-row construction loops. Anthropic SDK 2.10.0 added (still uses Jackson 2 internally — `JsonValue.convert(Map.class)` requires `@SuppressWarnings("unchecked")` with a `why`). C7.4 Flyway baseline IS done (was wrong in the prior handoff).
 
-**Files to open first.**
-- `.kerf/docflow/SPEC.md`, `.kerf/docflow/07-tasks.md`
-- `.kerf/docflow/05-specs/c1-config-spec.md` (especially §4 for seed fixture layout) for C1.4
-- `backend/src/main/resources/seed/` for the existing layout (loader test fixtures already mirror this shape)
+**Worktrees.** Several locked worktrees under `.claude/worktrees/agent-*` from this session — `agent-a70e1cddbf40425da` has uncommitted C7.9 partial work if you want to salvage; otherwise discard.
 
 **No blocking questions.**
