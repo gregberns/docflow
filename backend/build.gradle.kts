@@ -279,3 +279,22 @@ tasks.register<GrepForbiddenStringsTask>("grepForbiddenStrings") {
 tasks.named("check") {
     dependsOn("grepForbiddenStrings")
 }
+
+tasks.register<JavaExec>("evalRun") {
+    group = "verification"
+    description = "Runs the C3 eval harness against the live Anthropic API. Requires ANTHROPIC_API_KEY."
+    dependsOn(tasks.named("classes"))
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("com.docflow.c3.eval.EvalRunner")
+    standardInput = System.`in`
+    doFirst {
+        val apiKey = System.getenv("ANTHROPIC_API_KEY").orEmpty()
+        if (apiKey.isBlank()) {
+            logger.lifecycle(
+                "evalRun: ANTHROPIC_API_KEY is not set; skipping eval. " +
+                    "Set the env var and re-run to invoke the live API.",
+            )
+            throw org.gradle.api.tasks.StopExecutionException()
+        }
+    }
+}

@@ -21,4 +21,4 @@ e2e:
 	npm --prefix frontend run test:e2e
 
 eval:
-	cd backend && ./gradlew evalLive
+	cd backend && ./gradlew evalRun

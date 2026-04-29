@@ -1,0 +1,227 @@
+- path: ironworks-construction/change-orders/infinity_pool_to_moat_change_order.pdf
+  organizationId: ironworks-construction
+  documentType: change-order
+  extractedFields:
+    projectCode: "RC-2024-017"
+    projectName: "Riverside Commons — Phase 3 Amenities"
+    description: "Client has requested conversion of the planned infinity pool (Drawing A-14, Rev 3) to a decorative moat with pedestrian bridge. Scope includes: demolition of existing pool excavation and rebar cage, re-grading for moat channel (approximately 180 linear feet, 8ft wide, 4ft depth), installation of alligator-grade waterproofing membrane, recirculating pump system, decorative stone lining, and a 12ft arched pedestrian bridge with wrought-iron railings."
+    costImpact: "45000.00"
+    scheduleImpact: "+18 calendar days"
+    requestedBy: "Marcus Wellington, Owner"
+    approvedBy: "Sarah Chen, Project Manager"
+
+- path: ironworks-construction/invoices/concrete_jungle_phase2_foundation_inv.pdf
+  organizationId: ironworks-construction
+  documentType: invoice
+  extractedFields:
+    vendor: "Concrete Jungle Suppliers"
+    invoiceNumber: "INV-CJS-2024-1847"
+    invoiceDate: "2024-03-08"
+    projectCode: "RC-2024-017"
+    projectName: "Riverside Commons"
+    amount: "29001.63"
+    deliveryDate: "2024-03-06"
+    paymentTerms: "Net 45"
+    materials:
+      - item: "Ready-mix concrete, 4000 PSI (cubic yards)"
+        quantity: "85"
+        unitCost: "165.00"
+      - item: "Rebar #5, Grade 60 (20ft lengths)"
+        quantity: "240"
+        unitCost: "18.50"
+      - item: "Concrete pump rental — 42m boom (full day)"
+        quantity: "2"
+        unitCost: "2800.00"
+      - item: "Vapor barrier, 15mil (1,200 sq ft rolls)"
+        quantity: "4"
+        unitCost: "285.00"
+      - item: "Delivery & placement surcharge (weekend)"
+        quantity: ""
+        unitCost: ""
+
+- path: ironworks-construction/lien-waivers/concrete_jungle_unconditional_waiver.pdf
+  organizationId: ironworks-construction
+  documentType: lien-waiver
+  extractedFields:
+    subcontractor: "Concrete Jungle Suppliers"
+    projectCode: "RC-2024-017"
+    projectName: "Riverside Commons"
+    amount: "29001.63"
+    throughDate: "2024-03-15"
+    waiverType: "unconditional"
+
+- path: ironworks-construction/lien-waivers/exotic_aquatic_conditional_waiver.pdf
+  organizationId: ironworks-construction
+  documentType: lien-waiver
+  extractedFields:
+    subcontractor: "Exotic Aquatic Enclosures LLC"
+    projectCode: "RC-2024-017"
+    projectName: "Riverside Commons"
+    amount: "44678.04"
+    throughDate: "2024-03-31"
+    waiverType: "conditional"
+
+- path: pinnacle-legal/expense-reports/chen_david_wellington_trust_march.pdf
+  organizationId: pinnacle-legal
+  documentType: expense-report
+  extractedFields:
+    attorneyName: "Chen, David"
+    matterNumber: "4417"
+    submissionDate: "2024-03-18"
+    totalAmount: "742.80"
+    items:
+      - date: "2024-03-05"
+        description: "Client dinner — Wellington Trust quarterly review (4 attendees)"
+        amount: "387.50"
+        billable: "yes"
+      - date: "2024-03-08"
+        description: "Taxi to/from Cook County Courthouse (2 trips)"
+        amount: "64.00"
+        billable: "yes"
+      - date: "2024-03-12"
+        description: "Westlaw research — trust & estates case law bundle"
+        amount: "225.00"
+        billable: "yes"
+      - date: "2024-03-14"
+        description: "FedEx overnight — signed documents to Wellington Trust"
+        amount: "47.80"
+        billable: "yes"
+      - date: "2024-03-16"
+        description: "Coffee with opposing counsel (reconnaissance)"
+        amount: "18.50"
+        billable: "no"
+
+- path: pinnacle-legal/invoices/absolutely_legitimate_court_reporting_feb2024.pdf
+  organizationId: pinnacle-legal
+  documentType: invoice
+  extractedFields:
+    vendor: "Absolutely Legitimate Court Reporting Services"
+    invoiceNumber: "INV-ALCRS-2024-0553"
+    invoiceDate: "2024-02-28"
+    matterNumber: "4389"
+    matterName: "Bigglesworth Estate"
+    amount: "7362.50"
+    billingPeriod: "February 2024"
+    paymentTerms: "Net 30"
+
+- path: pinnacle-legal/retainer-agreements/bigglesworth_estate_retainer_2024.pdf
+  organizationId: pinnacle-legal
+  documentType: retainer-agreement
+  extractedFields:
+    clientName: "Estate of Reginald P. Bigglesworth"
+    matterType: "Estate Litigation"
+    hourlyRate: "650.00"
+    retainerAmount: "25000.00"
+    effectiveDate: "2024-03-01"
+    termLength: "12 months from effective date"
+    scope: "The Firm agrees to represent the Client in all matters related to the probate and distribution of the Bigglesworth Estate, including but not limited to: contesting the validity of the third codicil (the \"cat inheritance clause\"), negotiating with Fuzzy Paws Inc. regarding the disputed Cayman Islands property, and defending against cross-claims filed by Dr. Von Stuffington regarding unpaid expert witness fees."
+
+- path: riverside-bistro/expense-reports/chen_lisa_front_of_house_march.pdf
+  organizationId: riverside-bistro
+  documentType: expense-report
+  extractedFields:
+    employeeName: "Chen, Lisa"
+    department: "Front of House"
+    submissionDate: "2024-03-22"
+    totalAmount: "288.25"
+    items:
+      - date: "2024-03-08"
+        description: "Wine tasting \"research\" — Napa Valley Imports showcase"
+        amount: "85.00"
+        category: "food"
+      - date: "2024-03-11"
+        description: "Replacement tablecloths (red wine incident, table 7)"
+        amount: "142.00"
+        category: "supplies"
+      - date: "2024-03-14"
+        description: "Uber to sommelier certification exam"
+        amount: "32.50"
+        category: "services"
+      - date: "2024-03-19"
+        description: "Guest comment cards and fancy pens"
+        amount: "28.75"
+        category: "supplies"
+
+- path: riverside-bistro/invoices/artisanal_ice_cube_march_2024.pdf
+  organizationId: riverside-bistro
+  documentType: invoice
+  extractedFields:
+    vendor: "Artisanal Ice Cube Collective"
+    invoiceNumber: "INV-AICC-2024-0182"
+    invoiceDate: "2024-03-05"
+    dueDate: "2024-03-20"
+    subtotal: "1084.00"
+    tax: "94.31"
+    totalAmount: "1178.31"
+    paymentTerms: "Net 15"
+    lineItems:
+      - description: "Clear ice spheres, 2.5-inch (bag of 50)"
+        quantity: "10"
+        unitPrice: "45.00"
+        total: "450.00"
+      - description: "Diamond-cut cubes, 1.5-inch (bag of 100)"
+        quantity: "8"
+        unitPrice: "38.00"
+        total: "304.00"
+      - description: "Crushed ice, extra fine, slow-melt (20lb bag)"
+        quantity: "6"
+        unitPrice: "15.00"
+        total: "90.00"
+      - description: "Custom logo ice stamps (Riverside 'R')"
+        quantity: "2"
+        unitPrice: "120.00"
+        total: "240.00"
+
+- path: riverside-bistro/invoices/senor_tacos_wholesale_march_2024.pdf
+  organizationId: riverside-bistro
+  documentType: invoice
+  extractedFields:
+    vendor: "Señor Taco's Wholesale Tortillas"
+    invoiceNumber: "INV-ST-2024-3847"
+    invoiceDate: "2024-03-10"
+    dueDate: "2024-04-09"
+    subtotal: "844.50"
+    tax: "73.47"
+    totalAmount: "917.97"
+    paymentTerms: "Net 30"
+    lineItems:
+      - description: "Flour tortillas, 12-inch (case of 200)"
+        quantity: "8"
+        unitPrice: "42.00"
+        total: "336.00"
+      - description: "Corn tortillas, 6-inch (case of 500)"
+        quantity: "5"
+        unitPrice: "38.50"
+        total: "192.50"
+      - description: "Ghost pepper flour tortillas, 10-inch (case of 100)"
+        quantity: "3"
+        unitPrice: "67.00"
+        total: "201.00"
+      - description: "Tortilla chips, restaurant-style (25lb bag)"
+        quantity: "4"
+        unitPrice: "28.75"
+        total: "115.00"
+      - description: "Complimentary salsa verde samples"
+        quantity: "1"
+        unitPrice: "0.00"
+        total: "0.00"
+
+- path: riverside-bistro/receipts/comically_large_spoon_receipt_0318.pdf
+  organizationId: riverside-bistro
+  documentType: receipt
+  extractedFields:
+    merchant: "Comically Large Spoon Warehouse"
+    date: "2024-03-18"
+    amount: "199.73"
+    paymentMethod: "Corporate Card ending 4477"
+    category: "equipment"
+
+- path: riverside-bistro/receipts/margarita_machine_parts_receipt_0315.pdf
+  organizationId: riverside-bistro
+  documentType: receipt
+  extractedFields:
+    merchant: "Industrial Margarita Machine Parts LLC"
+    date: "2024-03-15"
+    amount: "721.15"
+    paymentMethod: "Corporate Card ending 4477"
+    category: "equipment"
