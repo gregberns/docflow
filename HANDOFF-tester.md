@@ -1,89 +1,137 @@
-<!-- PP-TRIAL:v2 2026-04-29 implementation tester-lane -->
+<!-- PP-TRIAL:v2 2026-04-29 implementation -->
 
 # Tester-lane handoff
 
-This branch has two agent lanes operating in parallel:
-- **Implementor** writes / refreshes `HANDOFF.md` — see that file for backend / kerf-evals fix progress.
-- **Tester** (this lane, this file) exercises the running system, files beads, plans adjacent work. This session's task notifications and findings live here.
+This branch runs two agent lanes in parallel:
+- **Implementor** writes / refreshes `HANDOFF.md` — code fixes.
+- **Tester** (this file) exercises the running system, files beads, plans adjacent work. **Tester does not modify production code.**
 
 # Status
 
-**Stack runs end-to-end.** Pipeline works post Anthropic credit top-up — Pinnacle invoice round-trip at 21:07Z extracted all 8 fields correctly. UI is reachable at `http://localhost:5173` (Docker `df-q8q` nginx fix landed). But manual testing this session surfaced ~7 bugs filed as new beads. **Don't fix code in the next session — triage and file.**
+Stack runs end-to-end. Containers were just restarted (`make stop && make start && make build`) so the `df-woj` health-endpoint fix is now live; UI renders the org picker. Backend tests **381/381**, frontend **105/105**, API round-trip clean as of 2026-04-29 evening. The Stop hook is disabled (`.claude/settings.json: disableAllHooks: true`) because of a Gradle 9.4.1 + JDK 25 wart that wipes the test-results dir mid-run; leave it off for now.
 
-# Two lanes are running in parallel on this branch
+# Read these first (in this order)
 
-- **Implementor lane** (separate worktree, working through kerf-evals tickets and now bug fixes). They've already closed `df-rar`, `df-zfy`, `df-9kx`, `df-xqh`, `df-9c2.11`, `df-9c2.12`, `df-sup`, `df-8x4`, `df-x01`, `df-if4`, `df-q8q`, plus the C7 epic itself.
-- **Testing/triage lane** (this session). Goal: exercise the running system, file beads, plan adjacent work (CSS), do not modify production code.
+1. `CLAUDE.md` — conventions, beads, "done means green".
+2. `TESTING-PLAYBOOK.md` — read-first guide for the tester lane. 8 layered tests + log conventions + bug-filing protocol + 10 exploratory prompts.
+3. `test-logs/TEMPLATE.md` — copy this for your session log.
+4. `test-logs/2026-04-29T215332Z-tester-session-broad.md` — the prior session's record so you don't repeat it.
+5. `.kerf/project/styling/02-review-pass-1.md` — CSS-rebuild review findings (only relevant if you're touching CSS work).
+6. `HANDOFF.md` — what the implementor lane is doing right now.
 
-# Subagent results
+# What the next session should do — focus: core workflow
 
-**Eval-lite (DB-direct workaround for `df-txl`) — DONE.** Strong signal:
-- Doc-type accuracy: **23/23 (100%)** — classification is solid.
-- Field accuracy: **106/111 (95.5%)** — extraction is solid.
-- New harness: `eval/harness/run_db_direct.py`. Reports: `eval/reports/db_direct_20260429T211251Z.md` (full).
-- Pattern worth filing: pinnacle expense-reports lose `matterNumber` 2/2 times — model decorates with `#NNNN - matter-name`. Filed as **`df-3k9`** (P3, prompt tuning).
+The user explicitly wants this session to **drill the core workflow**: upload → classify → extract → review → approve → filed (and the off-paths: flag, resolve, reclassify, retype, reject). Cover it broadly first, then exercise edge cases.
 
-**CSS planning for `df-7cr` — DONE.** Tailwind v4 + `@tailwindcss/vite` plugin chosen. ~17h across 8 tickets. Plan: `.kerf/projects/basata/styling/01-plan.md`.
+## 1. Pre-flight + L1 smoke (under 1 min)
 
-| ID | P | Title | Deps |
-|---|---|---|---|
-| `df-qv7` | 1 | Tailwind install + base theme + Topbar | (toolchain) |
-| `df-5ua` | 2 | OrgPickerPage + Card | df-qv7 |
-| `df-vw1` | 2 | DashboardPage + stats / filters / table | df-qv7 |
-| `df-qcu` | 2 | DocumentDetailPage + PdfViewer + StageProgress | df-qv7 |
-| `df-4p1` | 2 | FormPanel + ReviewForm + FieldArrayTable | df-qv7, df-qcu |
-| `df-hly` | 2 | ReclassifyModal + FlagModal | df-qv7, df-qcu |
-| `df-ib5` | 2 | Replace broken icon images with inline SVGs / emoji tiles | df-qv7, df-5ua, df-vw1, df-qcu |
-| `df-ge4` | 3 | Polish + cross-route sanity sweep | all of above |
+Open a session log under `test-logs/` (use `TEMPLATE.md`). Then:
 
-`df-7cr` umbrella depends on all 8 children. Start work at `df-qv7` (only unblocked styling ticket).
+- `docker ps` — backend, frontend, postgres all `Up`.
+- `curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8551/api/health` — expect **200** now (was 500 last session).
+- `curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:5173` — expect 200.
+- `docker exec basata-postgres-1 psql -U docflow -d docflow -c 'select count(*) from organizations'` — expect 3.
+- `br sync --import-only -vv` — refresh bead DB.
 
-**Test suite + scenario harness review — DONE.**
-- `make test` GREEN: 364 backend tests + 105 frontend tests, 2m 49s total. No failures.
-- `df-sup` harness review: stub seam correct (`LlmClassifier` + `LlmExtractor`, not `LlmCallExecutor`), profile/wiring/fixture-schema all match the kerf spec. Audit-invariant preserved. Room left for df-gum to build on. **Verdict: ready for df-gum.**
-- Two minor spec deviations filed as **`df-ifz`** (P3): extract-retry stub doesn't support "succeed on retry" recovery branch; fixture loader defers PDF-existence check to runtime instead of load-time. Neither blocks the first three df-gum scenarios.
-- Minor flake noted (not filed): `./gradlew test --rerun-tasks` fails with stale `in-progress-results-generic*.bin` if prior run was interrupted. Gradle infra wart, not a project bug.
+If any of these fail: file a P1 bead and stop. If all green: proceed.
 
-# New beads filed this session
+## 2. L4 API round-trip — three orgs (5–10 min)
 
-| ID | P | Title |
-|---|---|---|
-| `df-7cr` | 1 | Frontend has no CSS — umbrella |
-| `df-txl` | 1 | DashboardRepository is a stub |
-| `df-36y` | 1 | Concurrent Approve race — duplicate SSE events, lost state |
-| `df-woj` | 2 | Exception handler maps NoResource/TypeMismatch/OptimisticLock to 500 |
-| `df-vf8` | 3 | ProblemDetail leaks Jackson polymorphic-deserializer internals |
-| `df-mch` | 3 | ProcessingDocument.id is UUIDv4 instead of UUIDv7 |
-| `df-qwc` | 3 | SSE Broken Pipe spams GlobalExceptionHandler |
-| `df-3k9` | 3 | Pinnacle expense-report matterNumber consistently decorated |
-| `df-ifz` | 3 | df-sup harness deviates from kerf spec on extract-retry + load-time PDF check |
-| `df-qv7`–`df-ge4` | 1–3 | 8 CSS sub-tickets (see table above) |
+Repeat the curl-upload + DB-poll pattern from the playbook L4 across **all three orgs** to confirm the pipeline works end-to-end for each:
 
-**Closed this session:** `df-uiq` (wrong diagnosis — actual cause was depleted Anthropic credits, not df-8x4 refactor).
+- `pinnacle-legal` — invoice (e.g. `samples/pinnacle-legal/invoices/von_stuffington_expert_witness_jan2024.pdf`)
+- `riverside-bistro` — invoice or receipt
+- `ironworks-construction` — invoice or change-order
 
-# Next steps when resuming
+For each: upload via curl, sleep 12s, query `documents` table, confirm `detected_document_type` matches expectation and `extracted_fields` is populated, confirm workflow_instances row exists at `Review/AWAITING_REVIEW`. Log doc IDs in your session log. Any failure → P1 bead.
 
-1. `br sync --import-only` first if local DB is stale.
-2. Append the three subagent findings to this file.
-3. `br ready` and `br list --status=open` for current state.
-4. Confirm pipeline still works: `curl -F file=@problem-statement/samples/pinnacle-legal/invoices/von_stuffington_expert_witness_jan2024.pdf http://localhost:8551/api/organizations/pinnacle-legal/documents`, wait 10s, query DB.
+## 3. Core workflow via UI — happy path per org (15–20 min)
 
-# Files to open first
+Open `http://localhost:5173`. For **each of the three orgs** in turn:
 
-- This file.
-- `eval/reports/` — eval-lite scoring output if the agent finished.
-- `.kerf/projects/basata/styling/01-plan.md` — CSS plan if that agent finished.
-- `br ready` output for currently-actionable work.
+1. Pick the org.
+2. See the dashboard. Confirm processing rows show, then transition to AWAITING_REVIEW.
+3. Click into one document.
+4. Verify the PDF renders, the extracted fields appear in the form panel, and StageProgress shows correctly.
+5. **Approve** through every stage (Review → next → next → Filed). Watch SSE updates the dashboard in real time.
+6. Confirm Filed state in the DB and in the UI.
 
-# Carryover wisdom from the prior implementor handoff
+Log: per-org any visual glitches (raw HTML showing, broken images, layout overflow, console errors). Don't file CSS bugs as new beads — they're tracked under `df-7cr` umbrella. **Do** file functional bugs (wrong fields, wrong stages, SSE not updating, action buttons broken).
 
-- **CWD drift with worktrees:** four locked agent worktrees under `.claude/worktrees/agent-*` from prior sessions. Always `cd /Users/gb/github/basata` for top-level operations.
-- **Beads JSONL** auto-merges cleanly during cherry-pick but stay alert.
-- Spring Boot 4 + Flyway + `@Order` quirks: nested AppConfig records exposed via `AppConfigBeans`; ambiguous `@Order` between catalogs and PromptLibrary now fixed (gap of 100); `@SpringBootTest` without c3 needs a mock `LlmExtractor`.
+## 4. Off-paths — drill each branch (20–30 min)
 
-# Caveats
+Each as a separate document so paths don't entangle:
 
-- Anthropic credits were depleted earlier; user topped up. Pipeline confirmed working at 21:07Z.
-- Implementor's local `beads.db` is gitignored (per worktree). They run `br sync --import-only` to see new beads filed in this session.
+- **Flag → Resolve from Review.** Upload, AWAITING_REVIEW, click Flag, type a comment, submit. Confirm flag banner appears, document status flips. Resolve. Confirm origin restoration (banner says origin = previous stage). Approve to filed.
+- **Flag from Approval (origin = approval stage).** Same as above but flag from a later stage; confirm the resolve flow returns to that stage.
+- **Reclassify mid-Review.** Upload, AWAITING_REVIEW, click Reclassify, pick a different doc type, submit. Confirm re-extraction kicks off (banner), new fields populate, status returns to AWAITING_REVIEW for the new type.
+- **Reject from final stage.** Upload, walk through to last approval stage, click Reject. Confirm doc goes to terminal Rejected state with the rejected stage-progress styling.
+- **Retype after approval (terminal-state action).** This is what `df-97e` covers when it lands. Try the action; expected behavior depends on whether the implementor merged df-97e + df-ifz from their wip branch.
 
-No blocking questions.
+For each branch, log the doc ID + the SSE event sequence + the final DB state. **Discrepancies between expected workflow vs observed → P1 bead.**
+
+## 5. Edge cases of the core workflow (15 min)
+
+Pick at least 3:
+
+- **Concurrent uploads** — fire 3 uploads at once via curl `&`. Confirm all three are processed independently, no cross-contamination of fields.
+- **Malformed PDF** — upload a non-PDF file (e.g. a .txt renamed to .pdf). Expected: pipeline error path, document marked failed, error visible in UI.
+- **Wrong-type classification** — upload a doc that doesn't match any of the org's expected types. Expected: classification error or "uncategorized", surfaces in dashboard.
+- **Missing-required-field extraction** — upload a doc the model can't extract a required field from. Expected: extraction-error path, dashboard shows the failure, retry available.
+- **SSE drop / reconnect** — open the dashboard, kill the network briefly, restore. Confirm dashboard reconnects and catches up.
+- **Switch org mid-flow** — start a doc upload on org A, switch to org B, switch back. Confirm dashboard state is consistent.
+- **Browser refresh during processing** — upload, refresh while still in CLASSIFYING. Confirm dashboard re-reads state correctly.
+
+## 6. Re-run eval scoring (5 min)
+
+`python3 eval/harness/run_db_direct.py` — full mode. Last run scored 23/23 doc-type, 106/111 fields. If field accuracy regresses, file a bead.
+
+## 7. Scenario harness — only if df-97e + df-ifz merged (10 min)
+
+Check `git log --oneline -10` for those bead IDs landing on main. If yes:
+
+- Pre-clean: `rm -rf backend/build/test-results/test/binary` (workaround for the Gradle wart).
+- Run `cd backend && ./gradlew test --no-daemon --tests 'com.docflow.scenario.*'`.
+- If exit code is non-zero AND the wart is the cause, check `backend/build/test-results/test/*.xml` directly for actual pass/fail counts. The wart leaves the dir empty if it crashes early — that means real failures may be hidden.
+
+## 8. CSS review-pass 2 — only if df-qv7 has been implemented (10 min)
+
+- Check if `frontend/src/index.css` exists and `tailwindcss` is in `package.json`.
+- If yes: read the file, walk the actual `index.css` `@theme` block against the design tokens listed in `.kerf/project/styling/01-plan.md` and the corrections in `02-review-pass-1.md`. File a bead if the implementation drifted.
+- If no: skip; df-qv7 is still open.
+
+# Beads — current state
+
+```
+br ready  → 7 unblocked (post-restart):
+  df-qv7 P1 — Tailwind v4 toolchain (start of CSS rebuild)
+  df-97e P2 — Scenarios 04, 09, 10, 11 (implementor wip)
+  df-skw P2 — Scenarios 06, 07, 08, 12
+  df-efg P2 — Scenario 05 (concurrent uploads + SSE)
+  df-vf8 P3 — ProblemDetail Jackson leak
+  df-qwc P3 — SSE Broken Pipe spam
+  df-ifz P3 — scenario harness deviations (implementor wip)
+
+Blocked on df-qv7: 8 styling children (df-5ua, df-vw1, df-qcu, df-4p1, df-hly, df-ib5, df-k0u, df-ge4) under umbrella df-7cr.
+```
+
+Closed yesterday: `df-woj`, `df-3k9` (implementor), `df-36y`, `df-txl` (earlier).
+
+# Filing bugs
+
+Per `TESTING-PLAYBOOK.md` §"Bug-filing protocol":
+
+```
+br create --title="<short>" --description="<body with repro>" --type=bug --priority=1|2|3
+```
+
+Cross-link the bead ID into your session log as `[df-xyz]`. Always run `br sync --flush-only` before ending the session.
+
+# Caveats / known state
+
+- **Stop hook is disabled.** `.claude/settings.json` has `disableAllHooks: true`. Don't rely on the hook to enforce green tests — run them yourself per the playbook.
+- **Gradle wart.** `./gradlew check` (and `make test`) crashes with `NoSuchFileException: in-progress-results-generic*.bin` ~2 min in. Workaround: clear `backend/build/test-results/test/binary` between runs and inspect the XMLs directly for actual pass/fail. The wart's BUILD FAILED line is unreliable — trust the XMLs.
+- **Implementor wip branch.** df-97e + df-ifz are not on main yet. Don't rerun those scenarios assuming they pass; check git first.
+- **Container freshness.** If you don't see expected behavior after a backend code change merges, `make stop && make start && make build` to pick it up.
+
+# No blocking question.
