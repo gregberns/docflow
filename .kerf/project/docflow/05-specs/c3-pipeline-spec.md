@@ -397,7 +397,7 @@ psql -h localhost -U docflow -c "\d llm_call_audit"
 
 Verify event flow with a manual upload (end-to-end with `docker compose up`):
 1. POST `/api/organizations/riverside/documents` with a sample PDF.
-2. Open `/api/organizations/riverside/events` SSE stream in another terminal.
+2. Open `/api/organizations/riverside/stream` SSE stream in another terminal.
 3. Observe `ProcessingStepChanged` events: `TEXT_EXTRACTING → CLASSIFYING → EXTRACTING`.
 4. C4's `DocumentStateChanged` follows for the new `Review` state.
 
