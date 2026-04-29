@@ -23,13 +23,7 @@ import org.springframework.stereotype.Component;
 @Component
 public final class ConfigValidator {
 
-  // The expected first-stage id per CV-5; derived from StageKind.REVIEW to
-  // avoid embedding the canonical stage-name literal in source.
-  private static final String REVIEW_STAGE_ID = capitalize(StageKind.REVIEW.name());
-
-  private static String capitalize(String s) {
-    return s.charAt(0) + s.substring(1).toLowerCase(java.util.Locale.ROOT);
-  }
+  private static final String REVIEW_STAGE_ID = "Review";
 
   public void validate(OrgConfig config) {
     Objects.requireNonNull(config, "config");
