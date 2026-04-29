@@ -1,0 +1,44 @@
+organizationId: pinnacle-legal
+documentTypeId: invoice
+stages:
+  - id: Review
+    displayName: Review
+    kind: REVIEW
+    canonicalStatus: AWAITING_REVIEW
+  - id: Attorney Approval
+    displayName: Attorney Approval
+    kind: APPROVAL
+    canonicalStatus: AWAITING_APPROVAL
+    role: attorney
+  - id: Billing Approval
+    displayName: Billing Approval
+    kind: APPROVAL
+    canonicalStatus: AWAITING_APPROVAL
+    role: billing
+  - id: Filed
+    displayName: Filed
+    kind: TERMINAL
+    canonicalStatus: FILED
+  - id: Rejected
+    displayName: Rejected
+    kind: TERMINAL
+    canonicalStatus: REJECTED
+transitions:
+  - from: Review
+    action: APPROVE
+    to: Attorney Approval
+  - from: Review
+    action: REJECT
+    to: Rejected
+  - from: Attorney Approval
+    action: APPROVE
+    to: Billing Approval
+  - from: Attorney Approval
+    action: REJECT
+    to: Rejected
+  - from: Billing Approval
+    action: APPROVE
+    to: Filed
+  - from: Billing Approval
+    action: REJECT
+    to: Rejected

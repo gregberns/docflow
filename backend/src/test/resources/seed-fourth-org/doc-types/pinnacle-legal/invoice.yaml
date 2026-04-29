@@ -1,0 +1,29 @@
+organizationId: pinnacle-legal
+id: invoice
+displayName: Invoice
+inputModality: TEXT
+fields:
+  - name: vendor
+    type: STRING
+    required: true
+  - name: invoiceNumber
+    type: STRING
+    required: true
+  - name: invoiceDate
+    type: DATE
+    required: true
+  - name: matterNumber
+    type: STRING
+    required: true
+  - name: matterName
+    type: STRING
+    required: true
+  - name: amount
+    type: DECIMAL
+    required: true
+  - name: billingPeriod
+    type: STRING
+    required: true
+  - name: paymentTerms
+    type: STRING
+    required: true

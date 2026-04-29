@@ -1,0 +1,24 @@
+organizationId: municipal-clerk
+id: permit-application
+displayName: Permit Application
+inputModality: PDF
+fields:
+  - name: applicantName
+    type: STRING
+    required: true
+  - name: parcelNumber
+    type: STRING
+    required: true
+  - name: filingDate
+    type: DATE
+    required: true
+  - name: feeAmount
+    type: DECIMAL
+    required: true
+  - name: permitType
+    type: ENUM
+    required: true
+    enumValues:
+      - residential
+      - commercial
+      - variance

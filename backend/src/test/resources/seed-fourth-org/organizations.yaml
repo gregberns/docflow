@@ -1,0 +1,29 @@
+- id: riverside-bistro
+  displayName: Riverside Bistro
+  iconId: icon-bistro
+  documentTypeIds:
+    - invoice
+    - receipt
+    - expense-report
+
+- id: pinnacle-legal
+  displayName: Pinnacle Legal Group
+  iconId: icon-legal
+  documentTypeIds:
+    - invoice
+    - retainer-agreement
+    - expense-report
+
+- id: ironworks-construction
+  displayName: Ironworks Construction
+  iconId: icon-construction
+  documentTypeIds:
+    - invoice
+    - change-order
+    - lien-waiver
+
+- id: municipal-clerk
+  displayName: Municipal Clerk's Office
+  iconId: icon-municipal
+  documentTypeIds:
+    - permit-application

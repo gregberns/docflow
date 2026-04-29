@@ -1,0 +1,33 @@
+organizationId: pinnacle-legal
+documentTypeId: retainer-agreement
+stages:
+  - id: Review
+    displayName: Review
+    kind: REVIEW
+    canonicalStatus: AWAITING_REVIEW
+  - id: Partner Approval
+    displayName: Partner Approval
+    kind: APPROVAL
+    canonicalStatus: AWAITING_APPROVAL
+    role: partner
+  - id: Filed
+    displayName: Filed
+    kind: TERMINAL
+    canonicalStatus: FILED
+  - id: Rejected
+    displayName: Rejected
+    kind: TERMINAL
+    canonicalStatus: REJECTED
+transitions:
+  - from: Review
+    action: APPROVE
+    to: Partner Approval
+  - from: Review
+    action: REJECT
+    to: Rejected
+  - from: Partner Approval
+    action: APPROVE
+    to: Filed
+  - from: Partner Approval
+    action: REJECT
+    to: Rejected
