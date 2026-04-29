@@ -1,27 +1,38 @@
 <!-- PP-TRIAL:v2 2026-04-29 implementation -->
-# Session Handoff — implementation phase
+# Session Handoff — implementor lane
 
-**Status:** clean. Branch `implementation` at `5f2c469`. `make test` green (gradle check + frontend check). **C7 platform epic closed** — all children done. 4 beads closed this session via 4 parallel worktree agents (orchestrator pattern): df-9c2.11 (CI), df-9c2.12 (README), df-xqh (P2 @Order bug), df-9kx (P3 Flyway-under-SpringBootTest bug).
+**Status:** clean. Branch `implementation` at `cab12c3`. `make test` green (transient gradle test-result race may flake on first Stop-hook fire — re-run, it'll be UP-TO-DATE).
 
-**The other agent (backend/scenario/docs lane) is still working** — their explicit beads: df-8x4 (P1), df-sup chain (df-gum / df-97e / df-skw / df-efg), df-x01 + df-if4 (docs). They also filed **df-zfy (P1)** mid-session, which is critical context — see below. Don't pick up their beads.
+**Two-lane setup.** This is the **implementor lane** (HANDOFF.md). The **tester lane** is a parallel session writing `HANDOFF-tester.md`. Both commit to `implementation` and share `.beads/issues.jsonl`. Don't read or write `HANDOFF-tester.md`. Tester may pre-bundle implementor-agent commits into their own — before cherry-picking a worktree-agent's commit, `git show <recent-tester-commit> --stat` to confirm the fix isn't already in tree.
 
-**df-zfy likely fixed by my df-9kx commit, but unverified.** df-zfy says production `make start` crashes on `ApplicationReadyEvent` because Flyway never runs (zero log lines, zero tables, then `OrgConfigSeeder` hits `relation "organizations" does not exist`). The eval-agent ticket explicitly cross-references df-9kx and says the two share a root cause. My df-9kx fix at `7761f11` promotes `FlywayConfig` to a user-defined `@AutoConfiguration(after = DataSourceAutoConfiguration.class)` registered via `META-INF/spring/.../AutoConfiguration.imports` — that should make Flyway run during normal application boot too, not just under `@SpringBootTest`. **But I only ran `make test`. I did NOT run `docker compose down && make build && make start` to verify production boot.** Next session should run that and close df-zfy if Flyway log lines appear and `\dt` shows tables.
+**Closed this implementor session (12 beads, 1 tombstone).**
+- P1 bugs: df-zfy (Flyway boot), df-q8q (nginx in frontend), df-mch (UUIDv7), df-36y (concurrent-action race; tester pre-bundled in `9a77462`), df-txl (real DashboardRepository).
+- P1 tasks: df-8x4 (inputModality removal), df-sup (scenario harness scaffolding).
+- P1 misdiagnosis: df-uiq closed externally — actual cause was depleted Anthropic credits, not df-8x4. Now topped up; live eval scored 23/23 doc-type, 95.5% fields.
+- P2: df-gum (scenarios 01-03 + runner exec body), df-x01 (spec substrate edits).
+- P2 epic: df-9c2 (C7 platform).
+- P3: df-if4 (testing-strategy verify), df-mch (UUIDv7) — duplicate `df-v80` tombstoned.
 
-**Unclaimed ready work** after df-zfy verification:
-- **df-9c2 epic** itself shows as ready now that all children are closed — `br close df-9c2 --reason="C7 epic complete"` is a clean cleanup.
-- Otherwise: nothing unclaimed and not in the other agent's lane. New work would need to come from `br create` or the user.
+**Ready work (implementor lane).**
+- **df-97e, df-skw, df-efg** (P2 scenarios) — all unblocked by df-gum. Each adds YAML fixtures + likely extends `ScenarioRunnerIT` for new assertion types (retype actions, SSE, 409 problem-detail). **Sequence rather than parallelize** — they all touch the same runner file.
+- **df-woj** (P2) → **df-vf8** (P3) → **df-qwc** (P3) — exception-handler chain. Sequence; all touch `GlobalExceptionHandler`.
+- **df-3k9** (P3 prompt tuning) — pinnacle expense-report `matterNumber` decoration. Single-line prompt edit.
 
-**Worktrees outstanding:** four locked agent worktrees under `.claude/worktrees/agent-{a59333fdf26e7adcf,a6bb022b1f41324a5,ac744fb0b0a695a61,a15798390cd68349f}` from this session. Locked by harness, can't `git worktree remove` from inside Claude. Harness will clean up.
+**Tester-lane work (don't pick up unless they hand off):**
+- df-qv7 (P1, in flight tester-side) — Tailwind v4 base + Topbar shell. **When df-qv7 lands, 7 styling beads unblock for implementor** (df-7cr epic, df-ib5, df-hly, df-4p1, df-qcu, df-vw1, df-5ua) — those become a 4-5 way parallel fan-out (different components, no file conflict).
 
-**Heads-up for next agent.**
-- **CWD drift with worktrees:** when running `git merge` from main repo, my CWD silently ended up inside one of the agent worktrees. Always `cd /Users/gb/github/basata && ...` for top-level operations, and prefer `git cherry-pick <sha>` over `git merge --ff-only <branch>` when worktree branches diverge from a common base — only the first branch ff's; subsequent ones would undo the prior merges.
-- **Beads JSONL conflicts** during cherry-pick auto-merged cleanly each time, but stay alert.
-- All Spring Boot 4 / Flyway / `@Order` quirks from prior handoff still apply: no `TestRestTemplate`, AppConfig nested records via `AppConfigBeans`, `@SpringBootTest` w/o c3 needs a mock `LlmExtractor`, ambiguous `@Order` between catalogs and PromptLibrary now fixed (gap of 100).
+**Heads-up.**
+- **CWD drift** silently lands you in `.claude/worktrees/agent-XXX/` after various ops. Always `cd /Users/gb/github/basata` or `git -C /Users/gb/github/basata` for top-level ops. `br close` returning "Issue not found" is the canonical symptom.
+- **Beads JSONL/DB hash cache** — `br sync --import-only` lies that JSONL is current. Use `br sync --import-only -vv` to force real import after pulling/cherry-picking.
+- **Don't let worktree agents create duplicate beads.** If their DB doesn't see the target after `br sync --import-only -vv`, brief them to commit code only and let orchestrator close. (df-v80 was a duplicate of df-mch, tombstoned.)
+- **Anthropic credits** are now topped up. Live eval (`make eval` / `python3 eval/harness/run.py`) functional again.
+- `eval/harness/__pycache__/` and `eval/reports/` untracked — small follow-up: add to `.gitignore`.
 
-**Files to open first** if you pick up df-zfy verification:
-- `backend/src/main/java/com/docflow/platform/FlywayConfig.java` — now an `@AutoConfiguration`.
-- `backend/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` — registration file.
-- `backend/src/test/java/com/docflow/platform/FlywayConfigSpringBootIT.java` — covers test-context, not production-boot.
-- `backend/src/main/java/com/docflow/config/OrgConfigSeeder.java:47` — the crash site per df-zfy.
+**Worktrees outstanding:** ~11 locked agent worktrees from this session under `.claude/worktrees/agent-XXX`. Harness will clean up.
+
+**Files to open first if picking up scenarios:**
+- `backend/src/test/java/com/docflow/scenario/ScenarioRunnerIT.java` — current execution body (df-gum). New scenario tickets extend this.
+- `backend/src/test/java/com/docflow/scenario/ScenarioFixtureLoader.java:loadAll(Path)` — directory loader.
+- `backend/src/test/resources/scenarios/01-happy-path-pinnacle-invoice.yaml` (and 02, 03) — pattern to follow.
 
 **No blocking questions.**
