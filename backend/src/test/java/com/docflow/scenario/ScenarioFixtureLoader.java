@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
@@ -33,6 +36,25 @@ public final class ScenarioFixtureLoader {
           "failed to parse scenario fixture " + file + ": " + e.getOriginalMessage(), e);
     } catch (IOException e) {
       throw new ScenarioFixtureLoadException("failed to read scenario fixture " + file, e);
+    }
+  }
+
+  public List<ScenarioFixture> loadAll(Path directory) {
+    if (!Files.isDirectory(directory)) {
+      throw new ScenarioFixtureLoadException(
+          "scenario fixture directory does not exist: " + directory);
+    }
+    try (Stream<Path> entries = Files.list(directory)) {
+      return entries
+          .filter(Files::isRegularFile)
+          .filter(p -> p.getFileName().toString().endsWith(".yaml"))
+          .filter(p -> !p.getFileName().toString().startsWith("_"))
+          .sorted(Comparator.comparing(p -> p.getFileName().toString()))
+          .map(this::load)
+          .toList();
+    } catch (IOException e) {
+      throw new ScenarioFixtureLoadException(
+          "failed to list scenario fixture directory " + directory, e);
     }
   }
 

@@ -1,0 +1,25 @@
+scenarioId: 02-wrong-type-classification
+description: >
+  Wrong-type classification. The classifier stub returns 'lien-waiver' for a
+  Pinnacle invoice — 'lien-waiver' is not in pinnacle-legal's allowed doc-type
+  enum. The production validation in LlmClassifier raises LlmSchemaViolation;
+  the orchestrator catches and marks the ProcessingDocument FAILED. No
+  Document or WorkflowInstance is materialized. Asserts 1 classify audit row
+  with non-null error, no extract audit row.
+organizationId: pinnacle-legal
+inputPdf: pinnacle-legal/invoices/dewey_cheatham_howe_feb_2024.pdf
+classification:
+  docType: lien-waiver
+extraction:
+  fields:
+    vendor: "unused"
+expectedEndState:
+  document: null
+  workflowInstance: null
+  events:
+    - type: ProcessingStepChanged
+      currentStep: TEXT_EXTRACTING
+    - type: ProcessingStepChanged
+      currentStep: CLASSIFYING
+    - type: ProcessingStepChanged
+      currentStep: FAILED

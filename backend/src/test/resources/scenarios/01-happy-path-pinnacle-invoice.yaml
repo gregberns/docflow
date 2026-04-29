@@ -1,0 +1,60 @@
+scenarioId: 01-happy-path-pinnacle-invoice
+description: >
+  Green path. Pinnacle invoice → classify → extract → Review →
+  Approve (Attorney Approval) → Approve (Billing Approval) → Approve (Filed).
+  Asserts 1 classify + 1 extract audit row.
+organizationId: pinnacle-legal
+inputPdf: pinnacle-legal/invoices/dewey_cheatham_howe_feb_2024.pdf
+classification:
+  docType: invoice
+extraction:
+  fields:
+    vendor: "Dewey, Cheatham & Howe LLP"
+    invoiceNumber: "DCH-2024-0231"
+    invoiceDate: "2024-02-15"
+    matterNumber: "4389"
+    matterName: "Bigglesworth Estate"
+    amount: "12750.00"
+    billingPeriod: "February 2024"
+    paymentTerms: "Net 30"
+actions:
+  - type: APPROVE
+    expectedStatus: 200
+  - type: APPROVE
+    expectedStatus: 200
+  - type: APPROVE
+    expectedStatus: 200
+expectedEndState:
+  document:
+    detectedDocumentType: invoice
+    reextractionStatus: NONE
+    extractedFieldsContains:
+      vendor: "Dewey, Cheatham & Howe LLP"
+      paymentTerms: "Net 30"
+  workflowInstance:
+    currentStageId: Filed
+    currentStatus: FILED
+    workflowOriginStage: null
+    flagComment: null
+  events:
+    - type: ProcessingStepChanged
+      currentStep: TEXT_EXTRACTING
+    - type: ProcessingStepChanged
+      currentStep: CLASSIFYING
+    - type: ProcessingStepChanged
+      currentStep: EXTRACTING
+    - type: DocumentStateChanged
+      currentStage: Review
+      currentStatus: AWAITING_REVIEW
+    - type: DocumentStateChanged
+      action: APPROVE
+      currentStage: Attorney Approval
+      currentStatus: AWAITING_APPROVAL
+    - type: DocumentStateChanged
+      action: APPROVE
+      currentStage: Billing Approval
+      currentStatus: AWAITING_APPROVAL
+    - type: DocumentStateChanged
+      action: APPROVE
+      currentStage: Filed
+      currentStatus: FILED
