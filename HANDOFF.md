@@ -1,31 +1,29 @@
 <!-- PP-TRIAL:v2 2026-04-29 implementation -->
 # Session Handoff — implementation phase
 
-**Status:** clean. Branch `implementation` at `f307351`. `./gradlew build` GREEN, `frontend npm run check` GREEN. **9 P2 tasks + 1 P3 chore landed this session** across five orchestrated 2-way parallel batches plus inline glue: df-6aj fix (`39e0e9a`), C4.6 (`b5a240b`), C5.6 (`4cb14dc`), C4.7 (`b290d02`), C4.8 (`325dfe9`), C5.7 (`715682f`), C6.2 (`e384e51`), df-5uw engine wiring (`f235fe8`), C5.8 (`473acdb`), C4.9 (`c93f6d9`). The full backend pipeline now runs end-to-end at the Java layer; frontend has its API client.
+**Status:** clean. Branch `implementation` at `bdaeffc`. `make test` GREEN end-to-end (full backend `./gradlew build` + frontend `npm run check`). 7 beads closed this session via parallel worktree-agent orchestration; 1 newly blocked.
 
-**What we're doing.** DocFlow take-home, multi-tenant doc processing. Working through kerf plan + beads (`br`). Backend is essentially feature-complete except for chore-grade tasks: C1–C5 + C7 all have their core pieces, C4 has full property-test + contract-test coverage, C5 has its only HTTP-seam smoke test (gated on `ANTHROPIC_API_KEY`), and the WorkflowEngine is wired as `@Component` in production. Frontend has C6.1 (shell) + C6.2 (API client + types + MSW) — pages still to build.
+**What we're doing.** DocFlow take-home, multi-tenant doc processing. Working through kerf plan + beads (`br`). Backend is feature-complete and well-covered. Frontend now has its first two real pages (OrgPicker, Dashboard skeleton).
 
-**Next step.** Run `br ready`. Highest-leverage targets:
+**This session, in one paragraph.** Ran as orchestrator: dispatched 8 worktree agents in three waves (mostly 2–3 in parallel, backend + frontend mixed), cherry-picked their commits back to `implementation`, ran beads bookkeeping. Closed: **df-g1x** (seed FLAG transitions added to all 8 production approval stages), **df-ln9.10 / C4.10** (`EngineForbiddenStringsTest` test-time sweep), **df-6m8.3 / C6.3** (OrgPickerPage), **df-6m8.4 / C6.4** (Dashboard skeleton + stats bar + filters), **df-fwr** (moved `CLEAR_FLAG_KEEP_STAGE_SQL` off the listener onto `WorkflowInstanceWriter#clearOriginKeepStage`), **df-2zl.10 / C3.10** (`PipelineSmokeIT` live-API smoke, key-gated), **df-2zl.11 / C3.11** (eval harness + `./gradlew evalRun`). **df-n03** marked **blocked** — see below.
 
-- **df-g1x** (P2 **bug filed this session**) — production seed YAMLs (Ironworks, Pinnacle, Riverside) define **zero `FLAG` transitions** on approval stages. A real user clicking "Flag" would get `InvalidAction` 100% of the time. C4.9 synthesizes the missing transitions in tests; production seed needs them added. Likely one transition per approval stage `(approvalStage → reviewStage, FLAG, no guard, comment required)`. **This is content + light coding, not deep design.**
-- **C4.10** (`df-ln9.10`) — grepForbiddenStrings sweep over C4 source. Small chore, ~1–2h.
-- **C6.3** (`df-6m8.3`) — OrgPickerPage. 16h frontend.
-- **C6.4** (`df-6m8.4`) — Dashboard skeleton + stats bar + filters. 16h frontend. Pairs nicely with C6.3 in parallel — different routes, shared API client already in.
+**Next step.** Run `br ready`. The remaining open ready work:
+- **df-6m8.5** (P2) — `useOrgEvents` SSE hook + upload mutation. Frontend, builds on the API client + the two pages just landed.
+- **df-sxq / df-lws / df-2zl / df-ln9 / df-eiu** — these are the C1–C5 **epics**. They're showing as "ready" but their constituent tasks are mostly done; likely just need closing-out / squaring. Worth a `br show <id>` on each to confirm before assuming work remains.
 
-**Heads-up — Spring Boot 4 quirk surfaced this session.** `TestRestTemplate` was removed from `spring-boot-test*` jars in Boot 4. For `RANDOM_PORT` tests, use plain `RestTemplate` + `@LocalServerPort`. C5.8's `HappyPathSmokeTest` is the canonical example. Add to the existing Spring Boot 4 quirks list (`tools.jackson.*`, `org.springframework.boot.persistence.autoconfigure.EntityScan`, `MockMvcBuilders.webAppContextSetup`).
+**Blocked — df-n03.** Removing `@ConditionalOnBean(OrganizationCatalog.class)` from `StoredDocumentIngestionServiceImpl` breaks 7 fragment ITs (`StoredDocumentPersistenceFragmentIT`, `ProcessingDocumentWriterTest`) that scan a narrow slice of `com.docflow.ingestion.internal` without bringing in `com.docflow.config`. The class-comment "drop once C7.4 baseline removes the fragment-IT containment need" is accurate. There is no C7.4 bead today — the prerequisite is implicit. Either restructure those fragment ITs to provide a stub `OrganizationCatalog`, or close df-n03 as wontfix.
 
-**Heads-up — narrow `@SpringBootTest` configs may need a mock `LlmExtractor`.** Now that `WorkflowEngine` is `@Component`, any test whose `scanBasePackages` includes `com.docflow.workflow` but NOT `com.docflow.c3` will fail to wire the engine. `SeedManifestTest` was patched this session with a `@Bean Mockito.mock(LlmExtractor.class)`. If new tests trip the same wire, mirror that fix.
+**Heads-up — gradle daemon contention.** When you run more than one gradle build simultaneously (multiple worktree agents + the local repo + the Stop hook's `make test`), `~/.gradle/.tmp/` worker temp files race and you can get an opaque Checkstyle "Premature end of file" XML transformer error. It's not a real failure — it goes away with one clean serial run. The Stop hook's `make test` is a particular trap; consider gating it on "no agent worktrees running" if it bites again.
 
-**Open follow-up beads filed this session.**
-- **df-fwr** (P3) — refactor `ExtractionEventListener` inline `CLEAR_FLAG_KEEP_STAGE_SQL` into a new `WorkflowInstanceWriter` method (`clearOriginKeepStage`). Listener currently carries `NamedParameterJdbcOperations` to bypass `clearFlag`'s "return to origin stage" semantics, which don't match retype completion's "stay at Review" requirement.
+**Heads-up — known LLM/Spring quirks (still relevant).** `TestRestTemplate` is gone in Spring Boot 4 — use `RestTemplate` + `@LocalServerPort` (`HappyPathSmokeTest` is the canonical example). Narrow `@SpringBootTest` configs whose `scanBasePackages` includes `com.docflow.workflow` but not `com.docflow.c3` need a `@Bean Mockito.mock(LlmExtractor.class)` to wire — see `SeedManifestTest`.
 
 **Files to open first.**
-- For df-g1x: `backend/src/main/resources/seed/organizations.yaml` and the 9 workflow YAMLs (one per org/doc-type — `backend/src/main/resources/seed/<org>/<docType>-workflow.yaml` or similar; verify path). C4.9's `FlagOriginRestorationTest.java` enumerates all 8 approval-stage names by parsing the YAMLs — its parser code is a free reference.
-- For C4.10: `.kerf/project/docflow/specs/c4-workflow-spec.md` (forbidden-string list) and `backend/build.gradle.kts` (find the existing `grepForbiddenStrings` task).
-- For C6.3 / C6.4: `frontend/src/routes/` (existing pages from C6.1), `frontend/src/api/` (just landed), and `problem-statement/mockups/` for the design.
+- For df-6m8.5: `frontend/src/api/` (existing typed client), `frontend/src/routes/DashboardPage.tsx` (the consumer), and look in `problem-statement/mockups/` for upload UX. Server-side, the SSE endpoint is part of C5.
+- For epic squaring: `br show <epic-id>` on each, then `kerf show docflow` for the higher-level state.
+- For df-n03: `backend/src/main/java/com/docflow/ingestion/internal/StoredDocumentIngestionServiceImpl.java` (the conditional, with the existing TODO comment) and `StoredDocumentPersistenceFragmentIT.java` / `ProcessingDocumentWriterTest.java` (the seven failing tests).
 
-**Toolchain (unchanged).** `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"; export JAVA_HOME="/opt/homebrew/opt/openjdk"`. Build from `backend/`. Frontend: `cd frontend && npm run check`.
+**Toolchain.** `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"; export JAVA_HOME="/opt/homebrew/opt/openjdk"`. Backend from `backend/`. Frontend: `cd frontend && npm run check`. Whole thing: `make test`.
 
-**Worktrees.** All this session's `.claude/worktrees/agent-*` are cleaned up. Older worktrees from prior sessions still around — discard at leisure.
+**Worktrees.** This session's `.claude/worktrees/agent-*` were used and are still present (locked) — clean at leisure. `git worktree list` shows the inventory.
 
 **No blocking questions.**
