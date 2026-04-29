@@ -92,10 +92,16 @@ export function FormPanel({
   };
 
   return (
-    <div data-testid="form-panel" data-branch={branch}>
+    <div
+      data-testid="form-panel"
+      data-branch={branch}
+      className="flex h-full min-h-0 flex-col bg-card"
+    >
       {branch === "REEXTRACTION_IN_PROGRESS" && (
         <>
-          <ReextractionInProgressBanner newDocumentType={pendingNewDocumentType} />
+          <div className="px-6 pt-5">
+            <ReextractionInProgressBanner newDocumentType={pendingNewDocumentType} />
+          </div>
           <ReviewForm
             document={document}
             fields={fields}
@@ -110,7 +116,9 @@ export function FormPanel({
       )}
       {branch === "REEXTRACTION_FAILED" && (
         <>
-          <ReextractionFailedBanner message={reextractionFailureMessage} />
+          <div className="px-6 pt-5">
+            <ReextractionFailedBanner message={reextractionFailureMessage} />
+          </div>
           <ReviewForm
             document={document}
             fields={fields}
@@ -137,7 +145,9 @@ export function FormPanel({
       )}
       {branch === "REVIEW_FLAGGED" && (
         <>
-          <FlagBanner originStage={workflowOriginStage ?? ""} comment={document.flagComment} />
+          <div className="px-6 pt-5">
+            <FlagBanner originStage={workflowOriginStage ?? ""} comment={document.flagComment} />
+          </div>
           <ReviewForm
             document={document}
             fields={fields}

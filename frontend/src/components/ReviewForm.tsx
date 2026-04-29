@@ -26,6 +26,11 @@ interface ReviewFormProps {
   callbacks?: ReviewFormCallbacks;
 }
 
+const SECTION_TITLE = "mb-3 mt-1 text-11 font-bold uppercase tracking-[0.5px] text-neutral-500";
+
+const FORM_INPUT =
+  "h-[34px] w-full rounded-md border border-neutral-300 bg-card px-2.5 text-13 text-brand-navy outline-none focus:border-brand-blue focus:shadow-[0_0_0_2px_rgba(108,155,255,0.15)]";
+
 function buildDefaultValues(
   fields: FieldSchema[],
   values: Record<string, unknown>,
@@ -105,41 +110,87 @@ export function ReviewForm({
     actions.reject.mutate();
   };
 
+  const arrayFields = fields.filter((f) => f.type.toUpperCase() === "ARRAY");
+  const scalarFields = fields.filter((f) => f.type.toUpperCase() !== "ARRAY");
+
   return (
     <FormProvider {...methods}>
       <form
         data-testid="review-form"
         data-flagged={flagged ? "true" : "false"}
         onSubmit={handleSubmit(onSubmit)}
+        className="flex min-h-0 flex-1 flex-col"
       >
-        <label data-testid="doctype-field">
-          <span>Document Type</span>
-          <select
-            data-testid="doctype-select"
-            value={selectedDocumentType ?? document.detectedDocumentType ?? ""}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="mb-5 rounded-lg border border-neutral-200 bg-[#f9fafb] px-4 py-3.5">
+            <label data-testid="doctype-field" className="block">
+              <span className="mb-2 block text-11 font-bold uppercase tracking-[0.5px] text-neutral-500">
+                Document Type
+              </span>
+              <select
+                data-testid="doctype-select"
+                value={selectedDocumentType ?? document.detectedDocumentType ?? ""}
+                disabled={disabled}
+                onChange={(event) => callbacks?.onDocumentTypeChange?.(event.target.value)}
+                className={FORM_INPUT}
+              >
+                {docTypeOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1.5 block text-11 text-neutral-400">
+                Changing the document type will trigger re-extraction with new fields.
+              </span>
+            </label>
+          </div>
+
+          <fieldset
             disabled={disabled}
-            onChange={(event) => callbacks?.onDocumentTypeChange?.(event.target.value)}
+            data-testid="review-fields"
+            className="m-0 border-0 p-0 disabled:opacity-60"
           >
-            {docTypeOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-        </label>
-        <fieldset disabled={disabled} data-testid="review-fields">
-          {fields.map((field) => (
-            <FieldRow key={field.name} field={field} />
-          ))}
-        </fieldset>
+            {scalarFields.length > 0 && (
+              <>
+                <div className={SECTION_TITLE}>Extracted Data</div>
+                {scalarFields.map((field) => (
+                  <FieldRow key={field.name} field={field} />
+                ))}
+              </>
+            )}
+            {arrayFields.length > 0 && (
+              <>
+                <div className="my-4 h-px bg-neutral-100" />
+                <div className={SECTION_TITLE}>Line Items</div>
+                {arrayFields.map((field) => (
+                  <FieldRow key={field.name} field={field} />
+                ))}
+              </>
+            )}
+          </fieldset>
+        </div>
         {!hideActions && (
-          <div data-testid="review-action-bar">
+          <div
+            data-testid="review-action-bar"
+            className="flex flex-shrink-0 gap-2.5 border-t border-neutral-200 bg-card px-6 py-4"
+          >
             {flagged ? (
-              <button type="submit" data-testid="resolve-button" disabled={disabled || submitting}>
+              <button
+                type="submit"
+                data-testid="resolve-button"
+                disabled={disabled || submitting}
+                className="inline-flex h-[38px] flex-1 items-center justify-center gap-1.5 rounded-md border-0 bg-success px-5 text-13 font-semibold text-white transition-colors hover:bg-success-strong disabled:cursor-not-allowed disabled:opacity-60"
+              >
                 Resolve
               </button>
             ) : (
-              <button type="submit" data-testid="approve-button" disabled={disabled || submitting}>
+              <button
+                type="submit"
+                data-testid="approve-button"
+                disabled={disabled || submitting}
+                className="inline-flex h-[38px] flex-1 items-center justify-center gap-1.5 rounded-md border-0 bg-success px-5 text-13 font-semibold text-white transition-colors hover:bg-success-strong disabled:cursor-not-allowed disabled:opacity-60"
+              >
                 Approve
               </button>
             )}
@@ -148,6 +199,7 @@ export function ReviewForm({
               data-testid="reject-button"
               onClick={onReject}
               disabled={disabled || submitting}
+              className="inline-flex h-[38px] items-center justify-center gap-1.5 rounded-md border border-[#fecaca] bg-card px-5 text-13 font-semibold text-danger transition-colors hover:bg-[#fef2f2] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Reject
             </button>
@@ -174,12 +226,13 @@ function FieldRow({ field }: { field: FieldSchema }) {
   if (upper === "ENUM") {
     const values = field.enumValues ?? [];
     return (
-      <label data-testid={`field-${field.name}`}>
-        <span>{field.name}</span>
+      <label data-testid={`field-${field.name}`} className="mb-3.5 block">
+        <span className="mb-1 block text-12 font-semibold text-neutral-700">{field.name}</span>
         <select
           data-testid={`input-${field.name}`}
           {...register(field.name)}
           aria-required={field.required}
+          className={FORM_INPUT}
         >
           <option value="">— select —</option>
           {values.map((v) => (
@@ -189,7 +242,11 @@ function FieldRow({ field }: { field: FieldSchema }) {
           ))}
         </select>
         {errorMsg && (
-          <span role="alert" data-testid={`error-${field.name}`}>
+          <span
+            role="alert"
+            data-testid={`error-${field.name}`}
+            className="mt-1 block text-11 text-danger"
+          >
             {errorMsg}
           </span>
         )}
@@ -199,17 +256,22 @@ function FieldRow({ field }: { field: FieldSchema }) {
 
   const inputType = upper === "DATE" ? "date" : "text";
   return (
-    <label data-testid={`field-${field.name}`}>
-      <span>{field.name}</span>
+    <label data-testid={`field-${field.name}`} className="mb-3.5 block">
+      <span className="mb-1 block text-12 font-semibold text-neutral-700">{field.name}</span>
       <input
         type={inputType}
         data-testid={`input-${field.name}`}
         {...register(field.name)}
         aria-required={field.required}
         inputMode={upper === "DECIMAL" ? "decimal" : undefined}
+        className={FORM_INPUT}
       />
       {errorMsg && (
-        <span role="alert" data-testid={`error-${field.name}`}>
+        <span
+          role="alert"
+          data-testid={`error-${field.name}`}
+          className="mt-1 block text-11 text-danger"
+        >
           {errorMsg}
         </span>
       )}
