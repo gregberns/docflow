@@ -1,34 +1,31 @@
 <!-- PP-TRIAL:v2 2026-04-29 implementation -->
 # Session Handoff — implementation phase
 
-**Status:** clean. Branch `implementation` at `5033407`. `./gradlew build` GREEN. **4 P2 tasks landed this session** in two orchestrated 2-way parallel batches: `5b557ab` C3.8 (LlmExtractor), `c5cb89b` C7.9 (SeedDataLoader), `97ec5af` C3.9 (ProcessingPipelineOrchestrator), `5dceeff` C4.5 (WorkflowEngine.applyAction). Both prior session's stomped-and-rolled-back tasks (C3.8, C7.9) are now done; pipeline now has all three C3 steps wired and C4's engine dispatches actions through TransitionResolver.
+**Status:** clean. Branch `implementation` at `f307351`. `./gradlew build` GREEN, `frontend npm run check` GREEN. **9 P2 tasks + 1 P3 chore landed this session** across five orchestrated 2-way parallel batches plus inline glue: df-6aj fix (`39e0e9a`), C4.6 (`b5a240b`), C5.6 (`4cb14dc`), C4.7 (`b290d02`), C4.8 (`325dfe9`), C5.7 (`715682f`), C6.2 (`e384e51`), df-5uw engine wiring (`f235fe8`), C5.8 (`473acdb`), C4.9 (`c93f6d9`). The full backend pipeline now runs end-to-end at the Java layer; frontend has its API client.
 
-**What we're doing.** DocFlow take-home, multi-tenant doc processing. Working through kerf plan + beads (`br`). C1 done end-to-end; C2 has upload + integration test; C3 has prompt config + tool schema + Anthropic client + classifier + extractor + orchestrator + step classes + trigger listener; C4 has Document/WorkflowInstance writers + TransitionResolver + WorkflowEngine.applyAction; C5 has org/upload/document/dashboard controllers; C7 has seed loader + 12 seeded docs.
+**What we're doing.** DocFlow take-home, multi-tenant doc processing. Working through kerf plan + beads (`br`). Backend is essentially feature-complete except for chore-grade tasks: C1–C5 + C7 all have their core pieces, C4 has full property-test + contract-test coverage, C5 has its only HTTP-seam smoke test (gated on `ANTHROPIC_API_KEY`), and the WorkflowEngine is wired as `@Component` in production. Frontend has C6.1 (shell) + C6.2 (API client + types + MSW) — pages still to build.
 
-**Next step.** Run `br ready`. **8 P2 tasks** unblocked plus a P3 chore. Two epics in the list are placeholders (ignore). Highest-leverage targets:
+**Next step.** Run `br ready`. Highest-leverage targets:
 
-- **df-6aj** (P2 bug, **filed this session**) — `WorkflowEngine` retype path double-marks `reextractionStatus=IN_PROGRESS` and would always throw against the live `LlmExtractor` concurrency guard. Currently masked because C4.5 unit test mocks the extractor. **Fix this BEFORE C4.7 lands** (the retype IT will surface it). See bug body for design options — recommend either making the engine NOT pre-mark and letting the extractor own the lifecycle write, OR adding an internal extractor entry point that skips the guard for engine-driven retype. **This is design work, not parallel-able.**
-- **C4.6** (`df-ln9.6`) — `ProcessingCompletedListener` (C3 → C4 handoff). 16h.
-- **C4.7** (`df-ln9.7`) — `ExtractionEventListener` (retype completion). 16h. **Blocked in spirit by df-6aj** — fix the bug first or this listener won't have a working retype to listen to.
-- **C5.6** (`df-eiu.6`) — `DocumentActionController` + `ReviewController`. 16h.
-- **C4.8** (`df-ln9.8`) — jqwik property-test suite. 16h.
-- **C3.10** (`df-2zl.10`) — Live-API smoke test (PipelineSmokeIT). On-demand, requires `ANTHROPIC_API_KEY`.
-- **C3.11** (`df-2zl.11`) — Eval harness + `evalRun` Gradle task. On-demand. Modifies `build.gradle.kts`.
+- **df-g1x** (P2 **bug filed this session**) — production seed YAMLs (Ironworks, Pinnacle, Riverside) define **zero `FLAG` transitions** on approval stages. A real user clicking "Flag" would get `InvalidAction` 100% of the time. C4.9 synthesizes the missing transitions in tests; production seed needs them added. Likely one transition per approval stage `(approvalStage → reviewStage, FLAG, no guard, comment required)`. **This is content + light coding, not deep design.**
+- **C4.10** (`df-ln9.10`) — grepForbiddenStrings sweep over C4 source. Small chore, ~1–2h.
+- **C6.3** (`df-6m8.3`) — OrgPickerPage. 16h frontend.
+- **C6.4** (`df-6m8.4`) — Dashboard skeleton + stats bar + filters. 16h frontend. Pairs nicely with C6.3 in parallel — different routes, shared API client already in.
 
-**Heads-up — don't repeat last session's mistake.** Stop hook runs `make test` after every turn. When orchestrating parallel sub-agents with `isolation: "worktree"`, **never embed `/Users/gb/github/basata/...` absolute paths in the brief** — auto-backgrounded agents take them literally and stomp the main repo. **Use repo-relative paths and a `pwd` preflight in every brief.** Memory: `~/.claude/projects/-Users-gb-github-basata/memory/feedback_worktree_relative_paths.md`. **2-agent batches stayed foreground reliably this session** (4/4 agents foreground, all green). 3-way is the cap; cap at 2 if briefs are heavy (16h tasks each).
+**Heads-up — Spring Boot 4 quirk surfaced this session.** `TestRestTemplate` was removed from `spring-boot-test*` jars in Boot 4. For `RANDOM_PORT` tests, use plain `RestTemplate` + `@LocalServerPort`. C5.8's `HappyPathSmokeTest` is the canonical example. Add to the existing Spring Boot 4 quirks list (`tools.jackson.*`, `org.springframework.boot.persistence.autoconfigure.EntityScan`, `MockMvcBuilders.webAppContextSetup`).
 
-**One brief-template note worth tracking:** the C7.7 event record skeletons (`StoredDocumentIngested`, `ProcessingStepChanged`, `ProcessingCompleted`, `ExtractionCompleted`, `ExtractionFailed`, `DocumentStateChanged`) are **already concrete** — earlier sessions filled them in. Future briefs that say "fill in skeleton" should instead say "verify shape matches AC; modify if needed."
+**Heads-up — narrow `@SpringBootTest` configs may need a mock `LlmExtractor`.** Now that `WorkflowEngine` is `@Component`, any test whose `scanBasePackages` includes `com.docflow.workflow` but NOT `com.docflow.c3` will fail to wire the engine. `SeedManifestTest` was patched this session with a `@Bean Mockito.mock(LlmExtractor.class)`. If new tests trip the same wire, mirror that fix.
+
+**Open follow-up beads filed this session.**
+- **df-fwr** (P3) — refactor `ExtractionEventListener` inline `CLEAR_FLAG_KEEP_STAGE_SQL` into a new `WorkflowInstanceWriter` method (`clearOriginKeepStage`). Listener currently carries `NamedParameterJdbcOperations` to bypass `clearFlag`'s "return to origin stage" semantics, which don't match retype completion's "stay at Review" requirement.
 
 **Files to open first.**
-- For df-6aj: `backend/src/main/java/com/docflow/workflow/WorkflowEngine.java` (`handleResolveWithTypeChange`) and `backend/src/main/java/com/docflow/c3/llm/LlmExtractor.java` (the `extract(documentId, newDocTypeId)` retype surface, line ~85 has the IN_PROGRESS check).
-- For C4.6: existing event listeners (look for `@EventListener` in `com.docflow.workflow.*`) and `ProcessingCompleted` event under `com.docflow.c3.events`.
-- For C4.7: `LlmExtractor.extract` retype path's `ExtractionCompleted`/`ExtractionFailed` events; the listener updates `WorkflowInstance` based on retype outcome.
-- For C5.6: `backend/src/main/java/com/docflow/c5/...` for existing controller patterns; `WorkflowEngine` becomes the controller's collaborator. The C5 controllers will need the engine wired — note that C4.5 deliberately did NOT mark `WorkflowEngine` `@Component` because `JdbcDocumentReader` / `JdbcWorkflowInstanceReader` impls don't exist yet. C5.6 may need to land those JDBC impls + flip the engine to `@Component`, or wire via `@Bean`.
+- For df-g1x: `backend/src/main/resources/seed/organizations.yaml` and the 9 workflow YAMLs (one per org/doc-type — `backend/src/main/resources/seed/<org>/<docType>-workflow.yaml` or similar; verify path). C4.9's `FlagOriginRestorationTest.java` enumerates all 8 approval-stage names by parsing the YAMLs — its parser code is a free reference.
+- For C4.10: `.kerf/project/docflow/specs/c4-workflow-spec.md` (forbidden-string list) and `backend/build.gradle.kts` (find the existing `grepForbiddenStrings` task).
+- For C6.3 / C6.4: `frontend/src/routes/` (existing pages from C6.1), `frontend/src/api/` (just landed), and `problem-statement/mockups/` for the design.
 
-**Toolchain (unchanged).** `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"; export JAVA_HOME="/opt/homebrew/opt/openjdk"`. Build from `backend/`. Spring Boot 4 quirks: `tools.jackson.*`, `org.springframework.boot.persistence.autoconfigure.EntityScan`, `MockMvcBuilders.webAppContextSetup`. `organizationId` is a String slug; surrogate IDs are UUID. Anthropic SDK 2.10.0 still uses Jackson 2 internally — `JsonValue.convert(Map.class)` requires `@SuppressWarnings("unchecked")` with a `// why:` comment.
+**Toolchain (unchanged).** `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"; export JAVA_HOME="/opt/homebrew/opt/openjdk"`. Build from `backend/`. Frontend: `cd frontend && npm run check`.
 
-**This session's pipeline additions.** `PipelineStep` interface + `StepResult` sealed (`Success | Failure(message)`) + `PipelineContext` (mutable). Three steps: `TextExtractStep` (PDFBox 3.0.3 via `Loader.loadPDF`), `ClassifyStep` (wraps `LlmClassifier`), `ExtractStep` (wraps `LlmExtractor.extractFields` text-only surface). `ProcessingDocumentService.start(...)` is `@Async`. `PipelineTriggerListener` `@EventListener(StoredDocumentIngested)`. `WorkflowEngine` returns `WorkflowOutcome` sealed sum (`Success(WorkflowInstance)` / `Failure(WorkflowError)` with InvalidAction / ValidationFailed / Unknown / ExtractionInProgress variants). Modality is hard-coded TEXT in `ExtractRequestBuilder` — when a doc-type schema needs PDF modality, that's a separate enhancement.
-
-**Worktrees.** Several locked `.claude/worktrees/agent-*` from this session — all four worked cleanly (no stomping). Discard the leftover dirs at your leisure.
+**Worktrees.** All this session's `.claude/worktrees/agent-*` are cleaned up. Older worktrees from prior sessions still around — discard at leisure.
 
 **No blocking questions.**
