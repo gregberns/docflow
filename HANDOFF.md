@@ -1,27 +1,27 @@
 <!-- PP-TRIAL:v2 2026-04-29 implementation -->
 # Session Handoff — implementation phase
 
-**Status:** clean, both lanes idle. Branch `implementation` at `e30df23`. Backend `./gradlew check` and frontend `npm run check` (105 tests, gate 70/60/70/70) both green. **C6 frontend epic complete** — all 14 children closed (12 numbered + StageProgress mount + onApprove wire-up). 19 beads closed this session; 5 new beads filed (3 already closed same-session).
+**Status:** clean. Branch `implementation` at `5f2c469`. `make test` green (gradle check + frontend check). **C7 platform epic closed** — all children done. 4 beads closed this session via 4 parallel worktree agents (orchestrator pattern): df-9c2.11 (CI), df-9c2.12 (README), df-xqh (P2 @Order bug), df-9kx (P3 Flyway-under-SpringBootTest bug).
 
-**Two-lane orchestration in effect.** This session ran as orchestrator with two parallel agents: a backend lane (this session: df-rar P1 boot fix) and a single-stream UI lane (this session: df-6m8.5 → .12 + df-u7q + df-01n). **Cap UI to one agent at a time** — vitest memory was a problem when multiple frontend worktrees ran concurrently. `frontend/vitest.config.ts` now sets `pool: "threads"` with `maxThreads: 2` (commit `92722f3`); a single test pass takes ~55s on cold cache, but memory stays bounded. Backend agents can still run alongside the UI agent — different toolchain.
+**The other agent (backend/scenario/docs lane) is still working** — their explicit beads: df-8x4 (P1), df-sup chain (df-gum / df-97e / df-skw / df-efg), df-x01 + df-if4 (docs). They also filed **df-zfy (P1)** mid-session, which is critical context — see below. Don't pick up their beads.
 
-**There is another agent working on backend/scenario/docs.** Their lane covers df-8x4 (P1), the scenario harness chain (df-sup → df-gum → {df-97e, df-skw, df-efg}), and docs (df-x01, df-if4). They also committed eval tooling and kerf "evals" work this session (commits `a7678f2`, `c1825af`, `cd26477`) and ship the live port-mapping changes (`.env.example` / `docker-compose.yml` / `frontend/vite.config.ts` published backend on host port 18080 to avoid conflicts). **Do not pick up their beads** unless coordinated.
+**df-zfy likely fixed by my df-9kx commit, but unverified.** df-zfy says production `make start` crashes on `ApplicationReadyEvent` because Flyway never runs (zero log lines, zero tables, then `OrgConfigSeeder` hits `relation "organizations" does not exist`). The eval-agent ticket explicitly cross-references df-9kx and says the two share a root cause. My df-9kx fix at `7761f11` promotes `FlywayConfig` to a user-defined `@AutoConfiguration(after = DataSourceAutoConfiguration.class)` registered via `META-INF/spring/.../AutoConfiguration.imports` — that should make Flyway run during normal application boot too, not just under `@SpringBootTest`. **But I only ran `make test`. I did NOT run `docker compose down && make build && make start` to verify production boot.** Next session should run that and close df-zfy if Flyway log lines appear and `\dt` shows tables.
 
-**Unclaimed adjacent work** — fair game if no UI is queued:
-- **df-9c2.11** (P2) — `.github/workflows/ci.yml`. Spec at `c7-platform-spec.md §3.5`. Run `make test`, `make build`, then `make start &` + healthcheck wait + `make e2e` + `make stop`. Don't invoke `make eval`.
-- **df-9c2.12** (P2, blocked on .11) — `README.md` per `c7-platform-spec.md §4`. Memory feedback `feedback_no_unprompted_prod_caveats.md` applies — keep "Production Considerations" scoped, no padding.
+**Unclaimed ready work** after df-zfy verification:
+- **df-9c2 epic** itself shows as ready now that all children are closed — `br close df-9c2 --reason="C7 epic complete"` is a clean cleanup.
+- Otherwise: nothing unclaimed and not in the other agent's lane. New work would need to come from `br create` or the user.
 
-**Two latent bugs filed mid-session** (df-rar agent uncovered while writing the regression test, didn't fix):
-- **df-xqh** (P2 bug) — `OrganizationCatalogImpl.loadOnReady` and `PromptLibrary.validateOnReady` share `@Order(LOWEST_PRECEDENCE)`. Production happy-path works deterministically by bean-name ordering; with `seedOnBoot=false` it's ambiguous and crashes.
-- **df-9kx** (P3 bug) — `FlywayConfig` conditionals don't activate Flyway under `@SpringBootTest` in Spring Boot 4. `make start` works because the `@Bean(initMethod="migrate")` runs during refresh; only test contexts are affected.
+**Worktrees outstanding:** four locked agent worktrees under `.claude/worktrees/agent-{a59333fdf26e7adcf,a6bb022b1f41324a5,ac744fb0b0a695a61,a15798390cd68349f}` from this session. Locked by harness, can't `git worktree remove` from inside Claude. Harness will clean up.
 
-**Next step.** Run `br ready`. If UI work is queued → take exactly one in a worktree. Otherwise df-9c2.11 (CI) → df-9c2.12 (README) is the natural pickup, after a quick check that the other agent isn't already on it (`git log --oneline -5` and look for fresh commits in `.github/` or `README.md`).
+**Heads-up for next agent.**
+- **CWD drift with worktrees:** when running `git merge` from main repo, my CWD silently ended up inside one of the agent worktrees. Always `cd /Users/gb/github/basata && ...` for top-level operations, and prefer `git cherry-pick <sha>` over `git merge --ff-only <branch>` when worktree branches diverge from a common base — only the first branch ff's; subsequent ones would undo the prior merges.
+- **Beads JSONL conflicts** during cherry-pick auto-merged cleanly each time, but stay alert.
+- All Spring Boot 4 / Flyway / `@Order` quirks from prior handoff still apply: no `TestRestTemplate`, AppConfig nested records via `AppConfigBeans`, `@SpringBootTest` w/o c3 needs a mock `LlmExtractor`, ambiguous `@Order` between catalogs and PromptLibrary now fixed (gap of 100).
 
-**Files to open first** for the likely paths:
-- For CI: `Makefile` (existing targets), `c7-platform-spec.md §3.5`, `frontend/playwright.config.ts` (just landed in commit `56d6144`).
-- For README: `c7-platform-spec.md §4`, `03-components.md` C7-R9 production-considerations enumeration.
-- For any new UI: `frontend/src/routes/DocumentDetailPage.tsx` is the central page; `FormPanel.tsx` is the dispatcher; `useDocumentActions.ts` owns the mutations.
-
-**Heads-up — known LLM/Spring quirks (still relevant).** Spring Boot 4: no `TestRestTemplate`, use `RestTemplate` + `@LocalServerPort`. Narrow `@SpringBootTest` configs that include `com.docflow.workflow` but not `com.docflow.c3` need a `@Bean Mockito.mock(LlmExtractor.class)`. AppConfig's nested records (`Storage`, `Llm`, `Database`, `OrgConfigBootstrap`) are now exposed via `AppConfigBeans` — don't remove that file.
+**Files to open first** if you pick up df-zfy verification:
+- `backend/src/main/java/com/docflow/platform/FlywayConfig.java` — now an `@AutoConfiguration`.
+- `backend/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` — registration file.
+- `backend/src/test/java/com/docflow/platform/FlywayConfigSpringBootIT.java` — covers test-context, not production-boot.
+- `backend/src/main/java/com/docflow/config/OrgConfigSeeder.java:47` — the crash site per df-zfy.
 
 **No blocking questions.**
