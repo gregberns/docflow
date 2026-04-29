@@ -76,9 +76,20 @@ export function DocumentDetailPage() {
 
   return (
     <main data-testid="document-detail-page" data-document-id={documentId}>
-      {isLoading && <p data-testid="document-loading">Loading document…</p>}
+      {isLoading && (
+        <p
+          data-testid="document-loading"
+          className="mx-auto mt-8 max-w-md rounded-lg border border-neutral-200 bg-card px-6 py-4 text-center text-13 text-neutral-500"
+        >
+          Loading document…
+        </p>
+      )}
       {isError && (
-        <p data-testid="document-error" role="alert">
+        <p
+          data-testid="document-error"
+          role="alert"
+          className="mx-auto mt-8 max-w-md rounded-lg border border-danger-soft bg-stage-rejected-bg px-6 py-4 text-center text-13 text-danger"
+        >
           {error instanceof Error ? error.message : "Unable to load document."}
         </p>
       )}

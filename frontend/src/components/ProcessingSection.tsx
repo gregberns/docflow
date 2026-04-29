@@ -27,7 +27,7 @@ export function ProcessingSection({ items }: ProcessingSectionProps) {
                 key={item.processingDocumentId}
                 data-testid="processing-row"
                 data-step={item.currentStep}
-                style={{ opacity: 0.55 }}
+                className="opacity-[0.55]"
               >
                 <td>{item.sourceFilename}</td>
                 <td>

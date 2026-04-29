@@ -22,7 +22,12 @@ export function ReadOnlyArrayTable({ name, itemFields, rows }: ReadOnlyArrayTabl
       <tbody>
         {rows.length === 0 ? (
           <tr data-testid="readonly-array-empty">
-            <td colSpan={itemFields.length}>No rows</td>
+            <td
+              colSpan={itemFields.length}
+              className="px-3 py-4 text-center text-12 text-neutral-400"
+            >
+              No rows
+            </td>
           </tr>
         ) : (
           rows.map((row, rowIndex) => (

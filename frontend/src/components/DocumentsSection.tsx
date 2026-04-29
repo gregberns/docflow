@@ -11,7 +11,12 @@ export function DocumentsSection({ documents }: DocumentsSectionProps) {
     <section data-testid="documents-section">
       <h2>Documents</h2>
       {documents.length === 0 ? (
-        <p data-testid="documents-empty">No documents match the current filters.</p>
+        <p
+          data-testid="documents-empty"
+          className="mx-auto my-6 max-w-md rounded-lg border border-dashed border-neutral-200 bg-card px-6 py-8 text-center text-13 text-neutral-500"
+        >
+          No documents match the current filters.
+        </p>
       ) : (
         <table>
           <thead>

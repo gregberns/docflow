@@ -27,7 +27,14 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
         file={file}
         onLoadSuccess={(pdf) => setNumPages(pdf.numPages)}
         onLoadError={(error) => setLoadError(error.message)}
-        loading={<p data-testid="pdf-loading">Loading PDF…</p>}
+        loading={
+          <p
+            data-testid="pdf-loading"
+            className="mx-auto mt-8 max-w-md rounded-lg border border-neutral-200 bg-card px-6 py-4 text-center text-13 text-neutral-500"
+          >
+            Loading PDF…
+          </p>
+        }
       >
         {Array.from({ length: numPages }, (_, i) => (
           <Page key={i} pageNumber={i + 1} />

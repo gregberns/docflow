@@ -93,9 +93,20 @@ export function DashboardPage() {
       <header>
         <h1>Documents</h1>
       </header>
-      {isLoading && <p data-testid="dashboard-loading">Loading dashboard…</p>}
+      {isLoading && (
+        <p
+          data-testid="dashboard-loading"
+          className="mx-auto mt-8 max-w-md rounded-lg border border-neutral-200 bg-card px-6 py-4 text-center text-13 text-neutral-500"
+        >
+          Loading dashboard…
+        </p>
+      )}
       {isError && (
-        <p data-testid="dashboard-error" role="alert">
+        <p
+          data-testid="dashboard-error"
+          role="alert"
+          className="mx-auto mt-8 max-w-md rounded-lg border border-danger-soft bg-stage-rejected-bg px-6 py-4 text-center text-13 text-danger"
+        >
           {error instanceof Error ? error.message : "Unable to load dashboard."}
         </p>
       )}

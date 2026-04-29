@@ -18,9 +18,20 @@ export function OrgPickerPage() {
         </h1>
         <p>Select an organization to continue</p>
       </header>
-      {isLoading && <p data-testid="org-picker-loading">Loading organizations…</p>}
+      {isLoading && (
+        <p
+          data-testid="org-picker-loading"
+          className="mx-auto mt-8 max-w-md rounded-lg border border-neutral-200 bg-card px-6 py-4 text-center text-13 text-neutral-500"
+        >
+          Loading organizations…
+        </p>
+      )}
       {isError && (
-        <p data-testid="org-picker-error" role="alert">
+        <p
+          data-testid="org-picker-error"
+          role="alert"
+          className="mx-auto mt-8 max-w-md rounded-lg border border-danger-soft bg-stage-rejected-bg px-6 py-4 text-center text-13 text-danger"
+        >
           {error instanceof Error ? error.message : "Unable to load organizations."}
         </p>
       )}

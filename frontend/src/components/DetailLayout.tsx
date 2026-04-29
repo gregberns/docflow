@@ -7,14 +7,7 @@ interface DetailLayoutProps {
 
 export function DetailLayout({ left, right }: DetailLayoutProps) {
   return (
-    <div
-      data-testid="detail-layout"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-        gap: "1rem",
-      }}
-    >
+    <div data-testid="detail-layout" className="flex">
       <section data-testid="detail-pane-left" aria-label="Document preview">
         {left}
       </section>
