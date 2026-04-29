@@ -2,6 +2,7 @@ package com.docflow.platform;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.docflow.c3.llm.LlmExtractor;
 import com.docflow.config.AppConfig;
 import java.io.IOException;
 import java.io.InputStream;
@@ -184,6 +185,11 @@ class SeedManifestTest {
     @Bean
     AppConfig.Storage appStorage(AppConfig appConfig) {
       return appConfig.storage();
+    }
+
+    @Bean
+    LlmExtractor llmExtractor() {
+      return org.mockito.Mockito.mock(LlmExtractor.class);
     }
   }
 }
