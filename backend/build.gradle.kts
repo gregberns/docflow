@@ -35,6 +35,7 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
     implementation("com.github.f4b6a3:uuid-creator:6.1.1")
+    implementation("org.apache.tika:tika-core:3.3.0")
     implementation("tools.jackson.dataformat:jackson-dataformat-yaml")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
