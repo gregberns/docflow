@@ -1,9 +1,12 @@
 package com.docflow.c3.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
+import com.docflow.c3.audit.LlmCallAuditWriter;
 import com.docflow.config.catalog.OrganizationCatalog;
 import com.docflow.config.catalog.OrganizationView;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -12,6 +15,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -84,5 +88,16 @@ class PromptLibraryIT {
   @EntityScan("com.docflow.config.persistence")
   @EnableJpaRepositories("com.docflow.config.persistence")
   @ConfigurationPropertiesScan("com.docflow.config")
-  static class PromptLibraryIntegrationApp {}
+  static class PromptLibraryIntegrationApp {
+
+    @Bean
+    LlmCallAuditWriter llmCallAuditWriter() {
+      return mock(LlmCallAuditWriter.class);
+    }
+
+    @Bean
+    Clock clock() {
+      return Clock.systemUTC();
+    }
+  }
 }
