@@ -44,6 +44,8 @@ public class PromptLibrary {
     this.promptsRoot = promptsRoot;
   }
 
+  // Must run after OrganizationCatalog + DocumentTypeCatalog populate their snapshots
+  // (both at LOWEST_PRECEDENCE - 100). Equal @Order would tie-break by bean name, which is fragile.
   @EventListener(ApplicationReadyEvent.class)
   @Order(Ordered.LOWEST_PRECEDENCE)
   void validateOnReady() {

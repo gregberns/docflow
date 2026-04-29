@@ -34,7 +34,7 @@ public class DocumentTypeCatalogImpl implements DocumentTypeCatalog {
   }
 
   @EventListener(ApplicationReadyEvent.class)
-  @Order(Ordered.LOWEST_PRECEDENCE)
+  @Order(Ordered.LOWEST_PRECEDENCE - 100)
   public void loadOnReady() {
     this.snapshot = load();
   }
