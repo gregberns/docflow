@@ -92,6 +92,60 @@ const DOCUMENT_VIEW: DocumentView = {
   reextractionStatus: "NONE",
 };
 
+const DOCUMENT_INTAKE_FLAGGED: DocumentView = {
+  documentId: "aaaaaaaa-1111-1111-1111-111111111111",
+  organizationId: "pinnacle-legal",
+  sourceFilename: "intake-smith.pdf",
+  mimeType: "application/pdf",
+  uploadedAt: "2026-04-02T10:00:00Z",
+  processedAt: "2026-04-02T10:00:25Z",
+  rawText: "Client intake — Smith ...",
+  currentStageId: "review",
+  currentStageDisplayName: "Review",
+  currentStatus: "FLAGGED",
+  workflowOriginStage: "approval",
+  flagComment: "Missing signature page",
+  detectedDocumentType: "client-intake",
+  extractedFields: { clientName: "Smith" },
+  reextractionStatus: "NONE",
+};
+
+const DOCUMENT_FILING_FILED: DocumentView = {
+  documentId: "bbbbbbbb-2222-2222-2222-222222222222",
+  organizationId: "pinnacle-legal",
+  sourceFilename: "motion-to-dismiss.pdf",
+  mimeType: "application/pdf",
+  uploadedAt: "2026-03-12T09:00:00Z",
+  processedAt: "2026-03-12T09:01:00Z",
+  rawText: "Motion to dismiss ...",
+  currentStageId: "filed",
+  currentStageDisplayName: "Filed",
+  currentStatus: "FILED",
+  workflowOriginStage: null,
+  flagComment: null,
+  detectedDocumentType: "court-filing",
+  extractedFields: { caseNumber: "2026-CV-00012", filingDate: "2026-03-12" },
+  reextractionStatus: "NONE",
+};
+
+const DOCUMENT_INTAKE_APPROVAL: DocumentView = {
+  documentId: "cccccccc-3333-3333-3333-333333333333",
+  organizationId: "pinnacle-legal",
+  sourceFilename: "intake-jones.pdf",
+  mimeType: "application/pdf",
+  uploadedAt: "2026-04-15T14:00:00Z",
+  processedAt: "2026-04-15T14:00:18Z",
+  rawText: "Client intake — Jones ...",
+  currentStageId: "approval",
+  currentStageDisplayName: "Approval",
+  currentStatus: "AWAITING_APPROVAL",
+  workflowOriginStage: null,
+  flagComment: null,
+  detectedDocumentType: "client-intake",
+  extractedFields: { clientName: "Jones" },
+  reextractionStatus: "NONE",
+};
+
 const DASHBOARD_RESPONSE: DashboardResponse = {
   processing: [
     {
@@ -103,11 +157,16 @@ const DASHBOARD_RESPONSE: DashboardResponse = {
       createdAt: "2026-04-29T08:00:00Z",
     },
   ],
-  documents: [DOCUMENT_VIEW],
+  documents: [
+    DOCUMENT_VIEW,
+    DOCUMENT_INTAKE_FLAGGED,
+    DOCUMENT_FILING_FILED,
+    DOCUMENT_INTAKE_APPROVAL,
+  ],
   stats: {
     inProgress: 1,
     awaitingReview: 1,
-    flagged: 0,
+    flagged: 1,
     filedThisMonth: 12,
   },
 };
