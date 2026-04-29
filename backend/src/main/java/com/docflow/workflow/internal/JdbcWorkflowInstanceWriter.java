@@ -3,6 +3,7 @@ package com.docflow.workflow.internal;
 import com.docflow.config.catalog.StageView;
 import com.docflow.config.catalog.WorkflowCatalog;
 import com.docflow.config.catalog.WorkflowView;
+import com.docflow.workflow.WorkflowInstance;
 import com.docflow.workflow.WorkflowInstanceWriter;
 import com.docflow.workflow.WorkflowStatus;
 import java.sql.Timestamp;
@@ -28,6 +29,13 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
           + "updated_at = :newUpdatedAt "
           + "WHERE document_id = :documentId AND updated_at = :priorUpdatedAt";
 
+  public static final String INSERT_SQL =
+      "INSERT INTO workflow_instances "
+          + "(id, document_id, organization_id, document_type_id, current_stage_id, "
+          + "current_status, workflow_origin_stage, flag_comment, updated_at) "
+          + "VALUES (:id, :documentId, :organizationId, :documentTypeId, :currentStageId, "
+          + ":currentStatus, :workflowOriginStage, :flagComment, :updatedAt)";
+
   private static final String SELECT_STATE_SQL =
       "SELECT current_stage_id, workflow_origin_stage, updated_at "
           + "FROM workflow_instances WHERE document_id = :documentId";
@@ -40,6 +48,22 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
   public JdbcWorkflowInstanceWriter(NamedParameterJdbcOperations jdbc, Clock clock) {
     this.jdbc = jdbc;
     this.clock = clock;
+  }
+
+  @Override
+  public void insert(WorkflowInstance instance, String documentTypeId) {
+    MapSqlParameterSource params =
+        new MapSqlParameterSource()
+            .addValue("id", instance.id())
+            .addValue("documentId", instance.documentId())
+            .addValue("organizationId", instance.organizationId())
+            .addValue("documentTypeId", documentTypeId)
+            .addValue("currentStageId", instance.currentStageId())
+            .addValue("currentStatus", instance.currentStatus().name())
+            .addValue("workflowOriginStage", instance.workflowOriginStage())
+            .addValue("flagComment", instance.flagComment())
+            .addValue("updatedAt", Timestamp.from(instance.updatedAt()));
+    jdbc.update(INSERT_SQL, params);
   }
 
   @Override

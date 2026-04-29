@@ -5,6 +5,8 @@ import java.util.UUID;
 
 public interface WorkflowInstanceWriter {
 
+  void insert(WorkflowInstance instance, String documentTypeId);
+
   void advanceStage(
       UUID documentId, String newStageId, WorkflowCatalog catalog, String orgId, String docTypeId);
 
