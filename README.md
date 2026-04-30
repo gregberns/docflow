@@ -13,6 +13,8 @@ make build
 make start
 ```
 
+The seeded dashboard works without a key — only live uploads and `make eval` require `ANTHROPIC_API_KEY`. A reviewer who just wants to click around the UI against the labeled samples can leave it unset.
+
 Common targets:
 
 | Command | Action |
@@ -25,6 +27,10 @@ Common targets:
 | `make eval` | Live LLM eval; opt-in, requires a real `ANTHROPIC_API_KEY`. |
 
 Host-side ports are controlled by `BACKEND_HOST_PORT` and `FRONTEND_HOST_PORT` in `.env.example`; consult that file for the full set of variables.
+
+## Design tour
+
+For a ~10 min architecture & design tour, read `.kerf/project/docflow/SPEC.md`. It walks the system top-down with pointers into the per-component specs under `.kerf/project/docflow/05-specs/`. A one-page architecture diagram lives in `docs/architecture.md`, and `docs/api-walkthrough.md` is a curl-based walkthrough of the realistic flow for reviewers without the SPA.
 
 ## Design decisions
 
@@ -66,3 +72,31 @@ The take-home was scoped narrowly. The items below were intentionally simplified
 - **Classpath seed fixtures instead of an externally-managed config store.** Org / doc-type / workflow YAMLs ship in the backend jar.
 - **Single-tenant deployment.** Horizontal scaling concerns — distributed SSE fan-out, LLM call concurrency limits — are not addressed.
 - **No pagination on the dashboard documents list.** The endpoint returns up to a soft cap (~200 rows); the take-home corpus stays well below it. Production would add cursor-based pagination on the `documents` array (the `processing` array stays small in any deployment).
+
+## Repo guide
+
+What lives at the repo root and whether a reviewer should care:
+
+| Path | Purpose | Reviewer-relevant? |
+|---|---|---|
+| `backend/`, `frontend/` | Implementation. | Yes |
+| `problem-statement/` | Original take-home spec + sample PDFs. Read-only input. | Yes |
+| `docs/` | Architecture diagram + curl-based API walkthrough. | Yes |
+| `.kerf/project/docflow/` | Curated planning artifacts (problem space, component specs, integration plan, tasks). `SPEC.md` is the entry point. | Yes |
+| `eval/` | Eval manifest + generated reports under `eval/reports/`. | Optional |
+| `TESTING-PLAYBOOK.md` | Manual test scenarios run against the live stack. | Optional |
+| `.beads/` | Issue tracker DB + JSONL export. See "Future work" below. | Optional |
+| `HANDOFF.md`, `HANDOFF-tester.md` | Internal hand-off notes between the implementor and tester agent lanes used to build this. | No (internal) |
+| `test-logs/` | Captured manual-test output from the tester lane. | No (internal) |
+
+## Future work
+
+The take-home is feature-complete against the spec, but a handful of follow-ups are tracked in `.beads/issues.jsonl`. Themed:
+
+- **Persistence cleanup.** Several tables have overlapping JPA + JDBC writers; consolidate to a single writer per table and tighten visibility on shared SQL constants.
+- **Performance hotspots.** Dashboard query needlessly returns `raw_text`, the four stat counts could collapse into one aggregate query, the processing list has no `LIMIT`, and `WorkflowEngine.applyAction` holds a Postgres connection across the 60s LLM call on retype. Hikari pool size and leak detection are unconfigured.
+- **Scenario coverage.** The Playwright suite covers the happy path and flag-and-resolve; ~7 additional scenarios (corrupt PDFs, lien-waiver guards, retype origin restoration, terminal-state actions, concurrent uploads + SSE) are written up but not yet implemented.
+- **Retype-flow correctness.** Re-extraction holds the workflow connection open; the retry policy and load-time PDF check deviate slightly from the kerf spec.
+- **Error-path mapping.** PDF response is buffered into a full `byte[]` rather than streamed; not a correctness bug, but worth fixing under load.
+
+See `.beads/issues.jsonl` for the full backlog.
