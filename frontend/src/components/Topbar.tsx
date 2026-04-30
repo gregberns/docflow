@@ -13,23 +13,15 @@ export function Topbar({ orgName, orgIcon, onSwitchOrg }: TopbarProps) {
         Doc<span className="text-[#6c9bff]">Flow</span>
       </div>
       {orgName ? (
-        <div className="flex items-center gap-3">
-          {orgIcon ? (
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#6c9bff] text-14 font-semibold text-white">
-              {resolveOrgIcon(orgIcon)}
-            </span>
-          ) : null}
-          <span className="text-13 text-[#c4c9d9]">{orgName}</span>
-          {onSwitchOrg ? (
-            <button
-              type="button"
-              onClick={onSwitchOrg}
-              className="rounded-md bg-white/[0.08] px-3 py-1 text-12 text-white transition-colors hover:bg-white/[0.12]"
-            >
-              Switch org
-            </button>
-          ) : null}
-        </div>
+        <button
+          type="button"
+          onClick={onSwitchOrg}
+          className="flex items-center gap-2 rounded-md bg-white/[0.08] px-3 py-1 text-13 transition-colors hover:bg-white/[0.12]"
+        >
+          {orgIcon ? <span className="text-16 leading-none">{resolveOrgIcon(orgIcon)}</span> : null}
+          <span className="font-semibold text-white">{orgName}</span>
+          <span className="ml-1 text-[11px] text-[#6c9bff]">Switch</span>
+        </button>
       ) : null}
     </div>
   );
