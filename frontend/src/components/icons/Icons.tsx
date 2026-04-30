@@ -77,3 +77,11 @@ export function WarningIcon({ className, size = 18 }: IconProps) {
     </svg>
   );
 }
+
+export function CheckIcon({ className, size = 14 }: IconProps) {
+  return (
+    <svg {...svgProps(size, className)} strokeWidth={2.5}>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}

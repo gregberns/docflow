@@ -7,6 +7,7 @@ import { buildZodFromFieldSchema } from "../schemas/buildZodFromFieldSchema";
 import { formatDocType, formatFieldName } from "../util/formatters";
 import { useDocumentActions } from "../hooks/useDocumentActions";
 import { FieldArrayTable } from "./FieldArrayTable";
+import { CheckIcon } from "./icons/Icons";
 
 type FormValues = Record<string, unknown>;
 
@@ -189,25 +190,6 @@ export function ReviewForm({
             data-testid="review-action-bar"
             className="flex flex-shrink-0 gap-2.5 border-t border-neutral-200 bg-card px-6 py-4"
           >
-            {flagged ? (
-              <button
-                type="submit"
-                data-testid="resolve-button"
-                disabled={disabled || submitting}
-                className="inline-flex h-[38px] flex-1 items-center justify-center gap-1.5 rounded-md border-0 bg-success px-5 text-13 font-semibold text-white transition-colors hover:bg-success-strong disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Resolve
-              </button>
-            ) : (
-              <button
-                type="submit"
-                data-testid="approve-button"
-                disabled={disabled || submitting}
-                className="inline-flex h-[38px] flex-1 items-center justify-center gap-1.5 rounded-md border-0 bg-success px-5 text-13 font-semibold text-white transition-colors hover:bg-success-strong disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Approve
-              </button>
-            )}
             <button
               type="button"
               data-testid="reject-button"
@@ -217,6 +199,27 @@ export function ReviewForm({
             >
               Reject
             </button>
+            {flagged ? (
+              <button
+                type="submit"
+                data-testid="resolve-button"
+                disabled={disabled || submitting}
+                className="inline-flex h-[38px] flex-1 items-center justify-center gap-1.5 rounded-md border-0 bg-success px-5 text-13 font-semibold text-white transition-colors hover:bg-success-strong disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <CheckIcon />
+                Resolve
+              </button>
+            ) : (
+              <button
+                type="submit"
+                data-testid="approve-button"
+                disabled={disabled || submitting}
+                className="inline-flex h-[38px] flex-1 items-center justify-center gap-1.5 rounded-md border-0 bg-success px-5 text-13 font-semibold text-white transition-colors hover:bg-success-strong disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <CheckIcon />
+                Approve
+              </button>
+            )}
           </div>
         )}
       </form>
