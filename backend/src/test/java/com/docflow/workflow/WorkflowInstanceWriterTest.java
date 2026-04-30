@@ -103,6 +103,34 @@ class WorkflowInstanceWriterTest {
   }
 
   @Test
+  void advanceStage_fromFlaggedReviewToApproval_clearsOriginAndComment() {
+    seedSelect(STAGE_REVIEW_ID, STAGE_MGR_ID, "needs receipt");
+    seedUpdateSucceeds();
+
+    writer.advanceStage(documentId, STAGE_MGR_ID, catalog, ORG_ID, DOC_TYPE_ID);
+
+    Map<String, Object> params = captureUpdateParams();
+    assertThat(params).containsEntry("currentStageId", STAGE_MGR_ID);
+    assertThat(params).containsEntry("currentStatus", WorkflowStatus.AWAITING_APPROVAL.name());
+    assertThat(params).containsEntry("workflowOriginStage", null);
+    assertThat(params).containsEntry("flagComment", null);
+  }
+
+  @Test
+  void advanceStage_fromFlaggedReviewToTerminal_clearsOriginAndComment() {
+    seedSelect(STAGE_REVIEW_ID, STAGE_MGR_ID, "needs receipt");
+    seedUpdateSucceeds();
+
+    writer.advanceStage(documentId, STAGE_FILED_ID, catalog, ORG_ID, DOC_TYPE_ID);
+
+    Map<String, Object> params = captureUpdateParams();
+    assertThat(params).containsEntry("currentStageId", STAGE_FILED_ID);
+    assertThat(params).containsEntry("currentStatus", WorkflowStatus.FILED.name());
+    assertThat(params).containsEntry("workflowOriginStage", null);
+    assertThat(params).containsEntry("flagComment", null);
+  }
+
+  @Test
   void setFlag_fromApproval_movesToReviewSetsOriginAndCommentAndFlagged() {
     seedSelect(STAGE_MGR_ID, null, null);
     seedUpdateSucceeds();

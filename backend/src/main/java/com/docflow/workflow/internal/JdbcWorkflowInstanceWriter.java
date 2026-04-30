@@ -84,8 +84,9 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
     StageView target = requireStage(catalog, orgId, docTypeId, newStageId);
     State prior = readState(documentId);
     WorkflowStatus status = deriveStatus(target, prior.workflowOriginStage());
-    writeGuarded(
-        documentId, newStageId, status, prior.workflowOriginStage(), prior.flagComment(), prior);
+    String newOrigin = isReview(target) ? prior.workflowOriginStage() : null;
+    String newComment = isReview(target) ? prior.flagComment() : null;
+    writeGuarded(documentId, newStageId, status, newOrigin, newComment, prior);
   }
 
   @Override
