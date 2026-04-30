@@ -8,27 +8,33 @@ fields:
   - name: invoiceNumber
     type: STRING
     required: true
+    layout: half
   - name: invoiceDate
     type: DATE
     required: true
+    layout: half
   - name: dueDate
     type: DATE
     required: true
+    layout: half
+  - name: paymentTerms
+    type: STRING
+    required: true
+    layout: half
   - name: subtotal
     type: DECIMAL
     required: true
     format: "currency:USD"
+    layout: half
   - name: tax
     type: DECIMAL
     required: true
     format: "currency:USD"
+    layout: half
   - name: totalAmount
     type: DECIMAL
     required: true
     format: "currency:USD"
-  - name: paymentTerms
-    type: STRING
-    required: true
   - name: lineItems
     type: ARRAY
     required: true

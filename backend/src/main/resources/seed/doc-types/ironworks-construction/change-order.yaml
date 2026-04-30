@@ -5,22 +5,29 @@ fields:
   - name: projectCode
     type: STRING
     required: true
+    layout: half
   - name: projectName
     type: STRING
     required: true
+    layout: half
   - name: description
     type: STRING
     required: true
+    multiline: true
   - name: costImpact
     type: DECIMAL
     required: true
     format: "currency:USD"
+    layout: half
   - name: scheduleImpact
     type: STRING
     required: true
+    layout: half
   - name: requestedBy
     type: STRING
     required: true
+    layout: half
   - name: approvedBy
     type: STRING
     required: true
+    layout: half

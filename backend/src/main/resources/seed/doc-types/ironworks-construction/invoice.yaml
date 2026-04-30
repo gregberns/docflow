@@ -8,22 +8,28 @@ fields:
   - name: invoiceNumber
     type: STRING
     required: true
+    layout: half
   - name: invoiceDate
     type: DATE
     required: true
+    layout: half
   - name: projectCode
     type: STRING
     required: true
+    layout: half
   - name: projectName
     type: STRING
     required: true
+    layout: half
   - name: amount
     type: DECIMAL
     required: true
     format: "currency:USD"
+    layout: half
   - name: deliveryDate
     type: DATE
     required: true
+    layout: half
   - name: paymentTerms
     type: STRING
     required: true

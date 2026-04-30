@@ -8,22 +8,40 @@ fields:
   - name: invoiceNumber
     type: STRING
     required: true
+    layout: half
   - name: invoiceDate
     type: DATE
     required: true
+    layout: half
   - name: matterNumber
     type: STRING
     required: true
+    layout: half
   - name: matterName
     type: STRING
     required: true
+    layout: half
   - name: amount
     type: DECIMAL
     required: true
     format: "currency:USD"
-  - name: billingPeriod
-    type: STRING
-    required: true
+    layout: half
   - name: paymentTerms
     type: STRING
     required: true
+    layout: half
+  - name: billingPeriod
+    type: STRING
+    required: true
+  - name: lineItems
+    type: ARRAY
+    required: true
+    itemSchema:
+      fields:
+        - name: description
+          type: STRING
+          required: true
+        - name: amount
+          type: DECIMAL
+          required: true
+          format: "currency:USD"

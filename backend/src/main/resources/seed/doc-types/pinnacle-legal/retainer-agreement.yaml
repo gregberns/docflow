@@ -12,16 +12,21 @@ fields:
     type: DECIMAL
     required: true
     format: "currency:USD"
+    layout: half
   - name: retainerAmount
     type: DECIMAL
     required: true
     format: "currency:USD"
+    layout: half
   - name: effectiveDate
     type: DATE
     required: true
+    layout: half
   - name: termLength
     type: STRING
     required: true
+    layout: half
   - name: scope
     type: STRING
     required: true
+    multiline: true

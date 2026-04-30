@@ -5,16 +5,20 @@ fields:
   - name: attorneyName
     type: STRING
     required: true
+    layout: half
   - name: matterNumber
     type: STRING
     required: true
+    layout: half
   - name: submissionDate
     type: DATE
     required: true
+    layout: half
   - name: totalAmount
     type: DECIMAL
     required: true
     format: "currency:USD"
+    layout: half
   - name: items
     type: ARRAY
     required: true

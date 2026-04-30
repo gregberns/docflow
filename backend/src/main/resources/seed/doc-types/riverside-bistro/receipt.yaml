@@ -8,18 +8,22 @@ fields:
   - name: date
     type: DATE
     required: true
+    layout: half
   - name: amount
     type: DECIMAL
     required: true
     format: "currency:USD"
-  - name: paymentMethod
-    type: STRING
-    required: true
+    layout: half
   - name: category
     type: ENUM
     required: true
+    layout: half
     enumValues:
       - food
       - supplies
       - equipment
       - services
+  - name: paymentMethod
+    type: STRING
+    required: true
+    layout: half

@@ -8,16 +8,20 @@ fields:
   - name: projectCode
     type: STRING
     required: true
+    layout: half
   - name: projectName
     type: STRING
     required: true
+    layout: half
   - name: amount
     type: DECIMAL
     required: true
     format: "currency:USD"
+    layout: half
   - name: throughDate
     type: DATE
     required: true
+    layout: half
   - name: waiverType
     type: ENUM
     required: true
