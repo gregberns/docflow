@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getDocument, getDocumentFileUrl } from "../api/documents";
 import { getWorkflow } from "../api/workflows";
-import { listOrganizations } from "../api/organizations";
+import { getOrganization } from "../api/organizations";
 import { DetailLayout } from "../components/DetailLayout";
 import { PdfViewer } from "../components/PdfViewer";
 import { DocumentHeader } from "../components/DocumentHeader";
@@ -11,37 +11,6 @@ import { FormPanel } from "../components/FormPanel";
 import { StageProgress } from "../components/StageProgress";
 import { useDocumentActions } from "../hooks/useDocumentActions";
 import { useOrgEvents } from "../hooks/useOrgEvents";
-import type { FieldSchema } from "../types/schema";
-
-function deriveFallbackFields(extractedFields: Record<string, unknown>): FieldSchema[] {
-  return Object.keys(extractedFields).map((name) => {
-    const value = extractedFields[name];
-    if (Array.isArray(value)) {
-      const sample = (value[0] ?? {}) as Record<string, unknown>;
-      const itemFields: FieldSchema[] = Object.keys(sample).map((childName) => ({
-        name: childName,
-        type: "STRING",
-        required: false,
-        enumValues: null,
-        itemFields: null,
-      }));
-      return {
-        name,
-        type: "ARRAY",
-        required: false,
-        enumValues: null,
-        itemFields,
-      };
-    }
-    return {
-      name,
-      type: "STRING",
-      required: false,
-      enumValues: null,
-      itemFields: null,
-    };
-  });
-}
 
 export function DocumentDetailPage() {
   const { documentId } = useParams<{ documentId: string }>();
@@ -68,17 +37,21 @@ export function DocumentDetailPage() {
     organizationId: orgId ?? "",
   });
 
-  const fields = useMemo(() => (data ? deriveFallbackFields(data.extractedFields) : []), [data]);
-
-  const { data: organizations } = useQuery({
-    queryKey: ["organizations"],
-    queryFn: listOrganizations,
+  const { data: orgDetail } = useQuery({
+    queryKey: ["organization", orgId],
+    queryFn: () => getOrganization(orgId ?? ""),
+    enabled: typeof orgId === "string" && orgId.length > 0,
   });
 
-  const docTypeOptions = useMemo<ReadonlyArray<string>>(() => {
-    const org = organizations?.find((candidate) => candidate.id === orgId);
-    return org?.docTypes ?? (data?.detectedDocumentType ? [data.detectedDocumentType] : []);
-  }, [organizations, orgId, data?.detectedDocumentType]);
+  const fields = useMemo(() => {
+    if (!orgDetail || !docTypeId) return [];
+    return orgDetail.fieldSchemas[docTypeId] ?? [];
+  }, [orgDetail, docTypeId]);
+
+  const docTypeOptions = useMemo<ReadonlyArray<string>>(
+    () => orgDetail?.docTypes ?? (data?.detectedDocumentType ? [data.detectedDocumentType] : []),
+    [orgDetail, data?.detectedDocumentType],
+  );
 
   return (
     <main data-testid="document-detail-page" data-document-id={documentId}>

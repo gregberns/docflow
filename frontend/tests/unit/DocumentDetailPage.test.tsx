@@ -207,4 +207,20 @@ describe("DocumentDetailPage", () => {
     });
     expect(observedBody).toEqual({ action: "Approve" });
   });
+
+  it("sources fields from org fieldSchemas (not a fallback) and renders inputs with correct types", async () => {
+    renderPage();
+
+    await screen.findByTestId("review-form");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("input-caseNumber")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("input-caseNumber").tagName.toLowerCase()).toBe("input");
+    expect(screen.getByTestId("input-caseNumber")).toHaveAttribute("type", "text");
+
+    const filingDateInput = screen.getByTestId("input-filingDate");
+    expect(filingDateInput.tagName.toLowerCase()).toBe("input");
+    expect(filingDateInput).toHaveAttribute("type", "date");
+  });
 });
