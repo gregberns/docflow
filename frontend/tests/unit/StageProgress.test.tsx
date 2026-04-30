@@ -54,11 +54,7 @@ describe("StageProgress — in-flight branch (currentStep)", () => {
     expect(list.tagName.toLowerCase()).toBe("ol");
 
     const pre = preWorkflowItems(list);
-    expect(pre.map((el) => el.textContent)).toEqual([
-      "Text Extracting",
-      "Classifying",
-      "Extracting",
-    ]);
+    expect(pre.map((el) => el.textContent)).toEqual(["Upload", "Classify", "Extract"]);
     expect(pre[0]!.getAttribute("data-state")).toBe("done");
     expect(pre[1]!.getAttribute("data-state")).toBe("current");
     expect(pre[2]!.getAttribute("data-state")).toBe("upcoming");

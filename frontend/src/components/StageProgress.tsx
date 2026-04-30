@@ -4,9 +4,9 @@ import type { WorkflowStatus } from "../types/readModels";
 export type ProcessingStep = "TEXT_EXTRACTING" | "CLASSIFYING" | "EXTRACTING" | "FAILED";
 
 const PRE_WORKFLOW_STEPS: ReadonlyArray<{ id: ProcessingStep; label: string }> = [
-  { id: "TEXT_EXTRACTING", label: "Text Extracting" },
-  { id: "CLASSIFYING", label: "Classifying" },
-  { id: "EXTRACTING", label: "Extracting" },
+  { id: "TEXT_EXTRACTING", label: "Upload" },
+  { id: "CLASSIFYING", label: "Classify" },
+  { id: "EXTRACTING", label: "Extract" },
 ];
 
 export type StageState =
@@ -88,14 +88,20 @@ function isTerminalFiledStage(stage: StageSummary): boolean {
   return stage.kind === "TERMINAL" || stage.canonicalStatus === "FILED";
 }
 
+function isRejectedTerminal(stage: StageSummary): boolean {
+  return stage.kind === "TERMINAL" && stage.canonicalStatus === "REJECTED";
+}
+
 function workflowSegmentsInFlight(stages: StageSummary[]): RenderedSegment[] {
-  return stages.map((stage) => ({
-    key: `wf-${stage.id}`,
-    label: stage.displayName,
-    state: "upcoming",
-    segment: "workflow",
-    stageId: stage.id,
-  }));
+  return stages
+    .filter((stage) => !isRejectedTerminal(stage))
+    .map((stage) => ({
+      key: `wf-${stage.id}`,
+      label: stage.displayName,
+      state: "upcoming",
+      segment: "workflow",
+      stageId: stage.id,
+    }));
 }
 
 function workflowSegmentsForProcessed(
@@ -107,8 +113,9 @@ function workflowSegmentsForProcessed(
   if (currentStatus === "REJECTED") {
     return workflowSegmentsForRejected(stages, currentStageId);
   }
+  const nonRejected = stages.filter((s) => !isRejectedTerminal(s));
   if (currentStatus === "FILED") {
-    return stages.map((stage) => ({
+    return nonRejected.map((stage) => ({
       key: `wf-${stage.id}`,
       label: stage.displayName,
       state: "done",
@@ -117,13 +124,13 @@ function workflowSegmentsForProcessed(
     }));
   }
 
-  const currentIdx = stages.findIndex((s) => s.id === currentStageId);
+  const currentIdx = nonRejected.findIndex((s) => s.id === currentStageId);
   const flagged =
-    Boolean(originStage) && currentStageId !== null && isReview(stages, currentStageId);
+    Boolean(originStage) && currentStageId !== null && isReview(nonRejected, currentStageId);
   if (flagged) {
-    return workflowSegmentsForFlagged(stages, currentStageId, originStage);
+    return workflowSegmentsForFlagged(nonRejected, currentStageId, originStage);
   }
-  return stages.map((stage, idx) => {
+  return nonRejected.map((stage, idx) => {
     if (currentIdx === -1) {
       return {
         key: `wf-${stage.id}`,
