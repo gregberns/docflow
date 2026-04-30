@@ -115,6 +115,8 @@ export function ReviewForm({
   const arrayFields = fields.filter((f) => f.type.toUpperCase() === "ARRAY");
   const scalarFields = fields.filter((f) => f.type.toUpperCase() !== "ARRAY");
 
+  const scalarRows = groupHalfFields(scalarFields);
+
   const docTypeChanged =
     selectedDocumentType != null &&
     selectedDocumentType !== "" &&
@@ -166,12 +168,23 @@ export function ReviewForm({
             data-testid="review-fields"
             className="m-0 border-0 p-0 disabled:opacity-60"
           >
-            {scalarFields.length > 0 && (
+            {scalarRows.length > 0 && (
               <>
                 <div className={SECTION_TITLE}>Extracted Data</div>
-                {scalarFields.map((field) => (
-                  <FieldRow key={field.name} field={field} />
-                ))}
+                {scalarRows.map((row) =>
+                  row.length === 2 ? (
+                    <div key={`${row[0].name}-${row[1].name}`} className="mb-3.5 flex gap-3">
+                      <div className="flex-1 min-w-0">
+                        <FieldRow field={row[0]} noMargin />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <FieldRow field={row[1]} noMargin />
+                      </div>
+                    </div>
+                  ) : (
+                    <FieldRow key={row[0].name} field={row[0]} />
+                  ),
+                )}
               </>
             )}
             {arrayFields.length > 0 && (
@@ -227,7 +240,29 @@ export function ReviewForm({
   );
 }
 
-function FieldRow({ field }: { field: FieldSchema }) {
+function groupHalfFields(fields: FieldSchema[]): FieldSchema[][] {
+  const rows: FieldSchema[][] = [];
+  let i = 0;
+  while (i < fields.length) {
+    const field = fields[i];
+    if (
+      field.layout === "half" &&
+      !field.multiline &&
+      i + 1 < fields.length &&
+      fields[i + 1].layout === "half" &&
+      !fields[i + 1].multiline
+    ) {
+      rows.push([field, fields[i + 1]]);
+      i += 2;
+    } else {
+      rows.push([field]);
+      i += 1;
+    }
+  }
+  return rows;
+}
+
+function FieldRow({ field, noMargin }: { field: FieldSchema; noMargin?: boolean }) {
   const upper = field.type.toUpperCase();
   const {
     register,
@@ -240,10 +275,12 @@ function FieldRow({ field }: { field: FieldSchema }) {
     return <FieldArrayTable field={field} />;
   }
 
+  const wrapClass = noMargin ? "block" : "mb-3.5 block";
+
   if (upper === "ENUM") {
     const values = field.enumValues ?? [];
     return (
-      <label data-testid={`field-${field.name}`} className="mb-3.5 block">
+      <label data-testid={`field-${field.name}`} className={wrapClass}>
         <span className="mb-1 block text-12 font-semibold text-neutral-700">
           {formatFieldName(field.name)}
         </span>
@@ -273,9 +310,35 @@ function FieldRow({ field }: { field: FieldSchema }) {
     );
   }
 
+  if (field.multiline) {
+    return (
+      <label data-testid={`field-${field.name}`} className={noMargin ? "block" : "mb-3.5 block"}>
+        <span className="mb-1 block text-12 font-semibold text-neutral-700">
+          {formatFieldName(field.name)}
+        </span>
+        <textarea
+          data-testid={`input-${field.name}`}
+          {...register(field.name)}
+          aria-required={field.required}
+          rows={4}
+          className="w-full rounded-md border border-neutral-300 bg-card px-2.5 py-1.5 text-13 text-brand-navy outline-none focus:border-brand-blue focus:shadow-[0_0_0_2px_rgba(108,155,255,0.15)] resize-none"
+        />
+        {errorMsg && (
+          <span
+            role="alert"
+            data-testid={`error-${field.name}`}
+            className="mt-1 block text-11 text-danger"
+          >
+            {errorMsg}
+          </span>
+        )}
+      </label>
+    );
+  }
+
   const inputType = upper === "DATE" ? "date" : "text";
   return (
-    <label data-testid={`field-${field.name}`} className="mb-3.5 block">
+    <label data-testid={`field-${field.name}`} className={wrapClass}>
       <span className="mb-1 block text-12 font-semibold text-neutral-700">
         {formatFieldName(field.name)}
       </span>
