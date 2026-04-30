@@ -49,3 +49,40 @@ export function formatFieldName(value: string): string {
     .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : word))
     .join(" ");
 }
+
+const MONEY_NAME_PATTERN =
+  /(amount|total|subtotal|tax|fee|price|cost|balance|charge|payment|deposit|refund|discount|wage|salary|paid|due|retainage)/i;
+
+export function looksLikeMoney(fieldName: string): boolean {
+  return MONEY_NAME_PATTERN.test(fieldName);
+}
+
+export function formatMoney(value: unknown): string {
+  const num = parseDecimal(value);
+  if (num === null) return formatDisplay(value);
+  return num.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+export function formatNumber(value: unknown): string {
+  const num = parseDecimal(value);
+  if (num === null) return formatDisplay(value);
+  return num.toLocaleString("en-US");
+}
+
+export function formatFieldValue(
+  fieldName: string,
+  fieldType: string,
+  value: unknown,
+): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const upper = fieldType.toUpperCase();
+  if (upper === "DECIMAL") {
+    return looksLikeMoney(fieldName) ? formatMoney(value) : formatNumber(value);
+  }
+  return formatDisplay(value);
+}

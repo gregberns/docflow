@@ -1,5 +1,5 @@
 import type { FieldSchema } from "../types/schema";
-import { formatDisplay, formatFieldName } from "../util/formatters";
+import { formatFieldName, formatFieldValue } from "../util/formatters";
 import { ReadOnlyArrayTable } from "./ReadOnlyArrayTable";
 
 interface ApprovalSummaryProps {
@@ -66,7 +66,7 @@ export function ApprovalSummary({
                   {formatFieldName(field.name)}
                 </dt>
                 <dd className="m-0 flex-1 text-13 font-medium text-brand-navy">
-                  {formatDisplay(value)}
+                  {formatFieldValue(field.name, field.type, value)}
                 </dd>
               </div>
             );

@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import type { DocumentView, WorkflowStatus } from "../types/readModels";
 import { ChevronLeftIcon } from "./icons/Icons";
 
@@ -28,21 +29,28 @@ function stageBadgeClass(status: WorkflowStatus | null, stageName: string | null
 
 export function DocumentHeader({ document }: DocumentHeaderProps) {
   const {
+    organizationId,
     sourceFilename,
     detectedDocumentType,
     currentStageDisplayName,
     currentStatus,
     uploadedAt,
   } = document;
+  const navigate = useNavigate();
   return (
     <header
       data-testid="document-header"
       className="flex-shrink-0 border-b border-neutral-100 px-6 pb-4 pt-5"
     >
-      <a className="mb-3 inline-flex cursor-pointer items-center gap-1 text-12 text-neutral-500 transition-colors hover:text-brand-blue">
+      <button
+        type="button"
+        data-testid="document-header-back"
+        onClick={() => navigate(`/org/${encodeURIComponent(organizationId)}/dashboard`)}
+        className="mb-3 inline-flex cursor-pointer items-center gap-1 bg-transparent p-0 text-12 text-neutral-500 transition-colors hover:text-brand-blue"
+      >
         <ChevronLeftIcon />
         Back to Documents
-      </a>
+      </button>
       <h1
         data-testid="document-filename"
         className="text-18 font-bold leading-tight text-brand-navy"
