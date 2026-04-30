@@ -19,10 +19,14 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
 public class LlmExtractor {
+
+  private static final Logger LOG = LoggerFactory.getLogger(LlmExtractor.class);
 
   private final DocumentTypeCatalog documentTypeCatalog;
   private final ExtractRequestBuilder requestBuilder;
@@ -104,7 +108,10 @@ public class LlmExtractor {
       sink.eventBus()
           .publish(
               new ExtractionFailed(
-                  documentId, document.organizationId(), e.getMessage(), Instant.now(clock)));
+                  documentId,
+                  document.organizationId(),
+                  redactExceptionMessage(e),
+                  Instant.now(clock)));
       throw e;
     }
 
@@ -161,12 +168,38 @@ public class LlmExtractor {
     try {
       JsonValue input = executor.execute(built.params(), built.toolSchema());
       return readFields(input);
+    } catch (LlmException e) {
+      LOG.warn("LLM call failed (full detail server-side only)", e);
+      String redacted = redactExceptionMessage(e);
+      error = redacted;
+      throw rewrapWithRedactedMessage(e, redacted);
     } catch (RuntimeException e) {
-      error = e.getMessage();
+      LOG.warn("LLM call failed (full detail server-side only)", e);
+      error = redactExceptionMessage(e);
       throw e;
     } finally {
       writeAudit(storedDocumentId, processingDocumentId, documentId, organizationId, error);
     }
+  }
+
+  private static String redactExceptionMessage(Throwable e) {
+    return "LlmCall failed: " + e.getClass().getSimpleName();
+  }
+
+  private static LlmException rewrapWithRedactedMessage(LlmException original, String message) {
+    if (original instanceof LlmTimeout) {
+      return new LlmTimeout(message, original);
+    }
+    if (original instanceof LlmUnavailable) {
+      return new LlmUnavailable(message, original);
+    }
+    if (original instanceof LlmProtocolError) {
+      return new LlmProtocolError(message, original);
+    }
+    if (original instanceof LlmSchemaViolation) {
+      return new LlmSchemaViolation(message, original);
+    }
+    return original;
   }
 
   private static Map<String, Object> readFields(JsonValue input) {

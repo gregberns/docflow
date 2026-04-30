@@ -152,7 +152,8 @@ class LlmExtractorTest {
     ArgumentCaptor<LlmCallAudit> captor = ArgumentCaptor.forClass(LlmCallAudit.class);
     verify(auditWriter, times(2)).insert(captor.capture());
     List<LlmCallAudit> audits = captor.getAllValues();
-    assertThat(audits.get(0).error()).contains("missing required vendor");
+    assertThat(audits.get(0).error()).isEqualTo("LlmCall failed: LlmSchemaViolation");
+    assertThat(audits.get(0).error()).doesNotContain("missing required vendor");
     assertThat(audits.get(1).error()).isNull();
     verify(executor, times(2)).execute(any(), any());
   }
@@ -168,7 +169,7 @@ class LlmExtractorTest {
     assertThatThrownBy(
             () -> extractor.extractFields(storedId, procId, ORG_ID, DOC_TYPE_ID, RAW_TEXT))
         .isInstanceOf(LlmSchemaViolation.class)
-        .hasMessageContaining("second");
+        .hasMessage("LlmCall failed: LlmSchemaViolation");
 
     verify(executor, times(2)).execute(any(), any());
     verify(auditWriter, times(2)).insert(any());
@@ -339,7 +340,7 @@ class LlmExtractorTest {
 
     assertThatThrownBy(() -> extractor.extract(documentId, NEW_DOC_TYPE_ID))
         .isInstanceOf(LlmSchemaViolation.class)
-        .hasMessageContaining("second");
+        .hasMessage("LlmCall failed: LlmSchemaViolation");
 
     verify(documentWriter).setReextractionStatus(documentId, ReextractionStatus.IN_PROGRESS);
     verify(documentWriter).setReextractionStatus(documentId, ReextractionStatus.FAILED);
@@ -352,8 +353,70 @@ class LlmExtractorTest {
     assertThat(eventCaptor.getValue()).isInstanceOf(ExtractionFailed.class);
     ExtractionFailed failed = (ExtractionFailed) eventCaptor.getValue();
     assertThat(failed.documentId()).isEqualTo(documentId);
-    assertThat(failed.error()).contains("second");
+    assertThat(failed.error()).isEqualTo("LlmCall failed: LlmSchemaViolation");
+    assertThat(failed.error()).doesNotContain("second");
     assertThat(failed.organizationId()).isEqualTo(ORG_ID);
+  }
+
+  @Test
+  void redactsDocumentTextFromAuditAndRethrownExceptionMessage() {
+    UUID storedId = UUID.randomUUID();
+    UUID procId = UUID.randomUUID();
+    String sensitive = "INVOICE FROM ACME — total $1234";
+    when(executor.execute(any(MessageCreateParams.class), any(ToolSchema.class)))
+        .thenThrow(new LlmProtocolError(sensitive));
+
+    assertThatThrownBy(
+            () -> extractor.extractFields(storedId, procId, ORG_ID, DOC_TYPE_ID, RAW_TEXT))
+        .isInstanceOf(LlmProtocolError.class)
+        .extracting(Throwable::getMessage)
+        .asString()
+        .doesNotContain(sensitive)
+        .isEqualTo("LlmCall failed: LlmProtocolError");
+
+    ArgumentCaptor<LlmCallAudit> captor = ArgumentCaptor.forClass(LlmCallAudit.class);
+    verify(auditWriter).insert(captor.capture());
+    LlmCallAudit audit = captor.getValue();
+    assertThat(audit.error()).doesNotContain(sensitive);
+    assertThat(audit.error()).isEqualTo("LlmCall failed: LlmProtocolError");
+  }
+
+  @Test
+  void redactsDocumentTextFromExtractionFailedEventOnRetypePath() {
+    UUID documentId = UUID.randomUUID();
+    UUID storedId = UUID.randomUUID();
+    String sensitive = "INVOICE FROM ACME — total $1234";
+    Document document =
+        new Document(
+            documentId,
+            storedId,
+            ORG_ID,
+            DOC_TYPE_ID,
+            Map.of(),
+            RAW_TEXT,
+            Instant.parse("2026-04-27T10:00:00Z"),
+            ReextractionStatus.NONE);
+    when(documentReader.get(documentId)).thenReturn(Optional.of(document));
+    when(executor.execute(any(MessageCreateParams.class), any(ToolSchema.class)))
+        .thenThrow(new LlmTimeout(sensitive));
+
+    assertThatThrownBy(() -> extractor.extract(documentId, NEW_DOC_TYPE_ID))
+        .isInstanceOf(LlmTimeout.class)
+        .extracting(Throwable::getMessage)
+        .asString()
+        .doesNotContain(sensitive)
+        .isEqualTo("LlmCall failed: LlmTimeout");
+
+    ArgumentCaptor<DocumentEvent> eventCaptor = ArgumentCaptor.forClass(DocumentEvent.class);
+    verify(eventBus).publish(eventCaptor.capture());
+    ExtractionFailed failed = (ExtractionFailed) eventCaptor.getValue();
+    assertThat(failed.error()).doesNotContain(sensitive);
+    assertThat(failed.error()).isEqualTo("LlmCall failed: LlmTimeout");
+
+    ArgumentCaptor<LlmCallAudit> auditCaptor = ArgumentCaptor.forClass(LlmCallAudit.class);
+    verify(auditWriter).insert(auditCaptor.capture());
+    assertThat(auditCaptor.getValue().error()).doesNotContain(sensitive);
+    assertThat(auditCaptor.getValue().error()).isEqualTo("LlmCall failed: LlmTimeout");
   }
 
   @SuppressWarnings({
