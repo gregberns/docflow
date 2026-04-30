@@ -33,6 +33,8 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
 
   public static final String CLEAR_ORIGIN_KEEP_STAGE_SQL =
       "UPDATE workflow_instances SET "
+          + "document_type_id = :newDocTypeId, "
+          + "current_stage_id = :newStageId, "
           + "current_status = :currentStatus, "
           + "workflow_origin_stage = NULL, "
           + "flag_comment = NULL, "
@@ -118,11 +120,16 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
   }
 
   @Override
-  public void clearOriginKeepStage(UUID documentId, WorkflowStatus newStatus) {
+  public void clearOriginKeepStage(
+      UUID documentId, WorkflowCatalog catalog, String orgId, String newDocTypeId) {
+    StageView reviewStage = findReviewStage(catalog, orgId, newDocTypeId);
+    WorkflowStatus status = WorkflowStatus.valueOf(reviewStage.canonicalStatus());
     MapSqlParameterSource params =
         new MapSqlParameterSource()
             .addValue("documentId", documentId)
-            .addValue("currentStatus", newStatus.name())
+            .addValue("newDocTypeId", newDocTypeId)
+            .addValue("newStageId", reviewStage.id())
+            .addValue("currentStatus", status.name())
             .addValue("newUpdatedAt", Timestamp.from(Instant.now(clock)));
     jdbc.update(CLEAR_ORIGIN_KEEP_STAGE_SQL, params);
   }

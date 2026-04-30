@@ -696,7 +696,8 @@ class WorkflowEnginePropertyTest {
     }
 
     @Override
-    public void clearOriginKeepStage(UUID documentId, WorkflowStatus newStatus) {
+    public void clearOriginKeepStage(
+        UUID documentId, WorkflowCatalog cat, String orgId, String newDocTypeId) {
       WorkflowInstance prior = store.instance(documentId);
       store.putInstance(
           new WorkflowInstance(
@@ -704,7 +705,7 @@ class WorkflowEnginePropertyTest {
               prior.documentId(),
               prior.organizationId(),
               prior.currentStageId(),
-              newStatus,
+              WorkflowStatus.AWAITING_REVIEW,
               null,
               null,
               FIXED_NOW));

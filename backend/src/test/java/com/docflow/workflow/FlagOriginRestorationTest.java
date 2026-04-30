@@ -508,15 +508,18 @@ class FlagOriginRestorationTest {
     }
 
     @Override
-    public void clearOriginKeepStage(UUID documentId, WorkflowStatus newStatus) {
+    public void clearOriginKeepStage(
+        UUID documentId, WorkflowCatalog cat, String orgId, String newDocTypeId) {
       WorkflowInstance prior = store.instance(documentId);
+      StageView review = store.reviewStage();
+      WorkflowStatus status = store.deriveStatus(review, null);
       store.putInstance(
           new WorkflowInstance(
               prior.id(),
               prior.documentId(),
               prior.organizationId(),
-              prior.currentStageId(),
-              newStatus,
+              review.id(),
+              status,
               null,
               null,
               FIXED_NOW));

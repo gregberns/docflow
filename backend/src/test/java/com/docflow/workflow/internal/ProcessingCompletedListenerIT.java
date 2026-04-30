@@ -432,8 +432,11 @@ class ProcessingCompletedListenerIT {
 
     @Override
     public void clearOriginKeepStage(
-        UUID documentId, com.docflow.workflow.WorkflowStatus newStatus) {
-      delegate.clearOriginKeepStage(documentId, newStatus);
+        UUID documentId,
+        com.docflow.config.catalog.WorkflowCatalog catalog,
+        String orgId,
+        String newDocTypeId) {
+      delegate.clearOriginKeepStage(documentId, catalog, orgId, newDocTypeId);
     }
   }
 

@@ -99,6 +99,7 @@ class RetypeFlowIT {
   private static final String OLD_DOC_TYPE_ID = "invoice";
   private static final String NEW_DOC_TYPE_ID = "receipt";
   private static final String STAGE_REVIEW_INV = "stage-rv-inv";
+  private static final String STAGE_REVIEW_REC = "stage-rv-rec";
   private static final String STAGE_MANAGER_INV = "stage-mg-inv";
 
   @Container
@@ -187,7 +188,7 @@ class RetypeFlowIT {
 
     DocumentStateChanged completed = awaitEventWithReextractionStatus(ReextractionStatus.NONE);
     assertThat(completed.documentId()).isEqualTo(documentId);
-    assertThat(completed.currentStage()).isEqualTo(STAGE_REVIEW_INV);
+    assertThat(completed.currentStage()).isEqualTo(STAGE_REVIEW_REC);
     assertThat(completed.currentStatus()).isEqualTo(WorkflowStatus.AWAITING_REVIEW.name());
     assertThat(completed.action()).isNull();
     assertThat(completed.comment()).isNull();
@@ -223,13 +224,14 @@ class RetypeFlowIT {
 
     Map<String, Object> wiRow =
         jdbc.queryForMap(
-            "SELECT current_stage_id, current_status, workflow_origin_stage, flag_comment "
-                + "FROM workflow_instances WHERE document_id = ?",
+            "SELECT current_stage_id, current_status, workflow_origin_stage, flag_comment,"
+                + " document_type_id FROM workflow_instances WHERE document_id = ?",
             documentId);
-    assertThat(wiRow.get("current_stage_id")).isEqualTo(STAGE_REVIEW_INV);
+    assertThat(wiRow.get("current_stage_id")).isEqualTo(STAGE_REVIEW_REC);
     assertThat(wiRow.get("current_status")).isEqualTo(WorkflowStatus.AWAITING_REVIEW.name());
     assertThat(wiRow.get("workflow_origin_stage")).isNull();
     assertThat(wiRow.get("flag_comment")).isNull();
+    assertThat(wiRow.get("document_type_id")).isEqualTo(NEW_DOC_TYPE_ID);
   }
 
   @Test
@@ -254,40 +256,62 @@ class RetypeFlowIT {
     assertThat(failed.action()).isNull();
   }
 
+  /**
+   * Regression test for df-pv0: the production LlmExtractor.extract() writes reextraction_status =
+   * NONE *before* publishing ExtractionCompleted. The old listener guard (== IN_PROGRESS) caused it
+   * to silently drop the event, leaving the workflow_instance stuck in FLAGGED with stale origin
+   * and comment. This test stubs extract() to reproduce the exact production ordering and verifies
+   * that the workflow_instance is fully updated afterward.
+   */
   @Test
-  void extractionCompleted_whenStatusNotInProgress_isLoggedAndDropped() {
+  void extractionCompletedAfterReextractionNoneAlreadyWritten_workflowInstanceUpdated() {
     UUID storedDocumentId = insertStoredDocument();
     UUID documentId =
         seedFlaggedDocument(storedDocumentId, ReextractionStatus.NONE, OLD_DOC_TYPE_ID);
 
-    eventPublisher.publishEvent(
-        new ExtractionCompleted(
-            documentId,
-            ORG_ID,
-            Map.of("k", "v"),
-            NEW_DOC_TYPE_ID,
-            Instant.parse("2026-04-29T10:00:00Z")));
+    Map<String, Object> newFields = new LinkedHashMap<>();
+    newFields.put("merchant", "Corner Bakery");
+    newFields.put("total", "9.99");
 
-    await()
-        .atMost(Duration.ofSeconds(5))
-        .until(
-            () ->
-                listenerAppender.list.stream()
-                    .anyMatch(
-                        e ->
-                            e.getLevel() == Level.INFO
-                                && e.getFormattedMessage()
-                                    .contains("ExtractionCompleted ignored")));
+    doAnswer(
+            (InvocationOnMock inv) -> {
+              UUID docId = inv.getArgument(0);
+              String newType = inv.getArgument(1);
+              JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+              // Simulate production: write new fields + NONE before publishing event
+              jdbc.update(
+                  "UPDATE documents SET detected_document_type = ?, reextraction_status = 'NONE',"
+                      + " extracted_fields = CAST(? AS jsonb) WHERE id = ?",
+                  newType,
+                  "{\"merchant\":\"Corner Bakery\",\"total\":\"9.99\"}",
+                  docId);
+              eventPublisher.publishEvent(
+                  new ExtractionCompleted(docId, ORG_ID, newFields, newType, Instant.now()));
+              return null;
+            })
+        .when(llmExtractor)
+        .extract(eq(documentId), eq(NEW_DOC_TYPE_ID));
+
+    workflowEngine.applyAction(documentId, new WorkflowAction.Resolve(NEW_DOC_TYPE_ID));
+
+    DocumentStateChanged completed = awaitEventWithReextractionStatus(ReextractionStatus.NONE);
+    assertThat(completed.documentId()).isEqualTo(documentId);
+    assertThat(completed.currentStage()).isEqualTo(STAGE_REVIEW_REC);
+    assertThat(completed.currentStatus()).isEqualTo(WorkflowStatus.AWAITING_REVIEW.name());
+    assertThat(completed.action()).isNull();
+    assertThat(completed.comment()).isNull();
 
     JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-    Map<String, Object> docRow =
+    Map<String, Object> wiRow =
         jdbc.queryForMap(
-            "SELECT detected_document_type, reextraction_status FROM documents WHERE id = ?",
+            "SELECT current_stage_id, current_status, workflow_origin_stage, flag_comment,"
+                + " document_type_id FROM workflow_instances WHERE document_id = ?",
             documentId);
-    assertThat(docRow.get("detected_document_type")).isEqualTo(OLD_DOC_TYPE_ID);
-    assertThat(docRow.get("reextraction_status")).isEqualTo("NONE");
-
-    assertThat(recorder.events()).isEmpty();
+    assertThat(wiRow.get("current_stage_id")).isEqualTo(STAGE_REVIEW_REC);
+    assertThat(wiRow.get("current_status")).isEqualTo(WorkflowStatus.AWAITING_REVIEW.name());
+    assertThat(wiRow.get("workflow_origin_stage")).isNull();
+    assertThat(wiRow.get("flag_comment")).isNull();
+    assertThat(wiRow.get("document_type_id")).isEqualTo(NEW_DOC_TYPE_ID);
   }
 
   @Test

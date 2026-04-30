@@ -20,5 +20,6 @@ public interface WorkflowInstanceWriter {
 
   void clearFlag(UUID documentId, WorkflowCatalog catalog, String orgId, String docTypeId);
 
-  void clearOriginKeepStage(UUID documentId, WorkflowStatus newStatus);
+  void clearOriginKeepStage(
+      UUID documentId, WorkflowCatalog catalog, String orgId, String newDocTypeId);
 }

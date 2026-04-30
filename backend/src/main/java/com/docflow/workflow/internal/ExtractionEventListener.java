@@ -2,6 +2,7 @@ package com.docflow.workflow.internal;
 
 import com.docflow.c3.events.ExtractionCompleted;
 import com.docflow.c3.events.ExtractionFailed;
+import com.docflow.config.catalog.WorkflowCatalog;
 import com.docflow.document.Document;
 import com.docflow.document.DocumentReader;
 import com.docflow.document.DocumentWriter;
@@ -32,6 +33,7 @@ public class ExtractionEventListener {
   private final DocumentWriter documentWriter;
   private final WorkflowInstanceReader workflowInstanceReader;
   private final WorkflowInstanceWriter workflowInstanceWriter;
+  private final WorkflowCatalog workflowCatalog;
   private final DocumentEventBus eventBus;
   private final TransactionTemplate transactionTemplate;
   private final Clock clock;
@@ -41,6 +43,7 @@ public class ExtractionEventListener {
       DocumentWriter documentWriter,
       WorkflowInstanceReader workflowInstanceReader,
       WorkflowInstanceWriter workflowInstanceWriter,
+      WorkflowCatalog workflowCatalog,
       DocumentEventBus eventBus,
       PlatformTransactionManager transactionManager,
       Clock clock) {
@@ -48,6 +51,7 @@ public class ExtractionEventListener {
     this.documentWriter = documentWriter;
     this.workflowInstanceReader = workflowInstanceReader;
     this.workflowInstanceWriter = workflowInstanceWriter;
+    this.workflowCatalog = workflowCatalog;
     this.eventBus = eventBus;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.clock = clock;
@@ -63,13 +67,6 @@ public class ExtractionEventListener {
         LOG.warn("ExtractionCompleted ignored — unknown documentId={}", documentId);
         return;
       }
-      if (document.reextractionStatus() != ReextractionStatus.IN_PROGRESS) {
-        LOG.info(
-            "ExtractionCompleted ignored — documentId={} reextractionStatus={} (expected IN_PROGRESS)",
-            documentId,
-            document.reextractionStatus());
-        return;
-      }
 
       WorkflowInstance instance = workflowInstanceReader.getByDocumentId(documentId).orElse(null);
       if (instance == null) {
@@ -80,19 +77,23 @@ public class ExtractionEventListener {
 
       String newDocTypeId = event.detectedDocumentType();
 
+      String orgId = document.organizationId();
       transactionTemplate.executeWithoutResult(
           status -> {
             documentWriter.updateExtraction(documentId, newDocTypeId, event.extractedFields());
             documentWriter.setReextractionStatus(documentId, ReextractionStatus.NONE);
-            workflowInstanceWriter.clearOriginKeepStage(documentId, WorkflowStatus.AWAITING_REVIEW);
+            workflowInstanceWriter.clearOriginKeepStage(
+                documentId, workflowCatalog, orgId, newDocTypeId);
           });
 
+      WorkflowInstance updated =
+          workflowInstanceReader.getByDocumentId(documentId).orElse(instance);
       eventBus.publish(
           new DocumentStateChanged(
               documentId,
               document.storedDocumentId(),
               document.organizationId(),
-              instance.currentStageId(),
+              updated.currentStageId(),
               WorkflowStatus.AWAITING_REVIEW.name(),
               ReextractionStatus.NONE.name(),
               null,
