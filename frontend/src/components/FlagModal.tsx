@@ -5,11 +5,18 @@ import { FlagIcon } from "./icons/Icons";
 interface FlagModalProps {
   documentId: string;
   organizationId: string;
+  docDisplayId?: string;
   onCancel: () => void;
   onSubmitted: () => void;
 }
 
-export function FlagModal({ documentId, organizationId, onCancel, onSubmitted }: FlagModalProps) {
+export function FlagModal({
+  documentId,
+  organizationId,
+  docDisplayId,
+  onCancel,
+  onSubmitted,
+}: FlagModalProps) {
   const [comment, setComment] = useState("");
   const { flag } = useDocumentActions({ documentId, organizationId });
 
@@ -49,7 +56,9 @@ export function FlagModal({ documentId, organizationId, onCancel, onSubmitted }:
           <div>
             <div className="text-16 font-bold text-brand-navy">Flag for Review</div>
             <div className="mt-0.5 text-12 text-neutral-500">
-              Document will be sent back to the Review stage.
+              {docDisplayId
+                ? `${docDisplayId} will be sent back to the Review stage.`
+                : "Document will be sent back to the Review stage."}
             </div>
           </div>
         </div>
@@ -91,7 +100,8 @@ export function FlagModal({ documentId, organizationId, onCancel, onSubmitted }:
             disabled={submitDisabled}
             className="flex h-9 items-center gap-1.5 rounded-md bg-warn px-[18px] text-13 font-semibold text-white transition-colors duration-150 hover:bg-[#d97706] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-warn"
           >
-            Submit
+            <FlagIcon />
+            Send to Review
           </button>
         </div>
       </form>

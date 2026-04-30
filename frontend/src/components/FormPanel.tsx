@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { DocumentView, WorkflowStatus } from "../types/readModels";
 import type { FieldSchema } from "../types/schema";
 import type { StageSummary } from "../types/workflow";
+import { docDisplayId } from "../util/formatters";
 import { ApprovalSummary } from "./ApprovalSummary";
 import { TerminalSummary } from "./TerminalSummary";
 import { FlagBanner } from "./FlagBanner";
@@ -194,6 +195,11 @@ export function FormPanel({
         <FlagModal
           documentId={document.documentId}
           organizationId={document.organizationId}
+          docDisplayId={docDisplayId(
+            document.detectedDocumentType,
+            document.extractedFields,
+            document.sourceFilename,
+          )}
           onCancel={() => setFlagOpen(false)}
           onSubmitted={() => setFlagOpen(false)}
         />
