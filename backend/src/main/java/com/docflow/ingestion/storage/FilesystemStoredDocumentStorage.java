@@ -3,6 +3,7 @@ package com.docflow.ingestion.storage;
 import com.docflow.config.AppConfig;
 import com.docflow.ingestion.StoredDocumentId;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -53,6 +54,30 @@ public final class FilesystemStoredDocumentStorage implements StoredDocumentStor
       throw new StoredFileNotFoundException(id);
     } catch (IOException e) {
       throw new UncheckedIOException("Failed to load stored document " + id, e);
+    }
+  }
+
+  @Override
+  public InputStream openStream(StoredDocumentId id) {
+    Path path = resolve(id);
+    try {
+      return Files.newInputStream(path);
+    } catch (NoSuchFileException e) {
+      throw new StoredFileNotFoundException(id);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to open stored document " + id, e);
+    }
+  }
+
+  @Override
+  public long size(StoredDocumentId id) {
+    Path path = resolve(id);
+    try {
+      return Files.size(path);
+    } catch (NoSuchFileException e) {
+      throw new StoredFileNotFoundException(id);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to size stored document " + id, e);
     }
   }
 

@@ -334,6 +334,16 @@ class StoredDocumentIngestionServiceImplTest {
     }
 
     @Override
+    public InputStream openStream(StoredDocumentId id) {
+      return delegate.openStream(id);
+    }
+
+    @Override
+    public long size(StoredDocumentId id) {
+      return delegate.size(id);
+    }
+
+    @Override
     public void delete(StoredDocumentId id) {
       delegate.delete(id);
     }

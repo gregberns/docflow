@@ -13,7 +13,9 @@ import com.docflow.ingestion.StoredDocumentReader;
 import com.docflow.ingestion.storage.StoredDocumentStorage;
 import com.docflow.workflow.WorkflowInstance;
 import com.docflow.workflow.WorkflowInstanceReader;
+import java.io.InputStream;
 import java.util.UUID;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -86,7 +88,7 @@ public class DocumentController {
   }
 
   @GetMapping("/{documentId}/file")
-  public ResponseEntity<byte[]> file(@PathVariable UUID documentId) {
+  public ResponseEntity<InputStreamResource> file(@PathVariable UUID documentId) {
     Document document =
         documentReader
             .get(documentId)
@@ -98,12 +100,13 @@ public class DocumentController {
             .get(storedId)
             .orElseThrow(() -> new UnknownDocumentException(documentId.toString()));
 
-    byte[] bytes = storedDocumentStorage.load(storedId);
+    long contentLength = storedDocumentStorage.size(storedId);
+    InputStream stream = storedDocumentStorage.openStream(storedId);
 
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.parseMediaType(stored.mimeType()));
-    headers.setContentLength(bytes.length);
-    return ResponseEntity.ok().headers(headers).body(bytes);
+    headers.setContentLength(contentLength);
+    return ResponseEntity.ok().headers(headers).body(new InputStreamResource(stream));
   }
 
   private String resolveStageDisplayName(String orgId, String docTypeId, String stageId) {

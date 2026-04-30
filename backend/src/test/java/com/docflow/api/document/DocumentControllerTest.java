@@ -24,6 +24,7 @@ import com.docflow.ingestion.storage.StoredDocumentStorage;
 import com.docflow.workflow.WorkflowInstance;
 import com.docflow.workflow.WorkflowInstanceReader;
 import com.docflow.workflow.WorkflowStatus;
+import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -161,13 +162,17 @@ class DocumentControllerTest {
 
     when(documentReader.get(documentId)).thenReturn(Optional.of(document));
     when(storedDocumentReader.get(any(StoredDocumentId.class))).thenReturn(Optional.of(stored));
-    when(storedDocumentStorage.load(any(StoredDocumentId.class))).thenReturn(storedBytes);
+    when(storedDocumentStorage.size(any(StoredDocumentId.class)))
+        .thenReturn((long) storedBytes.length);
+    when(storedDocumentStorage.openStream(any(StoredDocumentId.class)))
+        .thenReturn(new ByteArrayInputStream(storedBytes));
 
     byte[] body =
         mockMvc
             .perform(get("/api/documents/" + documentId + "/file"))
             .andExpect(status().isOk())
             .andExpect(header().string("Content-Type", "image/jpeg"))
+            .andExpect(header().longValue("Content-Length", storedBytes.length))
             .andReturn()
             .getResponse()
             .getContentAsByteArray();

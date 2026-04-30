@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.docflow.ingestion.storage.StoredDocumentStorage;
 import com.docflow.ingestion.storage.StoredFileNotFoundException;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -179,6 +181,24 @@ class IngestionBoundaryTest {
         throw new StoredFileNotFoundException(id);
       }
       return bytes.clone();
+    }
+
+    @Override
+    public InputStream openStream(StoredDocumentId id) {
+      byte[] bytes = store.get(id);
+      if (bytes == null) {
+        throw new StoredFileNotFoundException(id);
+      }
+      return new ByteArrayInputStream(bytes.clone());
+    }
+
+    @Override
+    public long size(StoredDocumentId id) {
+      byte[] bytes = store.get(id);
+      if (bytes == null) {
+        throw new StoredFileNotFoundException(id);
+      }
+      return bytes.length;
     }
 
     @Override

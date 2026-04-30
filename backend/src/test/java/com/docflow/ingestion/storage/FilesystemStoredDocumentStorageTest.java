@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.docflow.config.AppConfig;
 import com.docflow.ingestion.StoredDocumentId;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,6 +38,35 @@ class FilesystemStoredDocumentStorageTest {
     StoredDocumentId id = StoredDocumentId.generate();
 
     assertThatThrownBy(() -> storage.load(id))
+        .isInstanceOf(StoredFileNotFoundException.class)
+        .extracting("id")
+        .isEqualTo(id);
+  }
+
+  @Test
+  void openStreamReturnsByteForByteIdenticalContentAndSizeMatchesPayload(@TempDir Path root)
+      throws Exception {
+    StoredDocumentStorage storage = newStorage(root);
+    StoredDocumentId id = StoredDocumentId.generate();
+    byte[] bytes = "stream-me".getBytes(StandardCharsets.UTF_8);
+    storage.save(id, bytes);
+
+    assertThat(storage.size(id)).isEqualTo(bytes.length);
+    try (InputStream in = storage.openStream(id)) {
+      assertThat(in.readAllBytes()).isEqualTo(bytes);
+    }
+  }
+
+  @Test
+  void openStreamAndSizeOfMissingFileThrowStoredFileNotFoundException(@TempDir Path root) {
+    StoredDocumentStorage storage = newStorage(root);
+    StoredDocumentId id = StoredDocumentId.generate();
+
+    assertThatThrownBy(() -> storage.openStream(id))
+        .isInstanceOf(StoredFileNotFoundException.class)
+        .extracting("id")
+        .isEqualTo(id);
+    assertThatThrownBy(() -> storage.size(id))
         .isInstanceOf(StoredFileNotFoundException.class)
         .extracting("id")
         .isEqualTo(id);
@@ -130,6 +161,24 @@ class FilesystemStoredDocumentStorageTest {
         throw new StoredFileNotFoundException(id);
       }
       return bytes.clone();
+    }
+
+    @Override
+    public InputStream openStream(StoredDocumentId id) {
+      byte[] bytes = store.get(id);
+      if (bytes == null) {
+        throw new StoredFileNotFoundException(id);
+      }
+      return new ByteArrayInputStream(bytes.clone());
+    }
+
+    @Override
+    public long size(StoredDocumentId id) {
+      byte[] bytes = store.get(id);
+      if (bytes == null) {
+        throw new StoredFileNotFoundException(id);
+      }
+      return bytes.length;
     }
 
     @Override
