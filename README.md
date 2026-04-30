@@ -1,19 +1,18 @@
 # DocFlow
 
-Multi-client document processing platform: ingest PDFs, run an LLM-driven classify-and-extract pipeline, and route the result through a per-org review workflow.
+DocFlow is a multi-client document-processing platform built against the take-home spec in `problem-statement/`. It ingests PDFs for three fictional clients — **Riverside Bistro** (restaurant), **Pinnacle Legal Group** (law firm), and **Ironworks Construction** (general contractor) — runs them through an LLM-driven classify-and-extract pipeline, and routes each document through a per-org review/approval workflow until it is filed or rejected. Stack: Java 25 + Spring Boot 4 + PostgreSQL on the backend, React + TypeScript (Vite) on the frontend, Anthropic (Claude Sonnet 4.6) for both classification and field extraction, PDFBox 3 for text extraction.
 
 ## How to run
 
-Prerequisites: Docker (with Compose v2). No host-side JDK / Node install needed for the default flow.
-
 ```
-cp .env.example .env
-# fill in ANTHROPIC_API_KEY in .env
+cp .env.example .env          # then fill in ANTHROPIC_API_KEY
 make build
-make start
+make start                    # alias: docker-compose up
 ```
 
-The seeded dashboard works without a key — only live uploads and `make eval` require `ANTHROPIC_API_KEY`. A reviewer who just wants to click around the UI against the labeled samples can leave it unset.
+- Dashboard: <http://localhost:5174>
+- API base: <http://localhost:8551>
+- Required env: `ANTHROPIC_API_KEY` (see `.env.example` for the full list — DB creds, storage root, host port overrides). The seeded dashboard works without a key — only live uploads and `make eval` require it. A reviewer who just wants to click around the UI against the labeled samples can leave it unset.
 
 Common targets:
 
@@ -26,43 +25,94 @@ Common targets:
 | `make e2e` | Playwright scenarios against the running stack. |
 | `make eval` | Live LLM eval; opt-in, requires a real `ANTHROPIC_API_KEY`. |
 
-Host-side ports are controlled by `BACKEND_HOST_PORT` and `FRONTEND_HOST_PORT` in `.env.example`; consult that file for the full set of variables.
-
 ## Design tour
 
 For a ~10 min architecture & design tour, read `.kerf/project/docflow/SPEC.md`. It walks the system top-down with pointers into the per-component specs under `.kerf/project/docflow/05-specs/`. A one-page architecture diagram lives in `docs/architecture.md`, and `docs/api-walkthrough.md` is a curl-based walkthrough of the realistic flow for reviewers without the SPA.
 
 ## Design decisions
 
-- **No auth.** Development scope only. Endpoints are namespaced by `organizationId` (path-scoped) but unauthenticated. Identity / RBAC is the production attach point (see Production considerations).
-- **Local filesystem storage.** `StoredDocument` bytes are written under `STORAGE_ROOT` on the backend container's volume. The storage seam is isolated behind `StoredDocumentStorage`, so swapping in S3 is a single-implementation change.
-- **Java 25 + Spring Boot 4.** Backend `build.gradle.kts` pins `JavaLanguageVersion.of(25)` and `org.springframework.boot` `4.0.0`. The toolchain is provisioned by Gradle; no host JDK is required when building via Docker.
-- **Anthropic as the LLM provider.** Single provider, single model id (`claude-sonnet-4-6`) bound at startup via `AppConfig.llm.modelId`. The Anthropic Java SDK is the only LLM dependency; routing across providers is out of scope.
-- **Server-Sent Events for stage progress.** `GET /api/organizations/{orgId}/documents/stream` fans out `ProcessingStepChanged` and `DocumentStateChanged` events from the in-process `DocumentEventBus`. SSE was chosen over WebSockets for a one-way feed under HTTP semantics with no client send-channel.
-- **Three Docker services.** `docker-compose.yml` runs `postgres` (Postgres 16), `backend` (Spring Boot, port 8080 in-container), and `frontend` (Vite-built SPA served on 5173) on a shared bridge network. The frontend container reaches the backend via the in-network DNS name `backend`; host-side dev (`npm run dev`) uses Vite proxy to `http://localhost:8080`.
-- **Node 22.** Frontend image is `node:22-alpine`; `frontend/package.json` targets React 19 + Vite 8.
+- **YAML-seeded per-org config.** Org / doc-type / workflow definitions ship as classpath resources and are loaded once on first boot by `OrgConfigSeeder`. Adding a new doc type or org is a config-only change.
+- **Workflow-as-data.** Per-org × per-doc-type workflows are encoded as YAML transitions evaluated by `TransitionResolver`, including the lien-waiver `unconditional`-skip guard. No code change is needed to add a new approval chain.
+- **Anthropic-only LLM dependency.** Single provider, single model id (`claude-sonnet-4-6`) bound at startup. Multi-provider routing is out of scope.
+- **SSE over WebSockets** for stage-progress fan-out — one-way feed, plain HTTP semantics, no client send-channel needed.
+- **Local-filesystem document storage** behind the `StoredDocumentStorage` seam — S3 swap is a single-implementation change.
+- **Postgres schema in 3NF, FKs everywhere.** JSON columns reserved for the genuinely-dynamic extracted-field payloads; everything else is relational. Migrations via Flyway.
+- **Spring Boot 4 + Java 25** via the Gradle toolchain; no host JDK required when building through Docker.
 
-## Seeded data
+## Document pipeline
 
-Two layers of seed data populate the database on first boot only. After the first successful run, the database is authoritative; subsequent boots skip already-seeded rows.
+A document is represented by three distinct domain entities as it flows through the system, each owning a different phase of its life:
 
-1. **Client configuration** (`OrgConfigSeeder`). Reads `backend/src/main/resources/seed/organizations.yaml` plus the per-org doc-type and workflow YAMLs under `seed/doc-types/<org>/` and `seed/workflows/<org>/`, and inserts `organizations`, `document_types`, `workflows`, `stages`, and `transitions`. Gated by `docflow.config.seed-on-boot` in `application.yml` (true under the `dev` profile, false under `prod`).
-2. **Labeled samples** (`SeedDataLoader`). Reads `backend/src/main/resources/seed/manifest.yaml` and inserts `StoredDocument` + `Document` (with `processedAt = now`) + `WorkflowInstance` (`currentStageId = Review`) for each entry — bypassing the LLM pipeline entirely. PDFs live under `backend/src/main/resources/seed/files/...` mirroring the manifest's relative paths. Idempotent on `(organizationId, sourcePath)`.
+- **`StoredDocument`** — the immutable byte content and upload metadata. Created once when the file lands, never mutated, persists for the document's full lifetime. Backed by the filesystem-storage seam (`StoredDocumentStorage`); the DB row holds only the path + content type.
+- **`ProcessingDocument`** — transient pipeline state that lives only while text extraction, classification, and field extraction are in flight. Carries retry/failure status, current pipeline step, and any partial output. Retired the moment extraction completes; ProcessingDocument failures don't touch the filed state.
+- **`Document`** — the human-reviewable, workflow-bearing entity that materializes when extraction succeeds. Holds the extracted fields, the resolved doc type, and (via the linked `WorkflowInstance`) the current review/approval state through to Filed or Rejected.
 
-To add a labeled sample: pick a PDF from `problem-statement/samples/`, copy it under `backend/src/main/resources/seed/files/<org>/<type>/<file>.pdf`, and append an entry to `backend/src/main/resources/seed/manifest.yaml` with `path`, `organizationId`, `documentType`, and `extractedFields`. `SeedDataLoader` will pick it up on the next clean boot.
+This split keeps each table narrow and write-path-specific: pipeline retries write only to `ProcessingDocument`, the workflow engine writes only to `Document`/`WorkflowInstance`, and the dashboard read is scoped to `Document` alone with a small in-flight join against `ProcessingDocument` for the "still processing" indicator.
 
-## `make eval`
+```
+Upload  ─►  Text Extract (PDFBox)  ─►  Classify (LLM)  ─►  Extract Fields (LLM)
+                                                                   │
+                                                                   ▼
+                                                                Review  ──► Rejected (terminal)
+                                                                   │
+                                                                   ▼
+                                                  Approval stage 1 ─► … ─► Approval stage N ─► Filed
+                                                                   │
+                                                                   ▼
+                                                       Flag (with comment)
+                                                       returns to Review,
+                                                       remembers origin stage
+```
 
-`make eval` is a separate, opt-in target that runs the C3 live-LLM eval harness (`com.docflow.c3.eval.EvalRunner`). It is **not** invoked by `make test` or CI. Requirements:
+`StoredDocument` is alive for the whole flow above. `ProcessingDocument` covers Upload through Extract Fields. `Document` is born at Review and persists through every subsequent state.
 
-- A real `ANTHROPIC_API_KEY` in the environment. The Gradle task short-circuits with a "skipping eval" message if the key is unset or blank.
-- The sample PDFs available at `problem-statement/samples/` (the default `docflow.eval.samplesRoot`).
+- The **approval chain is org × doc-type specific** — defined in YAML under `backend/src/main/resources/seed/workflows/<org>/<doc-type>.yaml`. Pinnacle invoices go Review → Attorney Approval → Billing Approval → Filed; Riverside invoices go Review → Manager Approval → Filed; Ironworks invoices go Review → Project Manager Approval → Accounting Approval → Filed.
+- **Flag** is valid only from approval stages. It returns the document to Review, requires a comment, and stores the origin stage so Resolve sends the document back where it came from.
+- **Reject** is a Review-stage action and is terminal.
+- **Lien-waiver special case**: an unconditional lien waiver skips Project Manager Approval and is filed directly from Review. Conditional waivers walk the full chain. The guard lives in `TransitionResolver`.
 
-The harness boots a non-web Spring context, runs classify + extract against each entry in `eval/manifest.yaml`, scores results with `EvalScorer`, and writes a markdown report to the path configured at `docflow.llm.eval.report-path` (default `eval/reports/latest.md`). The report contains aggregate doc-type and per-field accuracy plus a per-sample breakdown; an aggregate accuracy below the configured threshold causes the task to exit non-zero.
+## Key files
+
+Backend — pipeline + workflow:
+- `backend/src/main/java/com/docflow/workflow/WorkflowEngine.java` — workflow state machine; entry point for every action.
+- `backend/src/main/java/com/docflow/workflow/TransitionResolver.java` — guarded transitions (incl. lien-waiver skip guard).
+- `backend/src/main/java/com/docflow/c3/llm/LlmExtractor.java` — Anthropic SDK call boundary for classify + extract.
+- `backend/src/main/java/com/docflow/api/document/ReviewController.java` — Review-stage HTTP API (approve / flag / resolve / reject / retype).
+- `backend/src/main/java/com/docflow/api/dashboard/JdbcDashboardRepository.java` — dashboard list + counts SQL.
+
+Backend — schema + seeded config:
+- `backend/src/main/resources/db/migration/V1__init.sql` — Postgres schema.
+- `backend/src/main/resources/seed/workflows/<org>/<doc-type>.yaml` — per-org × per-doc-type workflow definitions.
+- `backend/src/main/resources/seed/doc-types/<org>/<doc-type>.yaml` — field schemas per doc type.
+
+Frontend:
+- `frontend/src/routes/DocumentDetailPage.tsx` — main detail screen; PDF viewer + form + stage progress + action bar.
+- `frontend/src/components/ReviewForm.tsx` — review-stage UX (approve / flag / reject / retype branching).
+- `frontend/src/components/FormPanel.tsx` — extracted-field form rendering, including dynamic schema swap on retype.
+
+Eval:
+- `eval/harness/run.py` — live-LLM eval harness (HTTP-driven via the running backend).
+- `eval/harness/run_db_direct.py` — DB-direct variant; polls Postgres for completed extractions.
+- `eval/pdfbox-check/REPORT.md` — text-extraction quality report (23/23 PDFs clean).
+- `eval/reports/db_direct_*.md` — per-run scoring output.
+
+## Tests
+
+- **Unit + integration:** `make test` runs the full backend suite (`./gradlew check`) plus `npm --prefix frontend run check`. Last clean run: backend 381/381, frontend 105/105.
+- **Scenario harness:** YAML-driven end-to-end scenarios under `backend/src/test/resources/scenarios/`, executed by `backend/src/test/java/com/docflow/scenario/ScenarioRunnerIT.java`. 3 of the planned 12 scenarios are merged today (`01-happy-path-pinnacle-invoice`, `02-wrong-type-classification`, `03-missing-required-field`); the rest are queued.
+- **Live LLM eval:** `make eval` runs `EvalRunner` against `problem-statement/samples/`; opt-in (requires a real `ANTHROPIC_API_KEY`), not part of `make test`. The Python harness in `eval/harness/` is the day-to-day variant.
+- **PDFBox text-quality check:** one-shot run, results in `eval/pdfbox-check/REPORT.md`.
+
+## What works well
+
+- Classify + extract is accurate on the sample corpus: **23/23 doc-type, 105/111 fields = 94.6%** on the latest live-LLM eval (`eval/reports/db_direct_20260429T230742Z.md`).
+- PDFBox text extraction is clean across all 23 samples — no parse failures, all key fields preserved.
+- Core happy-path workflow exercised end-to-end via API for all three orgs (upload → classify → extract → Review → approve chain → Filed).
+- Flag-from-approval with origin restoration verified working: origin stage stored on flag, restored on resolve, comment cleared.
+- Concurrent uploads handled independently — no field cross-contamination across in-flight pipelines.
+- SSE feed drives real-time dashboard updates.
 
 ## Production considerations
-
-The take-home was scoped narrowly. The items below were intentionally simplified.
 
 - **No auth.** A real deployment would add identity + role-based access; the `role` slot on approval stages (C1-R10) is the attach point.
 - **The `role` / `stage` / `action` model is deliberately basic.** Production would likely promote `Role` to a first-class entity with a permissions matrix, support composite approvers, and let roles be shared across orgs where appropriate.
