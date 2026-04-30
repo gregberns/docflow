@@ -22,7 +22,7 @@ One interesting thing I ran into:
 
 If you have a single domain entity 'Document' that goes from upload, through the pipeline, gets reviewed, then just exists 'forever' - you see that 'pending' documents (not processed yet) look very different than completed ones. This has pretty significant downstream impacts - query times, processing pipeline changes impacting the Document domain entity, separating out write heavy tables, etc.
 
-So instead, the PDF comes in and is saved as a `StoredDocument`. Then the pipeline processes a `ProcessingDocument`, which stored everything needed for the pipeline. Finally, the needed data is moved onto a `Document`. This means the pipeline can evolve significantly, without the core entity `Document` needing to be changed.
+So instead, the PDF comes in and is saved as a `StoredDocument`. Then the pipeline handles a `ProcessingDocument`, which stores everything needed for the pipeline. Finally, the needed data is moved onto a `Document`. This means the pipeline can evolve significantly, without the core entity `Document` needing to be changed.
 
 Realized this during data modeling and it changed my strategy - figured I'd point it out.
 
