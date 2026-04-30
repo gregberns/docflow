@@ -153,7 +153,9 @@ describe("FormPanel — branch dispatch", () => {
     expect(screen.getByTestId("form-panel")).toHaveAttribute("data-branch", "REVIEW_FLAGGED");
     const banner = screen.getByTestId("flag-banner");
     expect(banner).toBeInTheDocument();
-    expect(screen.getByTestId("flag-banner-origin").textContent).toBe("ATTORNEY_APPROVAL");
+    expect(screen.getByTestId("flag-banner-origin").textContent).toBe(
+      "— sent back from ATTORNEY_APPROVAL",
+    );
     expect(screen.getByTestId("flag-banner-comment").textContent).toBe("Missing signature");
 
     expect(screen.getByTestId("resolve-button")).toBeInTheDocument();
