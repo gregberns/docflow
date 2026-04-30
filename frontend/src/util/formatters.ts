@@ -33,3 +33,9 @@ export function formatDisplay(value: unknown): string {
   if (typeof value === "boolean") return value ? "Yes" : "No";
   return JSON.stringify(value);
 }
+
+export function formatDocType(value: string): string {
+  if (!value) return value;
+  const spaced = value.replace(/_/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}

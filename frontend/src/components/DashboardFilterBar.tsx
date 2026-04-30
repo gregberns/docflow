@@ -1,4 +1,5 @@
 import type { WorkflowStatus } from "../types/readModels";
+import { formatDocType } from "../util/formatters";
 import { UploadIcon } from "./icons/Icons";
 
 const STATUS_LABELS: Record<WorkflowStatus, string> = {
@@ -65,7 +66,7 @@ export function DashboardFilterBar({
           <option value="ALL">All Types</option>
           {docTypeOptions.map((value) => (
             <option key={value} value={value}>
-              {value}
+              {formatDocType(value)}
             </option>
           ))}
         </select>

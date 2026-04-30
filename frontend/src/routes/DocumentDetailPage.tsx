@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getDocument, getDocumentFileUrl } from "../api/documents";
 import { getWorkflow } from "../api/workflows";
+import { listOrganizations } from "../api/organizations";
 import { DetailLayout } from "../components/DetailLayout";
 import { PdfViewer } from "../components/PdfViewer";
 import { DocumentHeader } from "../components/DocumentHeader";
@@ -69,10 +70,15 @@ export function DocumentDetailPage() {
 
   const fields = useMemo(() => (data ? deriveFallbackFields(data.extractedFields) : []), [data]);
 
-  const docTypeOptions = useMemo(
-    () => (data?.detectedDocumentType ? [data.detectedDocumentType] : []),
-    [data?.detectedDocumentType],
-  );
+  const { data: organizations } = useQuery({
+    queryKey: ["organizations"],
+    queryFn: listOrganizations,
+  });
+
+  const docTypeOptions = useMemo<ReadonlyArray<string>>(() => {
+    const org = organizations?.find((candidate) => candidate.id === orgId);
+    return org?.docTypes ?? (data?.detectedDocumentType ? [data.detectedDocumentType] : []);
+  }, [organizations, orgId, data?.detectedDocumentType]);
 
   return (
     <main data-testid="document-detail-page" data-document-id={documentId}>

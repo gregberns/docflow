@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { DocumentView } from "../types/readModels";
 import type { FieldSchema } from "../types/schema";
 import { buildZodFromFieldSchema } from "../schemas/buildZodFromFieldSchema";
+import { formatDocType } from "../util/formatters";
 import { useDocumentActions } from "../hooks/useDocumentActions";
 import { FieldArrayTable } from "./FieldArrayTable";
 
@@ -149,7 +150,7 @@ export function ReviewForm({
               >
                 {docTypeOptions.map((opt) => (
                   <option key={opt} value={opt}>
-                    {opt}
+                    {formatDocType(opt)}
                   </option>
                 ))}
               </select>
