@@ -94,6 +94,38 @@ class ScenarioStubAuditTest {
     assertThat(auditWriter.rows.get(0).error()).isNull();
   }
 
+  @Test
+  void extractorStub_terminalSchemaViolation_throwsAfterRetryAndAuditsBothAttempts() {
+    DocumentReader reader = id -> java.util.Optional.empty();
+    DocumentWriter writer = new NoopDocumentWriter();
+    DocumentEventBus eventBus = new DocumentEventBus(new NoopEventPublisher());
+
+    ScenarioContext failingContext =
+        new ScenarioContext() {
+          @Override
+          public ScenarioFixture.Input matchByRawText(String rawText) {
+            return new ScenarioFixture.Input(
+                "x.pdf",
+                ORG,
+                new ScenarioFixture.Classification("invoice", null),
+                new ScenarioFixture.Extraction(null, "SCHEMA_VIOLATION"));
+          }
+        };
+
+    ScenarioLlmExtractorStub stub =
+        new ScenarioLlmExtractorStub(
+            failingContext, auditWriter, reader, writer, eventBus, appConfig, clock);
+
+    assertThatThrownBy(
+            () ->
+                stub.extractFields(UUID.randomUUID(), UUID.randomUUID(), ORG, "invoice", RAW_TEXT))
+        .isInstanceOf(LlmSchemaViolation.class);
+
+    assertThat(auditWriter.rows).as("two failed attempts, both audited").hasSize(2);
+    assertThat(auditWriter.rows.get(0).error()).contains("schema violation");
+    assertThat(auditWriter.rows.get(1).error()).contains("schema violation");
+  }
+
   static final class InMemoryScenarioContext extends ScenarioContext {
     @Override
     public ScenarioFixture.Input matchByRawText(String rawText) {

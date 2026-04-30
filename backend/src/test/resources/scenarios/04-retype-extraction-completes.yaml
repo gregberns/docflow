@@ -1,0 +1,61 @@
+scenarioId: 04-retype-extraction-completes
+description: >
+  Retype with type change → re-extraction completes, Document updated.
+  Pipeline reaches AWAITING_REVIEW, Approve advances to Attorney Approval,
+  Flag returns to Review (origin = Attorney Approval), Retype with
+  newDocumentType=expense-report triggers LlmExtractor.extract once. The
+  stub returns canned fields and updates Document.detectedDocumentType +
+  extractedFields synchronously, then publishes ExtractionCompleted.
+  Asserts Document end state (detectedDocumentType=expense-report,
+  reextractionStatus=NONE) and 1 classify + 1 initial extract + 1 retype
+  extract = 3 audit rows.
+organizationId: pinnacle-legal
+inputPdf: pinnacle-legal/invoices/dewey_cheatham_howe_feb_2024.pdf
+classification:
+  docType: invoice
+extraction:
+  fields:
+    vendor: "Dewey, Cheatham & Howe LLP"
+    invoiceNumber: "DCH-2024-0231"
+    invoiceDate: "2024-02-15"
+    matterNumber: "4389"
+    matterName: "Bigglesworth Estate"
+    amount: "12750.00"
+    billingPeriod: "February 2024"
+    paymentTerms: "Net 30"
+actions:
+  - type: APPROVE
+    expectedStatus: 200
+  - type: FLAG
+    comment: "needs retype"
+    expectedStatus: 200
+  - type: RETYPE
+    newDocTypeId: expense-report
+    expectedStatus: 202
+expectedEndState:
+  document:
+    detectedDocumentType: expense-report
+    reextractionStatus: NONE
+    extractedFieldsContains:
+      vendor: "Dewey, Cheatham & Howe LLP"
+  events:
+    - type: ProcessingStepChanged
+      currentStep: TEXT_EXTRACTING
+    - type: ProcessingStepChanged
+      currentStep: CLASSIFYING
+    - type: ProcessingStepChanged
+      currentStep: EXTRACTING
+    - type: DocumentStateChanged
+      currentStage: Review
+      currentStatus: AWAITING_REVIEW
+    - type: DocumentStateChanged
+      action: APPROVE
+      currentStage: Attorney Approval
+      currentStatus: AWAITING_APPROVAL
+    - type: DocumentStateChanged
+      action: FLAG
+      currentStage: Review
+      currentStatus: FLAGGED
+    - type: DocumentStateChanged
+      action: RESOLVE
+      reextractionStatus: IN_PROGRESS

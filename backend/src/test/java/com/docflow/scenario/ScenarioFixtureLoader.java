@@ -82,6 +82,7 @@ public final class ScenarioFixtureLoader {
           source + ": fixture must declare exactly one of 'inputPdf' or 'inputs', not both");
     }
     if (hasInputPdf) {
+      validateInputPdfExists(fixture.inputPdf(), source, "inputPdf");
       validateClassification(fixture.classification(), source, "classification");
       validateExtraction(fixture.extraction(), source, "extraction");
     } else {
@@ -91,11 +92,25 @@ public final class ScenarioFixtureLoader {
           throw new ScenarioFixtureLoadException(
               source + ": inputs[" + i + "].inputPdf must be present");
         }
+        validateInputPdfExists(input.inputPdf(), source, "inputs[" + i + "].inputPdf");
         validateClassification(input.classification(), source, "inputs[" + i + "].classification");
         validateExtraction(input.extraction(), source, "inputs[" + i + "].extraction");
       }
     }
     return fixture;
+  }
+
+  private static void validateInputPdfExists(String inputPdf, String source, String path) {
+    if (ScenarioContext.tryResolve(inputPdf).isEmpty()) {
+      throw new ScenarioFixtureLoadException(
+          source
+              + ": "
+              + path
+              + " '"
+              + inputPdf
+              + "' could not be resolved; expected at "
+              + ScenarioContext.canonicalAbsolutePath(inputPdf));
+    }
   }
 
   private static void validateClassification(

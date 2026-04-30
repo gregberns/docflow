@@ -54,7 +54,7 @@ class ScenarioFixtureLoaderTest {
         organizationId: pinnacle-legal
         inputPdf: pinnacle-legal/invoices/dewey_cheatham_howe_feb_2024.pdf
         inputs:
-          - inputPdf: a.pdf
+          - inputPdf: ironworks-construction/invoices/concrete_jungle_phase2_foundation_inv.pdf
             organizationId: pinnacle-legal
             classification:
               docType: invoice
@@ -169,15 +169,15 @@ class ScenarioFixtureLoaderTest {
         """
         scenarioId: multi-input
         inputs:
-          - inputPdf: a.pdf
-            organizationId: riverside-bistro
+          - inputPdf: ironworks-construction/invoices/concrete_jungle_phase2_foundation_inv.pdf
+            organizationId: ironworks-construction
             classification:
               docType: invoice
             extraction:
               fields:
                 vendor: "A"
-          - inputPdf: b.pdf
-            organizationId: riverside-bistro
+          - inputPdf: ironworks-construction/invoices/exotic_aquatic_moat_materials_inv.pdf
+            organizationId: ironworks-construction
             classification:
               docType: invoice
             extraction:
@@ -186,6 +186,50 @@ class ScenarioFixtureLoaderTest {
         """;
     ScenarioFixture fixture = loader.loadFromString(yaml, "multi-input.yaml");
     assertThat(fixture.inputs()).hasSize(2);
-    assertThat(fixture.inputs().get(0).inputPdf()).isEqualTo("a.pdf");
+    assertThat(fixture.inputs().get(0).inputPdf())
+        .isEqualTo("ironworks-construction/invoices/concrete_jungle_phase2_foundation_inv.pdf");
+  }
+
+  @Test
+  void rejectsFixtureWithMissingInputPdf_atLoadTimeWithAbsolutePath() {
+    String missing = "pinnacle-legal/invoices/does_not_exist_42.pdf";
+    String yaml =
+        """
+        scenarioId: missing-pdf
+        organizationId: pinnacle-legal
+        inputPdf: %s
+        classification:
+          docType: invoice
+        extraction:
+          fields:
+            vendor: "X"
+        """
+            .formatted(missing);
+
+    java.nio.file.Path expectedAbsolute = ScenarioContext.canonicalAbsolutePath(missing);
+
+    assertThatThrownBy(() -> loader.loadFromString(yaml, "missing-pdf.yaml"))
+        .isInstanceOf(ScenarioFixtureLoadException.class)
+        .hasMessageContaining("could not be resolved")
+        .hasMessageContaining(expectedAbsolute.toString());
+  }
+
+  @Test
+  void rejectsExtractionWithBothFieldsAndError() {
+    String yaml =
+        """
+        scenarioId: both-extraction-fields-and-error
+        organizationId: pinnacle-legal
+        inputPdf: pinnacle-legal/invoices/dewey_cheatham_howe_feb_2024.pdf
+        classification:
+          docType: invoice
+        extraction:
+          fields:
+            vendor: "X"
+          error: SCHEMA_VIOLATION
+        """;
+    assertThatThrownBy(() -> loader.loadFromString(yaml, "both.yaml"))
+        .isInstanceOf(ScenarioFixtureLoadException.class)
+        .hasMessageContaining("at most one of 'fields' or 'error'");
   }
 }

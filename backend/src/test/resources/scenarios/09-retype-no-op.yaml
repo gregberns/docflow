@@ -1,0 +1,66 @@
+scenarioId: 09-retype-no-op
+description: >
+  Retype `Resolve` with no type change → no-op resolve. Pipeline reaches
+  AWAITING_REVIEW, Approve to Attorney Approval, Flag (origin = Attorney
+  Approval) returns to Review, Resolve via /actions endpoint sends
+  newDocTypeId=null. Per c4 spec C4-R6: no type change → clearFlag and
+  return to workflowOriginStage. Verifies LlmExtractor.extract was NOT
+  called (asserted by ScenarioLlmExtractorStub.extractInvocationCount==0
+  via runner) and the workflow returns to Attorney Approval. Asserts
+  1 classify + 1 extract = 2 audit rows.
+organizationId: pinnacle-legal
+inputPdf: pinnacle-legal/invoices/dewey_cheatham_howe_feb_2024.pdf
+classification:
+  docType: invoice
+extraction:
+  fields:
+    vendor: "Dewey, Cheatham & Howe LLP"
+    invoiceNumber: "DCH-2024-0231"
+    invoiceDate: "2024-02-15"
+    matterNumber: "4389"
+    matterName: "Bigglesworth Estate"
+    amount: "12750.00"
+    billingPeriod: "February 2024"
+    paymentTerms: "Net 30"
+actions:
+  - type: APPROVE
+    expectedStatus: 200
+  - type: FLAG
+    comment: "needs second look"
+    expectedStatus: 200
+  - type: RESOLVE
+    expectedStatus: 200
+expectedEndState:
+  document:
+    detectedDocumentType: invoice
+    reextractionStatus: NONE
+    extractedFieldsContains:
+      vendor: "Dewey, Cheatham & Howe LLP"
+      paymentTerms: "Net 30"
+  workflowInstance:
+    currentStageId: Attorney Approval
+    currentStatus: AWAITING_APPROVAL
+    workflowOriginStage: null
+    flagComment: null
+  events:
+    - type: ProcessingStepChanged
+      currentStep: TEXT_EXTRACTING
+    - type: ProcessingStepChanged
+      currentStep: CLASSIFYING
+    - type: ProcessingStepChanged
+      currentStep: EXTRACTING
+    - type: DocumentStateChanged
+      currentStage: Review
+      currentStatus: AWAITING_REVIEW
+    - type: DocumentStateChanged
+      action: APPROVE
+      currentStage: Attorney Approval
+      currentStatus: AWAITING_APPROVAL
+    - type: DocumentStateChanged
+      action: FLAG
+      currentStage: Review
+      currentStatus: FLAGGED
+    - type: DocumentStateChanged
+      action: RESOLVE
+      currentStage: Attorney Approval
+      currentStatus: AWAITING_APPROVAL

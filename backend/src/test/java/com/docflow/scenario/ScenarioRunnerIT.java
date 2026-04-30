@@ -5,6 +5,7 @@ import static org.awaitility.Awaitility.await;
 
 import com.docflow.api.dto.UploadAccepted;
 import com.docflow.c3.events.ProcessingStepChanged;
+import com.docflow.c3.llm.LlmExtractor;
 import com.docflow.document.Document;
 import com.docflow.document.DocumentReader;
 import com.docflow.workflow.WorkflowInstance;
@@ -45,14 +46,14 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
 
   private static final Path FIXTURE_DIR =
       Paths.get("src/test/resources/scenarios").toAbsolutePath();
-  private static final Path SAMPLES_FALLBACK = Paths.get("../problem-statement/samples");
-  private static final Path SAMPLES_PRIMARY = Paths.get("problem-statement/samples");
+  private static final String ACTION_RETYPE = "RETYPE";
 
   @Autowired private ScenarioContext scenarioContext;
   @Autowired private ScenarioRecorder scenarioRecorder;
   @Autowired private DocumentReader documentReader;
   @Autowired private WorkflowInstanceReader workflowInstanceReader;
   @Autowired private DataSource dataSource;
+  @Autowired private LlmExtractor llmExtractor;
 
   @LocalServerPort private int port;
 
@@ -66,6 +67,9 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
   void resetScenarioState() {
     scenarioContext.clear();
     scenarioRecorder.reset();
+    if (llmExtractor instanceof ScenarioLlmExtractorStub stub) {
+      stub.resetInvocationCounts();
+    }
   }
 
   @AfterEach
@@ -107,8 +111,38 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
 
     UUID documentId = awaitDocumentReachesReview(storedDocumentId);
     applyActions(fixture.actions(), documentId);
+    awaitRetypeCompletion(fixture, documentId);
     assertSuccessScenario(fixture, documentId);
     assertAuditRowCount(storedDocumentId, expectedAuditRowCount(fixture));
+    assertExtractInvocationCount(fixture);
+  }
+
+  private void awaitRetypeCompletion(ScenarioFixture fixture, UUID documentId) {
+    List<ScenarioFixture.Action> actions = fixture.actions();
+    if (actions == null) {
+      return;
+    }
+    boolean hasRetype =
+        actions.stream()
+            .anyMatch(a -> ACTION_RETYPE.equalsIgnoreCase(a.type()) && successfullyAccepted(a));
+    if (!hasRetype) {
+      return;
+    }
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofMillis(200))
+        .until(
+            () ->
+                documentReader
+                    .get(documentId)
+                    .map(d -> d.reextractionStatus().name())
+                    .filter(name -> !name.equals("IN_PROGRESS"))
+                    .isPresent());
+  }
+
+  private boolean successfullyAccepted(ScenarioFixture.Action action) {
+    int expected = action.expectedStatus() != null ? action.expectedStatus() : 202;
+    return expected < 400;
   }
 
   private boolean expectsPipelineFailure(ScenarioFixture fixture) {
@@ -117,7 +151,18 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
 
   private int expectedAuditRowCount(ScenarioFixture fixture) {
     if (!expectsPipelineFailure(fixture)) {
-      return 2;
+      int count = 2;
+      List<ScenarioFixture.Action> actions = fixture.actions();
+      if (actions != null) {
+        for (ScenarioFixture.Action action : actions) {
+          if (!ACTION_RETYPE.equalsIgnoreCase(action.type())) {
+            continue;
+          }
+          int status = action.expectedStatus() != null ? action.expectedStatus() : 202;
+          count += status >= 500 ? 2 : 1;
+        }
+      }
+      return count;
     }
     if (fixture.extraction() != null && fixture.extraction().error() != null) {
       return 3;
@@ -125,16 +170,35 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
     return 1;
   }
 
-  private byte[] readPdf(String inputPdf) throws IOException {
-    Path[] candidates = {
-      SAMPLES_PRIMARY.resolve(inputPdf), SAMPLES_FALLBACK.resolve(inputPdf), Paths.get(inputPdf)
-    };
-    for (Path candidate : candidates) {
-      if (Files.exists(candidate)) {
-        return Files.readAllBytes(candidate);
+  private void assertExtractInvocationCount(ScenarioFixture fixture) {
+    if (!(llmExtractor instanceof ScenarioLlmExtractorStub stub)) {
+      return;
+    }
+    int expected = 0;
+    List<ScenarioFixture.Action> actions = fixture.actions();
+    if (actions != null) {
+      for (ScenarioFixture.Action action : actions) {
+        if (ACTION_RETYPE.equalsIgnoreCase(action.type())) {
+          expected += 1;
+        }
       }
     }
-    throw new IOException("could not resolve fixture PDF: " + inputPdf);
+    assertThat(stub.extractInvocationCount())
+        .as("LlmExtractor.extract invocation count for " + fixture.scenarioId())
+        .isEqualTo(expected);
+  }
+
+  private byte[] readPdf(String inputPdf) throws IOException {
+    return ScenarioContext.tryResolve(inputPdf)
+        .map(
+            path -> {
+              try {
+                return Files.readAllBytes(path);
+              } catch (IOException e) {
+                throw new java.io.UncheckedIOException(e);
+              }
+            })
+        .orElseThrow(() -> new IOException("could not resolve fixture PDF: " + inputPdf));
   }
 
   private UploadAccepted uploadDocument(String orgId, String inputPdf, byte[] pdfBytes) {
@@ -221,6 +285,11 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
   }
 
   private void applyAction(ScenarioFixture.Action action, UUID documentId) {
+    String type = action.type().toUpperCase(Locale.ROOT);
+    if (ACTION_RETYPE.equals(type)) {
+      applyRetypeAction(action, documentId);
+      return;
+    }
     String body = buildActionBody(action);
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
@@ -242,6 +311,32 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
       assertThat(e.getStatusCode().value())
           .as("action " + action.type() + " status code")
           .isEqualTo(expected);
+    }
+  }
+
+  private void applyRetypeAction(ScenarioFixture.Action action, UUID documentId) {
+    if (action.newDocTypeId() == null || action.newDocTypeId().isBlank()) {
+      throw new IllegalArgumentException("RETYPE action requires newDocTypeId");
+    }
+    String body = "{\"newDocumentType\":\"" + action.newDocTypeId() + "\"}";
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    HttpEntity<String> request = new HttpEntity<>(body, headers);
+    int expected = action.expectedStatus() != null ? action.expectedStatus() : 202;
+
+    try {
+      ResponseEntity<String> response =
+          restTemplate.exchange(
+              url("/api/documents/{documentId}/review/retype"),
+              HttpMethod.POST,
+              request,
+              String.class,
+              documentId);
+      assertThat(response.getStatusCode().value())
+          .as("action RETYPE status code")
+          .isEqualTo(expected);
+    } catch (org.springframework.web.client.HttpStatusCodeException e) {
+      assertThat(e.getStatusCode().value()).as("action RETYPE status code").isEqualTo(expected);
     }
   }
 

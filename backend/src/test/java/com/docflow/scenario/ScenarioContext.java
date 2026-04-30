@@ -19,6 +19,32 @@ public class ScenarioContext {
   private final Map<String, String> rawTextIndex = new ConcurrentHashMap<>();
   private volatile List<ScenarioFixture> active = List.of();
 
+  public static java.util.Optional<Path> tryResolve(String pdfPath) {
+    for (Path p : candidates(pdfPath)) {
+      if (Files.exists(p)) {
+        return java.util.Optional.of(p.toAbsolutePath().normalize());
+      }
+    }
+    return java.util.Optional.empty();
+  }
+
+  public static Path canonicalAbsolutePath(String pdfPath) {
+    String rootPrefix = pdfPath.startsWith("_fixtures/") ? FIXTURES_ROOT : SAMPLES_ROOT;
+    String suffix =
+        pdfPath.startsWith("_fixtures/") ? pdfPath.substring("_fixtures/".length()) : pdfPath;
+    Path rootPrimary = Paths.get(rootPrefix);
+    Path rootParent = Paths.get("../" + rootPrefix);
+    Path base;
+    if (Files.isDirectory(rootPrimary)) {
+      base = rootPrimary;
+    } else if (Files.isDirectory(rootParent)) {
+      base = rootParent;
+    } else {
+      base = rootPrimary;
+    }
+    return base.resolve(suffix).toAbsolutePath().normalize();
+  }
+
   public synchronized void setActive(ScenarioFixture fixture) {
     Objects.requireNonNull(fixture, "fixture");
     setActive(List.of(fixture));
@@ -85,20 +111,30 @@ public class ScenarioContext {
   }
 
   private static Path resolve(String pdfPath) {
-    Path[] candidates =
-        new Path[] {
-          Paths.get(pdfPath),
-          Paths.get(SAMPLES_ROOT + pdfPath),
-          Paths.get("../" + SAMPLES_ROOT + pdfPath),
-          Paths.get(FIXTURES_ROOT + pdfPath),
-          Paths.get("../" + FIXTURES_ROOT + pdfPath)
-        };
-    for (Path p : candidates) {
+    for (Path p : candidates(pdfPath)) {
       if (Files.exists(p)) {
         return p;
       }
     }
     throw new IllegalStateException(
         "could not resolve PDF path '" + pdfPath + "' under known roots");
+  }
+
+  private static Path[] candidates(String pdfPath) {
+    if (pdfPath.startsWith("_fixtures/")) {
+      String suffix = pdfPath.substring("_fixtures/".length());
+      return new Path[] {
+        Paths.get(pdfPath),
+        Paths.get(FIXTURES_ROOT + suffix),
+        Paths.get("../" + FIXTURES_ROOT + suffix)
+      };
+    }
+    return new Path[] {
+      Paths.get(pdfPath),
+      Paths.get(SAMPLES_ROOT + pdfPath),
+      Paths.get("../" + SAMPLES_ROOT + pdfPath),
+      Paths.get(FIXTURES_ROOT + pdfPath),
+      Paths.get("../" + FIXTURES_ROOT + pdfPath)
+    };
   }
 }

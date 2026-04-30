@@ -1,0 +1,35 @@
+scenarioId: 10-retype-extraction-fails
+description: >
+  Terminal extraction failure. The extractor stub raises LlmSchemaViolation
+  on every call (initial + retry). Per c3-pipeline-spec.md §3.6, extract
+  retries once on LlmSchemaViolation; the retry also fails. The orchestrator
+  catches and marks the ProcessingDocument FAILED. No Document or
+  WorkflowInstance is materialized — the retype path is therefore never
+  reached. Asserts 1 classify audit row + 2 extract audit rows (initial +
+  retry, both with non-null error).
+
+  Note: this scenario was originally framed as a retype-time terminal
+  failure (Document already materialized, retype extract fails). With
+  the recovers-on-retry mechanism removed (df-ifz design call), the
+  fixture model cannot drive distinct outcomes for initial vs. retype
+  extraction, so the test instead exercises the pre-retype pipeline
+  failure — the same failure path as scenario 03 but framed as the
+  canonical "extract retries once and stays failed" assertion.
+organizationId: pinnacle-legal
+inputPdf: pinnacle-legal/invoices/dewey_cheatham_howe_feb_2024.pdf
+classification:
+  docType: invoice
+extraction:
+  error: SCHEMA_VIOLATION
+expectedEndState:
+  document: null
+  workflowInstance: null
+  events:
+    - type: ProcessingStepChanged
+      currentStep: TEXT_EXTRACTING
+    - type: ProcessingStepChanged
+      currentStep: CLASSIFYING
+    - type: ProcessingStepChanged
+      currentStep: EXTRACTING
+    - type: ProcessingStepChanged
+      currentStep: FAILED
