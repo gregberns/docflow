@@ -17,12 +17,15 @@ fields:
   - name: subtotal
     type: DECIMAL
     required: true
+    format: "currency:USD"
   - name: tax
     type: DECIMAL
     required: true
+    format: "currency:USD"
   - name: totalAmount
     type: DECIMAL
     required: true
+    format: "currency:USD"
   - name: paymentTerms
     type: STRING
     required: true
@@ -40,6 +43,8 @@ fields:
         - name: unitPrice
           type: DECIMAL
           required: true
+          format: "currency:USD"
         - name: total
           type: DECIMAL
           required: true
+          format: "currency:USD"

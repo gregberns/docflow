@@ -111,7 +111,7 @@ class ConfigValidatorTest {
             "Widget",
             List.of(
                 new FieldDefinition(
-                    "color", FieldType.ENUM, true, List.of("red", "blue", "red"), null)));
+                    "color", FieldType.ENUM, true, List.of("red", "blue", "red"), null, null)));
     OrganizationDefinition org =
         new OrganizationDefinition("test-org", "Test Org", "icon-test", List.of("widget"));
     WorkflowDefinition workflow = trivialWorkflow("test-org", "widget");
@@ -229,7 +229,7 @@ class ConfigValidatorTest {
             "test-org",
             "widget",
             "Widget",
-            List.of(new FieldDefinition("color", FieldType.ENUM, true, List.of(), null)));
+            List.of(new FieldDefinition("color", FieldType.ENUM, true, List.of(), null, null)));
     OrganizationDefinition org =
         new OrganizationDefinition("test-org", "Test Org", "icon-test", List.of("widget"));
     WorkflowDefinition workflow = trivialWorkflow("test-org", "widget");
@@ -254,7 +254,7 @@ class ConfigValidatorTest {
             "test-org",
             "widget",
             "Widget",
-            List.of(new FieldDefinition("items", FieldType.ARRAY, true, null, null)));
+            List.of(new FieldDefinition("items", FieldType.ARRAY, true, null, null, null)));
     OrganizationDefinition org =
         new OrganizationDefinition("test-org", "Test Org", "icon-test", List.of("widget"));
     WorkflowDefinition workflow = trivialWorkflow("test-org", "widget");
@@ -279,7 +279,9 @@ class ConfigValidatorTest {
             "test-org",
             "widget",
             "Widget",
-            List.of(new FieldDefinition("name", FieldType.STRING, true, List.of("a", "b"), null)));
+            List.of(
+                new FieldDefinition(
+                    "name", FieldType.STRING, true, List.of("a", "b"), null, null)));
     OrganizationDefinition org =
         new OrganizationDefinition("test-org", "Test Org", "icon-test", List.of("widget"));
     WorkflowDefinition workflow = trivialWorkflow("test-org", "widget");
@@ -307,7 +309,8 @@ class ConfigValidatorTest {
             "widget",
             "Widget",
             List.of(
-                new FieldDefinition("color", FieldType.ENUM, true, List.of("red", "red"), null)));
+                new FieldDefinition(
+                    "color", FieldType.ENUM, true, List.of("red", "red"), null, null)));
     OrganizationDefinition orgForDocType =
         new OrganizationDefinition("test-org-2", "Test Org 2", "icon-test", List.of("widget"));
     WorkflowDefinition workflow = trivialWorkflow("test-org-2", "widget");

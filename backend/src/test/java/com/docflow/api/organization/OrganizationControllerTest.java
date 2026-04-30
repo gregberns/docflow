@@ -157,6 +157,26 @@ class OrganizationControllerTest {
   }
 
   @Test
+  void detail_fieldSchemas_includeFormatForCurrencyDeclaredFields() throws Exception {
+    String body =
+        mockMvc
+            .perform(get("/api/organizations/pinnacle-legal"))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    assertThat(body).contains("\"format\":\"currency:USD\"");
+    int retainerIdx = body.indexOf("\"retainer-agreement\"");
+    assertThat(retainerIdx).isPositive();
+    int amountIdx = body.indexOf("\"retainerAmount\"", retainerIdx);
+    int formatIdx = body.indexOf("\"format\":\"currency:USD\"", amountIdx);
+    int nextFieldIdx = body.indexOf("\"name\":", amountIdx);
+    assertThat(formatIdx).as("format appears for retainerAmount").isPositive();
+    assertThat(formatIdx).isLessThan(nextFieldIdx);
+  }
+
+  @Test
   void detail_unknownOrgId_returns404Problem() throws Exception {
     mockMvc
         .perform(get("/api/organizations/does-not-exist"))

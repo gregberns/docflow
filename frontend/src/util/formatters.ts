@@ -50,19 +50,22 @@ export function formatFieldName(value: string): string {
     .join(" ");
 }
 
-const MONEY_NAME_PATTERN =
-  /(amount|total|subtotal|tax|fee|price|cost|balance|charge|payment|deposit|refund|discount|wage|salary|paid|due|retainage)/i;
-
-export function looksLikeMoney(fieldName: string): boolean {
-  return MONEY_NAME_PATTERN.test(fieldName);
-}
-
-export function formatMoney(value: unknown): string {
+export function formatMoney(value: unknown, currency = "USD"): string {
   const num = parseDecimal(value);
   if (num === null) return formatDisplay(value);
   return num.toLocaleString("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+export function formatPercent(value: unknown): string {
+  const num = parseDecimal(value);
+  if (num === null) return formatDisplay(value);
+  return num.toLocaleString("en-US", {
+    style: "percent",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -75,14 +78,24 @@ export function formatNumber(value: unknown): string {
 }
 
 export function formatFieldValue(
-  fieldName: string,
+  _fieldName: string,
   fieldType: string,
+  format: string | undefined,
   value: unknown,
 ): string {
   if (value === null || value === undefined || value === "") return "—";
-  const upper = fieldType.toUpperCase();
-  if (upper === "DECIMAL") {
-    return looksLikeMoney(fieldName) ? formatMoney(value) : formatNumber(value);
+
+  if (format) {
+    if (format.startsWith("currency:")) {
+      const code = format.slice("currency:".length) || "USD";
+      return formatMoney(value, code);
+    }
+    if (format === "percent") {
+      return formatPercent(value);
+    }
   }
+
+  const upper = fieldType.toUpperCase();
+  if (upper === "DECIMAL") return formatNumber(value);
   return formatDisplay(value);
 }

@@ -127,6 +127,49 @@ class OrganizationCatalogIT {
     assertThat(allowed).containsExactly("invoice", "receipt", "expense-report");
   }
 
+  @Test
+  void formatPropagatesFromYamlThroughJsonbToCatalogView() {
+    DocumentTypeSchemaView retainer =
+        documentTypeCatalog
+            .getDocumentTypeSchema("pinnacle-legal", "retainer-agreement")
+            .orElseThrow();
+
+    FieldView retainerAmount =
+        retainer.fields().stream()
+            .filter(f -> "retainerAmount".equals(f.name()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(retainerAmount.format()).isEqualTo("currency:USD");
+
+    FieldView clientName =
+        retainer.fields().stream()
+            .filter(f -> "clientName".equals(f.name()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(clientName.format()).isNull();
+
+    DocumentTypeSchemaView bistroInvoice =
+        documentTypeCatalog.getDocumentTypeSchema("riverside-bistro", "invoice").orElseThrow();
+    FieldView lineItems =
+        bistroInvoice.fields().stream()
+            .filter(f -> "lineItems".equals(f.name()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(lineItems.itemFields()).isNotNull();
+    FieldView lineTotal =
+        lineItems.itemFields().stream()
+            .filter(f -> "total".equals(f.name()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(lineTotal.format()).isEqualTo("currency:USD");
+    FieldView quantity =
+        lineItems.itemFields().stream()
+            .filter(f -> "quantity".equals(f.name()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(quantity.format()).isNull();
+  }
+
   @SpringBootApplication(scanBasePackages = "com.docflow.config")
   @EntityScan("com.docflow.config.persistence")
   @EnableJpaRepositories("com.docflow.config.persistence")

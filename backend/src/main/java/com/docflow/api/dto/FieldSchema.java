@@ -1,5 +1,6 @@
 package com.docflow.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 
 public record FieldSchema(
@@ -7,4 +8,5 @@ public record FieldSchema(
     String type,
     boolean required,
     List<String> enumValues,
+    @JsonInclude(JsonInclude.Include.NON_NULL) String format,
     List<FieldSchema> itemFields) {}

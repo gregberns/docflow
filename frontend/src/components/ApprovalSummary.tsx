@@ -66,7 +66,7 @@ export function ApprovalSummary({
                   {formatFieldName(field.name)}
                 </dt>
                 <dd className="m-0 flex-1 text-13 font-medium text-brand-navy">
-                  {formatFieldValue(field.name, field.type, value)}
+                  {formatFieldValue(field.name, field.type, field.format, value)}
                 </dd>
               </div>
             );

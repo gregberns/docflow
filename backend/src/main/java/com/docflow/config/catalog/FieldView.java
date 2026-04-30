@@ -7,6 +7,7 @@ public record FieldView(
     String type,
     boolean required,
     List<String> enumValues,
+    String format,
     List<FieldView> itemFields) {
 
   public FieldView {

@@ -14,6 +14,7 @@ fields:
   - name: costImpact
     type: DECIMAL
     required: true
+    format: "currency:USD"
   - name: scheduleImpact
     type: STRING
     required: true

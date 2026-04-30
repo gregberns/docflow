@@ -5,6 +5,7 @@ export interface FieldSchema {
   type: FieldType | string;
   required: boolean;
   enumValues: string[] | null;
+  format?: string;
   itemFields: FieldSchema[] | null;
 }
 

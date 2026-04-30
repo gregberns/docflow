@@ -155,6 +155,9 @@ public class OrgConfigSeedWriter {
     if (field.enumValues() != null && !field.enumValues().isEmpty()) {
       map.put("enumValues", List.copyOf(field.enumValues()));
     }
+    if (field.format() != null && !field.format().isEmpty()) {
+      map.put("format", field.format());
+    }
     if (field.itemSchema() != null) {
       map.put("itemSchema", fieldSchemaMap(field.itemSchema().fields()));
     }

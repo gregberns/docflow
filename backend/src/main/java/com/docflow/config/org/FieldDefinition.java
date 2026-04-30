@@ -10,4 +10,5 @@ public record FieldDefinition(
     @NotNull FieldType type,
     boolean required,
     List<String> enumValues,
+    String format,
     @Valid ArrayItemSchema itemSchema) {}

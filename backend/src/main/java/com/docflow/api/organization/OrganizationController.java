@@ -128,6 +128,6 @@ public class OrganizationController {
         nested.add(toFieldSchema(nf));
       }
     }
-    return new FieldSchema(f.name(), f.type(), f.required(), f.enumValues(), nested);
+    return new FieldSchema(f.name(), f.type(), f.required(), f.enumValues(), f.format(), nested);
   }
 }

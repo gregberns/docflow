@@ -20,6 +20,7 @@ fields:
   - name: amount
     type: DECIMAL
     required: true
+    format: "currency:USD"
   - name: deliveryDate
     type: DATE
     required: true
@@ -40,3 +41,4 @@ fields:
         - name: unitCost
           type: DECIMAL
           required: true
+          format: "currency:USD"

@@ -129,13 +129,15 @@ public class DocumentTypeCatalogImpl implements DocumentTypeCatalog {
       enumValues = List.copyOf(collected);
     }
 
+    String format = stringOrNull(raw.get("format"));
+
     List<FieldView> itemFields = null;
     Object rawItemSchema = raw.get("itemSchema");
     if (rawItemSchema instanceof Map<?, ?> itemMap) {
       itemFields = parseFields((Map<String, Object>) itemMap);
     }
 
-    return new FieldView(name, type, required, enumValues, itemFields);
+    return new FieldView(name, type, required, enumValues, format, itemFields);
   }
 
   private static String stringOrNull(Object value) {

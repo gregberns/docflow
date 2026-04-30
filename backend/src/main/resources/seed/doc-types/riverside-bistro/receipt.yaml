@@ -11,6 +11,7 @@ fields:
   - name: amount
     type: DECIMAL
     required: true
+    format: "currency:USD"
   - name: paymentMethod
     type: STRING
     required: true

@@ -11,9 +11,11 @@ fields:
   - name: hourlyRate
     type: DECIMAL
     required: true
+    format: "currency:USD"
   - name: retainerAmount
     type: DECIMAL
     required: true
+    format: "currency:USD"
   - name: effectiveDate
     type: DATE
     required: true

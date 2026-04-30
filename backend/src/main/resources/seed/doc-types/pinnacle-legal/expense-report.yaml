@@ -14,6 +14,7 @@ fields:
   - name: totalAmount
     type: DECIMAL
     required: true
+    format: "currency:USD"
   - name: items
     type: ARRAY
     required: true
@@ -28,6 +29,7 @@ fields:
         - name: amount
           type: DECIMAL
           required: true
+          format: "currency:USD"
         - name: billable
           type: ENUM
           required: true
