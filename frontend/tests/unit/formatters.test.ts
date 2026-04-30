@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDecimal, formatDisplay, parseDecimal } from "../../src/util/formatters";
+import {
+  formatDate,
+  formatDecimal,
+  formatDisplay,
+  formatFieldValue,
+  formatMoney,
+  formatPercent,
+  parseDecimal,
+} from "../../src/util/formatters";
 
 describe("formatDecimal", () => {
   it("returns empty string for null/undefined/empty input", () => {
@@ -90,5 +98,65 @@ describe("formatDisplay", () => {
   it("JSON-stringifies arrays and objects", () => {
     expect(formatDisplay([1, 2])).toBe("[1,2]");
     expect(formatDisplay({ a: 1 })).toBe('{"a":1}');
+  });
+});
+
+describe("formatMoney", () => {
+  it("formats a numeric value as USD by default", () => {
+    expect(formatMoney(199.73)).toBe("$199.73");
+  });
+
+  it("respects the currency code argument", () => {
+    expect(formatMoney(199.73, "EUR")).toBe("€199.73");
+  });
+
+  it("falls through to formatDisplay for null/undefined/non-numeric", () => {
+    expect(formatMoney(null)).toBe("—");
+    expect(formatMoney(undefined)).toBe("—");
+    expect(formatMoney("abc")).toBe("abc");
+  });
+});
+
+describe("formatPercent", () => {
+  it("formats a decimal fraction as a percentage", () => {
+    expect(formatPercent(0.075)).toBe("7.50%");
+  });
+
+  it("falls through to formatDisplay for null/undefined/non-numeric", () => {
+    expect(formatPercent(null)).toBe("—");
+    expect(formatPercent(undefined)).toBe("—");
+    expect(formatPercent("abc")).toBe("abc");
+  });
+});
+
+describe("formatFieldValue", () => {
+  it("formats DECIMAL with currency:USD format", () => {
+    expect(formatFieldValue("DECIMAL", "currency:USD", 199.73)).toBe("$199.73");
+  });
+
+  it("formats DECIMAL with currency:EUR format", () => {
+    expect(formatFieldValue("DECIMAL", "currency:EUR", 199.73)).toBe("€199.73");
+  });
+
+  it("formats DECIMAL with percent format", () => {
+    expect(formatFieldValue("DECIMAL", "percent", 0.075)).toBe("7.50%");
+  });
+
+  it("falls back to formatNumber for DECIMAL with unknown format", () => {
+    expect(formatFieldValue("DECIMAL", "unknown", 199.73)).toBe("199.73");
+  });
+
+  it("falls back to formatNumber for DECIMAL with undefined format", () => {
+    expect(formatFieldValue("DECIMAL", undefined, 199.73)).toBe("199.73");
+  });
+
+  it("uses formatDisplay for STRING type", () => {
+    expect(formatFieldValue("STRING", undefined, "Acme")).toBe("Acme");
+  });
+
+  it("returns em-dash for null/undefined/empty value", () => {
+    expect(formatFieldValue("STRING", undefined, null)).toBe("—");
+    expect(formatFieldValue("STRING", undefined, undefined)).toBe("—");
+    expect(formatFieldValue("STRING", undefined, "")).toBe("—");
   });
 });
