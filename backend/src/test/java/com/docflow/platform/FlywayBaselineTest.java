@@ -144,7 +144,7 @@ class FlywayBaselineTest {
   }
 
   @Test
-  void migrationDirectoryContainsExactlyOneVersionedScript() throws Exception {
+  void migrationDirectoryContainsKnownVersionedScripts() throws Exception {
     URL dir = Thread.currentThread().getContextClassLoader().getResource("db/migration");
     assertThat(dir).as("classpath:db/migration must be present").isNotNull();
 
@@ -159,7 +159,7 @@ class FlywayBaselineTest {
               .sorted()
               .toList();
     }
-    assertThat(versioned).containsExactly("V1__init.sql");
+    assertThat(versioned).containsExactly("V1__init.sql", "V2__index_documents_org_doctype.sql");
   }
 
   private static Flyway classpathFlyway() {
