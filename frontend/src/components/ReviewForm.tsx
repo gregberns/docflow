@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { DocumentView } from "../types/readModels";
 import type { FieldSchema } from "../types/schema";
 import { buildZodFromFieldSchema } from "../schemas/buildZodFromFieldSchema";
-import { formatDocType } from "../util/formatters";
+import { formatDocType, formatFieldName } from "../util/formatters";
 import { useDocumentActions } from "../hooks/useDocumentActions";
 import { FieldArrayTable } from "./FieldArrayTable";
 
@@ -241,7 +241,9 @@ function FieldRow({ field }: { field: FieldSchema }) {
     const values = field.enumValues ?? [];
     return (
       <label data-testid={`field-${field.name}`} className="mb-3.5 block">
-        <span className="mb-1 block text-12 font-semibold text-neutral-700">{field.name}</span>
+        <span className="mb-1 block text-12 font-semibold text-neutral-700">
+          {formatFieldName(field.name)}
+        </span>
         <select
           data-testid={`input-${field.name}`}
           {...register(field.name)}

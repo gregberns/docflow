@@ -1,5 +1,5 @@
 import type { FieldSchema } from "../types/schema";
-import { formatDisplay } from "../util/formatters";
+import { formatDisplay, formatFieldName } from "../util/formatters";
 
 interface ReadOnlyArrayTableProps {
   name: string;
@@ -36,7 +36,7 @@ export function ReadOnlyArrayTable({ name, itemFields, rows }: ReadOnlyArrayTabl
               scope="col"
               className={isNumericField(field) ? HEADER_CELL_NUMERIC : HEADER_CELL}
             >
-              {field.name}
+              {formatFieldName(field.name)}
             </th>
           ))}
         </tr>

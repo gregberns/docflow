@@ -39,3 +39,13 @@ export function formatDocType(value: string): string {
   const spaced = value.replace(/_/g, " ");
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
+
+export function formatFieldName(value: string): string {
+  if (!value) return value;
+  const camelSplit = value.replace(/([a-z])([A-Z])/g, "$1 $2");
+  const spaced = camelSplit.replace(/_/g, " ");
+  return spaced
+    .split(/\s+/)
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+    .join(" ");
+}

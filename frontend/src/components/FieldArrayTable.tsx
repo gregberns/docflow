@@ -1,5 +1,6 @@
 import { useFieldArray, useFormContext, type Control } from "react-hook-form";
 import type { FieldSchema } from "../types/schema";
+import { formatFieldName } from "../util/formatters";
 
 type FormValues = Record<string, unknown>;
 
@@ -30,14 +31,14 @@ export function FieldArrayTable({ field }: FieldArrayTableProps) {
   return (
     <div data-testid={`field-${field.name}`} className="mb-3.5">
       <span className="mb-3 block text-11 font-bold uppercase tracking-[0.5px] text-neutral-500">
-        {field.name}
+        {formatFieldName(field.name)}
       </span>
       <table data-testid={`field-array-${field.name}`} className="w-full border-collapse text-12">
         <thead>
           <tr>
             {itemFields.map((child) => (
               <th key={child.name} className={HEADER_CELL}>
-                {child.name}
+                {formatFieldName(child.name)}
               </th>
             ))}
             <th aria-label="Row controls" className={`${HEADER_CELL} w-8`} />
