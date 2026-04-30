@@ -9,6 +9,10 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 
 import com.docflow.api.dto.ActionRequest;
 import com.docflow.api.error.DocflowException.FieldError;
+import com.docflow.c3.llm.LlmProtocolError;
+import com.docflow.c3.llm.LlmSchemaViolation;
+import com.docflow.c3.llm.LlmTimeout;
+import com.docflow.c3.llm.LlmUnavailable;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -209,6 +213,62 @@ class GlobalExceptionHandlerContractTest {
   }
 
   @Test
+  void llmFamilyUnavailableMapsTo502() throws Exception {
+    mockMvc
+        .perform(get("/test/throw").param("kind", "llmFamilyUnavailable"))
+        .andExpect(status().isBadGateway())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("LLM_UNAVAILABLE"))
+        .andExpect(jsonPath("$.status").value(502))
+        .andExpect(jsonPath("$.message").value("LlmCall failed: LlmUnavailable"))
+        .andExpect(
+            content()
+                .string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("ACME"))));
+  }
+
+  @Test
+  void llmFamilyTimeoutMapsTo504() throws Exception {
+    mockMvc
+        .perform(get("/test/throw").param("kind", "llmFamilyTimeout"))
+        .andExpect(status().isGatewayTimeout())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("LLM_TIMEOUT"))
+        .andExpect(jsonPath("$.status").value(504))
+        .andExpect(jsonPath("$.message").value("LlmCall failed: LlmTimeout"))
+        .andExpect(
+            content()
+                .string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("ACME"))));
+  }
+
+  @Test
+  void llmFamilyProtocolMapsTo502() throws Exception {
+    mockMvc
+        .perform(get("/test/throw").param("kind", "llmFamilyProtocol"))
+        .andExpect(status().isBadGateway())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("LLM_PROTOCOL_ERROR"))
+        .andExpect(jsonPath("$.status").value(502))
+        .andExpect(jsonPath("$.message").value("LlmCall failed: LlmProtocolError"))
+        .andExpect(
+            content()
+                .string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("ACME"))));
+  }
+
+  @Test
+  void llmFamilySchemaViolationMapsTo422() throws Exception {
+    mockMvc
+        .perform(get("/test/throw").param("kind", "llmFamilySchema"))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("LLM_SCHEMA_VIOLATION"))
+        .andExpect(jsonPath("$.status").value(422))
+        .andExpect(jsonPath("$.message").value("LlmCall failed: LlmSchemaViolation"))
+        .andExpect(
+            content()
+                .string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("ACME"))));
+  }
+
+  @Test
   void noResourceFoundReturns404() throws Exception {
     mockMvc
         .perform(get("/test/throw").param("kind", "noResource"))
@@ -272,6 +332,11 @@ class GlobalExceptionHandlerContractTest {
         case "invalidAction" -> throw new InvalidActionException("Action not allowed");
         case "reextractionInProgress" -> throw new ReextractionInProgressException("doc-x");
         case "llmUnavailable" -> throw new LlmUnavailableException("upstream 503");
+        case "llmFamilyUnavailable" -> throw new LlmUnavailable("LlmCall failed: LlmUnavailable");
+        case "llmFamilyTimeout" -> throw new LlmTimeout("LlmCall failed: LlmTimeout");
+        case "llmFamilyProtocol" -> throw new LlmProtocolError("LlmCall failed: LlmProtocolError");
+        case "llmFamilySchema" ->
+            throw new LlmSchemaViolation("LlmCall failed: LlmSchemaViolation");
         case "optimisticLock" ->
             throw new OptimisticLockingFailureException(
                 "workflow_instances row for document_id=abc changed during update");

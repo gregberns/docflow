@@ -60,7 +60,7 @@ class ActionRequestDeserializationTest {
 
   @Test
   void errorCodeCountIsExactlyThirteen() {
-    assertEquals(13, ErrorCode.values().length);
+    assertEquals(16, ErrorCode.values().length);
   }
 
   @Test
@@ -77,6 +77,9 @@ class ActionRequestDeserializationTest {
     assertEquals(409, ErrorCode.REEXTRACTION_IN_PROGRESS.httpStatus());
     assertEquals(409, ErrorCode.CONCURRENT_MODIFICATION.httpStatus());
     assertEquals(502, ErrorCode.LLM_UNAVAILABLE.httpStatus());
+    assertEquals(504, ErrorCode.LLM_TIMEOUT.httpStatus());
+    assertEquals(502, ErrorCode.LLM_PROTOCOL_ERROR.httpStatus());
+    assertEquals(422, ErrorCode.LLM_SCHEMA_VIOLATION.httpStatus());
     assertEquals(500, ErrorCode.INTERNAL_ERROR.httpStatus());
   }
 }

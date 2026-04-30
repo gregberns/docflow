@@ -1,5 +1,10 @@
 package com.docflow.api.error;
 
+import com.docflow.c3.llm.LlmException;
+import com.docflow.c3.llm.LlmProtocolError;
+import com.docflow.c3.llm.LlmSchemaViolation;
+import com.docflow.c3.llm.LlmTimeout;
+import com.docflow.c3.llm.LlmUnavailable;
 import com.docflow.ingestion.UnsupportedMediaTypeException;
 import java.util.List;
 import org.slf4j.Logger;
@@ -78,6 +83,29 @@ public class GlobalExceptionHandler {
         ErrorCode.VALIDATION_FAILED,
         "Invalid path parameter",
         List.of(new DetailEntry(ex.getName(), "invalid value")));
+  }
+
+  @ExceptionHandler(LlmException.class)
+  public ResponseEntity<ProblemDetail> handleLlm(LlmException ex) {
+    LOG.warn("LLM call surfaced to API boundary: {}", ex.getClass().getSimpleName());
+    ErrorCode code = mapLlmErrorCode(ex);
+    return build(code, ex.getMessage(), List.of());
+  }
+
+  private static ErrorCode mapLlmErrorCode(LlmException ex) {
+    if (ex instanceof LlmTimeout) {
+      return ErrorCode.LLM_TIMEOUT;
+    }
+    if (ex instanceof LlmUnavailable) {
+      return ErrorCode.LLM_UNAVAILABLE;
+    }
+    if (ex instanceof LlmProtocolError) {
+      return ErrorCode.LLM_PROTOCOL_ERROR;
+    }
+    if (ex instanceof LlmSchemaViolation) {
+      return ErrorCode.LLM_SCHEMA_VIOLATION;
+    }
+    return ErrorCode.LLM_UNAVAILABLE;
   }
 
   @ExceptionHandler(OptimisticLockingFailureException.class)
