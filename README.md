@@ -10,7 +10,7 @@ make build
 make start                    # alias: docker-compose up
 ```
 
-- Dashboard: <http://localhost:5174>
+- Dashboard: <http://localhost:5173>
 - API base: <http://localhost:8551>
 - Required env: `ANTHROPIC_API_KEY` (see `.env.example` for the full list — DB creds, storage root, host port overrides). The seeded dashboard works without a key — only live uploads and `make eval` require it. A reviewer who just wants to click around the UI against the labeled samples can leave it unset.
 
@@ -24,6 +24,14 @@ Common targets:
 | `make test` | Fast gate: `./gradlew check` then `npm --prefix frontend run check`. |
 | `make e2e` | Playwright scenarios against the running stack. |
 | `make eval` | Live LLM eval; opt-in, requires a real `ANTHROPIC_API_KEY`. |
+
+### Prereqs for host-run targets
+
+`make build` and `make start` run in Docker — host needs nothing beyond Docker. The other targets run on the host:
+
+- Java 25 JDK on `PATH` for `make test` and `make eval`. On macOS: `brew install openjdk`, then `export JAVA_HOME=/opt/homebrew/opt/openjdk` and `export PATH=$JAVA_HOME/bin:$PATH` (add to your shell rc to persist).
+- Frontend deps installed for `make test` and `make e2e`: `cd frontend && npm install`.
+- Playwright browsers for `make e2e`: `cd frontend && npx playwright install`.
 
 ## Design tour
 
