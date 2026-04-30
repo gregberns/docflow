@@ -1,4 +1,5 @@
 import type { OrganizationListItem } from "../types/readModels";
+import { formatDocType } from "../util/formatters";
 import { resolveOrgIcon } from "../util/orgIcon";
 
 interface OrgPickerCardProps {
@@ -14,23 +15,44 @@ const PASTEL_TILES = [
   "bg-stage-filed-bg",
 ] as const;
 
+const ICON_TILE: Record<string, string> = {
+  "icon-bistro": "bg-[#fef3c7]",
+  "icon-legal": "bg-[#ede9fe]",
+  "icon-construction": "bg-[#fce7f3]",
+};
+
+const ICON_INDUSTRY: Record<string, string> = {
+  "icon-bistro": "Restaurant chain",
+  "icon-legal": "Law firm",
+  "icon-construction": "General contractor",
+};
+
 function glyphFor(icon: string | null | undefined): string {
   return resolveOrgIcon(icon ?? undefined);
 }
 
-function tileClassFor(orgId: string): string {
+function tileClassFor(icon: string | null | undefined): string {
+  const key = icon ?? "";
+  if (ICON_TILE[key]) return ICON_TILE[key]!;
   let hash = 0;
-  for (let i = 0; i < orgId.length; i += 1) {
-    hash = (hash * 31 + orgId.charCodeAt(i)) | 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) | 0;
   }
   const index = Math.abs(hash) % PASTEL_TILES.length;
   return PASTEL_TILES[index] ?? PASTEL_TILES[0]!;
 }
 
+function subtitleFor(icon: string | null | undefined, docTypes: string[]): string {
+  const industry = ICON_INDUSTRY[icon ?? ""];
+  const formatted = docTypes.map(formatDocType).join(", ");
+  return industry ? `${industry} — ${formatted}` : formatted;
+}
+
 export function OrgPickerCard({ organization, onSelect }: OrgPickerCardProps) {
   const { id, name, icon, docTypes, inProgressCount, filedCount } = organization;
-  const tileClass = tileClassFor(id);
+  const tileClass = tileClassFor(icon);
   const glyph = glyphFor(icon);
+  const subtitle = subtitleFor(icon, docTypes);
 
   return (
     <article data-testid="org-card" data-org-id={id}>
@@ -47,7 +69,7 @@ export function OrgPickerCard({ organization, onSelect }: OrgPickerCardProps) {
         </span>
         <h2 className="mb-1 text-16 font-bold text-brand-navy">{name}</h2>
         <ul className="mb-4 list-none text-12 leading-snug text-neutral-500">
-          <li>{docTypes.join(", ")}</li>
+          <li>{subtitle}</li>
         </ul>
         <div className="flex w-full justify-center gap-6 border-t border-neutral-100 pt-3">
           <div data-testid="badge-in-progress" className="flex flex-col items-center">
