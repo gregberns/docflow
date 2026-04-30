@@ -78,7 +78,6 @@ export function formatNumber(value: unknown): string {
 }
 
 export function formatFieldValue(
-  _fieldName: string,
   fieldType: string,
   format: string | undefined,
   value: unknown,

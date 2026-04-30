@@ -64,7 +64,7 @@ export function ReadOnlyArrayTable({ name, itemFields, rows }: ReadOnlyArrayTabl
                   data-field={field.name}
                   className={isNumericField(field) ? BODY_CELL_NUMERIC : BODY_CELL}
                 >
-                  {formatFieldValue(field.name, field.type, field.format, row[field.name])}
+                  {formatFieldValue(field.type, field.format, row[field.name])}
                 </td>
               ))}
             </tr>
