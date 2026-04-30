@@ -1,0 +1,47 @@
+scenarioId: 07-lien-waiver-conditional-guard
+description: >
+  Lien-waiver C4-R3 routing guard — `waiverType: "conditional"` triggers
+  the NEQ-unconditional transition out of Review, routing the document to
+  Project Manager Approval. After one APPROVE the workflow instance is at
+  stage `Project Manager Approval` with status AWAITING_APPROVAL.
+organizationId: ironworks-construction
+inputPdf: ironworks-construction/lien-waivers/exotic_aquatic_conditional_waiver.pdf
+classification:
+  docType: lien-waiver
+extraction:
+  fields:
+    subcontractor: "Exotic Aquatic Plumbing"
+    projectCode: "IW-2024-014"
+    projectName: "Tropical Reef Aquarium"
+    amount: "18500.00"
+    throughDate: "2024-03-15"
+    waiverType: "conditional"
+actions:
+  - type: APPROVE
+    expectedStatus: 200
+expectedEndState:
+  document:
+    detectedDocumentType: lien-waiver
+    reextractionStatus: NONE
+    extractedFieldsContains:
+      waiverType: "conditional"
+      subcontractor: "Exotic Aquatic Plumbing"
+  workflowInstance:
+    currentStageId: Project Manager Approval
+    currentStatus: AWAITING_APPROVAL
+    workflowOriginStage: null
+    flagComment: null
+  events:
+    - type: ProcessingStepChanged
+      currentStep: TEXT_EXTRACTING
+    - type: ProcessingStepChanged
+      currentStep: CLASSIFYING
+    - type: ProcessingStepChanged
+      currentStep: EXTRACTING
+    - type: DocumentStateChanged
+      currentStage: Review
+      currentStatus: AWAITING_REVIEW
+    - type: DocumentStateChanged
+      action: APPROVE
+      currentStage: Project Manager Approval
+      currentStatus: AWAITING_APPROVAL

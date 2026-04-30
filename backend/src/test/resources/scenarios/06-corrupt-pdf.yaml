@@ -1,0 +1,24 @@
+scenarioId: 06-corrupt-pdf
+description: >
+  Corrupt PDF — Tika sniffs application/pdf via %PDF header, but PDFBox cannot
+  parse the body (no xref/trailer/EOF). TextExtractStep returns a StepResult.
+  Failure; the orchestrator marks the ProcessingDocument FAILED before
+  classify or extract are reached. No Document or WorkflowInstance is
+  materialized. classify/extract stubs are never invoked, so 0 audit rows
+  are written. The classification block below is a placeholder — the YAML
+  schema requires it but the stub never runs.
+organizationId: pinnacle-legal
+inputPdf: src/test/resources/scenarios/_fixtures/corrupt.pdf
+classification:
+  docType: invoice
+extraction:
+  fields:
+    vendor: "unused"
+expectedEndState:
+  document: null
+  workflowInstance: null
+  events:
+    - type: ProcessingStepChanged
+      currentStep: TEXT_EXTRACTING
+    - type: ProcessingStepChanged
+      currentStep: FAILED

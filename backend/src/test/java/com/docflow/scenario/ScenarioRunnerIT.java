@@ -47,6 +47,7 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
   private static final Path FIXTURE_DIR =
       Paths.get("src/test/resources/scenarios").toAbsolutePath();
   private static final String ACTION_RETYPE = "RETYPE";
+  private static final int HTTP_BAD_REQUEST = 400;
 
   @Autowired private ScenarioContext scenarioContext;
   @Autowired private ScenarioRecorder scenarioRecorder;
@@ -164,6 +165,9 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
       }
       return count;
     }
+    if (!expectedEventsInclude(fixture, "ProcessingStepChanged", "CLASSIFYING")) {
+      return 0;
+    }
     if (fixture.extraction() != null && fixture.extraction().error() != null) {
       return 3;
     }
@@ -186,6 +190,14 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
     assertThat(stub.extractInvocationCount())
         .as("LlmExtractor.extract invocation count for " + fixture.scenarioId())
         .isEqualTo(expected);
+  }
+
+  private boolean expectedEventsInclude(ScenarioFixture fixture, String type, String currentStep) {
+    if (fixture.expectedEndState() == null || fixture.expectedEndState().events() == null) {
+      return false;
+    }
+    return fixture.expectedEndState().events().stream()
+        .anyMatch(e -> type.equals(e.type()) && currentStep.equals(e.currentStep()));
   }
 
   private byte[] readPdf(String inputPdf) throws IOException {
@@ -311,6 +323,9 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
       assertThat(e.getStatusCode().value())
           .as("action " + action.type() + " status code")
           .isEqualTo(expected);
+      if (expected >= HTTP_BAD_REQUEST) {
+        assertProblemDetailBody(action, e);
+      }
     }
   }
 
@@ -338,6 +353,45 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
     } catch (org.springframework.web.client.HttpStatusCodeException e) {
       assertThat(e.getStatusCode().value()).as("action RETYPE status code").isEqualTo(expected);
     }
+  }
+
+  private void assertProblemDetailBody(
+      ScenarioFixture.Action action, org.springframework.web.client.HttpStatusCodeException e) {
+    org.springframework.http.HttpHeaders responseHeaders = e.getResponseHeaders();
+    MediaType contentType = responseHeaders == null ? null : responseHeaders.getContentType();
+    assertThat(contentType).as("action " + action.type() + " response content-type").isNotNull();
+    assertThat(contentType.isCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .as("action " + action.type() + " content-type is application/problem+json")
+        .isTrue();
+    String responseBody = e.getResponseBodyAsString();
+    assertThat(responseBody).as("action " + action.type() + " response body").isNotBlank();
+    java.util.Map<String, Object> parsed;
+    try {
+      parsed =
+          tools.jackson.databind.json.JsonMapper.builder()
+              .build()
+              .readValue(
+                  responseBody,
+                  new tools.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {});
+    } catch (tools.jackson.core.JacksonException jex) {
+      throw new AssertionError("could not parse problem-detail body: " + responseBody, jex);
+    }
+    assertThat(parsed).containsKey("status");
+    assertThat(((Number) parsed.get("status")).intValue())
+        .as("problem-detail status field")
+        .isEqualTo(e.getStatusCode().value());
+    assertThat(parsed).containsKey("code");
+    String expectedCode = expectedErrorCode(e.getStatusCode().value());
+    assertThat(parsed.get("code")).as("problem-detail code field").isEqualTo(expectedCode);
+  }
+
+  private String expectedErrorCode(int httpStatus) {
+    return switch (httpStatus) {
+      case 409 -> "INVALID_ACTION";
+      case 400 -> "VALIDATION_FAILED";
+      case 404 -> "UNKNOWN_DOCUMENT";
+      default -> null;
+    };
   }
 
   private String buildActionBody(ScenarioFixture.Action action) {

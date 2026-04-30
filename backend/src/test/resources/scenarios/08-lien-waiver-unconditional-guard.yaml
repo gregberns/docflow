@@ -1,0 +1,47 @@
+scenarioId: 08-lien-waiver-unconditional-guard
+description: >
+  Lien-waiver C4-R3 routing guard — `waiverType: "unconditional"` triggers
+  the EQ-unconditional transition out of Review, routing the document
+  straight to Filed. After one APPROVE the workflow instance is at stage
+  `Filed` with status FILED.
+organizationId: ironworks-construction
+inputPdf: ironworks-construction/lien-waivers/concrete_jungle_unconditional_waiver.pdf
+classification:
+  docType: lien-waiver
+extraction:
+  fields:
+    subcontractor: "Concrete Jungle Foundations"
+    projectCode: "IW-2024-019"
+    projectName: "Midtown Skyscraper"
+    amount: "42750.00"
+    throughDate: "2024-03-22"
+    waiverType: "unconditional"
+actions:
+  - type: APPROVE
+    expectedStatus: 200
+expectedEndState:
+  document:
+    detectedDocumentType: lien-waiver
+    reextractionStatus: NONE
+    extractedFieldsContains:
+      waiverType: "unconditional"
+      subcontractor: "Concrete Jungle Foundations"
+  workflowInstance:
+    currentStageId: Filed
+    currentStatus: FILED
+    workflowOriginStage: null
+    flagComment: null
+  events:
+    - type: ProcessingStepChanged
+      currentStep: TEXT_EXTRACTING
+    - type: ProcessingStepChanged
+      currentStep: CLASSIFYING
+    - type: ProcessingStepChanged
+      currentStep: EXTRACTING
+    - type: DocumentStateChanged
+      currentStage: Review
+      currentStatus: AWAITING_REVIEW
+    - type: DocumentStateChanged
+      action: APPROVE
+      currentStage: Filed
+      currentStatus: FILED

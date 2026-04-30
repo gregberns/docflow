@@ -1,0 +1,53 @@
+scenarioId: 12-action-on-filed-document
+description: >
+  Terminal-state guard — once a document reaches Filed (TERMINAL stage),
+  no further actions are accepted. Setup uses a lien-waiver with
+  `waiverType: "unconditional"` so a single Review-stage APPROVE drives
+  the doc straight to Filed (per C4-R3 routing). The second APPROVE is
+  posted against a Filed document; TransitionResolver returns
+  WorkflowError.InvalidAction → InvalidActionException → HTTP 409 with
+  RFC 7807 problem-detail body and code "INVALID_ACTION". The document
+  end-state is unchanged (still Filed/FILED).
+organizationId: ironworks-construction
+inputPdf: ironworks-construction/lien-waivers/thunderbolt_electrical_conditional_waiver.pdf
+classification:
+  docType: lien-waiver
+extraction:
+  fields:
+    subcontractor: "Thunderbolt Electrical Services"
+    projectCode: "IW-2024-027"
+    projectName: "Riverfront Office Tower"
+    amount: "31200.00"
+    throughDate: "2024-03-29"
+    waiverType: "unconditional"
+actions:
+  - type: APPROVE
+    expectedStatus: 200
+  - type: APPROVE
+    expectedStatus: 409
+expectedEndState:
+  document:
+    detectedDocumentType: lien-waiver
+    reextractionStatus: NONE
+    extractedFieldsContains:
+      waiverType: "unconditional"
+      subcontractor: "Thunderbolt Electrical Services"
+  workflowInstance:
+    currentStageId: Filed
+    currentStatus: FILED
+    workflowOriginStage: null
+    flagComment: null
+  events:
+    - type: ProcessingStepChanged
+      currentStep: TEXT_EXTRACTING
+    - type: ProcessingStepChanged
+      currentStep: CLASSIFYING
+    - type: ProcessingStepChanged
+      currentStep: EXTRACTING
+    - type: DocumentStateChanged
+      currentStage: Review
+      currentStatus: AWAITING_REVIEW
+    - type: DocumentStateChanged
+      action: APPROVE
+      currentStage: Filed
+      currentStatus: FILED
