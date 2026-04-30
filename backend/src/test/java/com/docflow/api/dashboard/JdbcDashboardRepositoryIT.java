@@ -45,7 +45,11 @@ class JdbcDashboardRepositoryIT {
       new PostgreSQLContainer<>("postgres:16-alpine")
           .withCopyFileToContainer(
               MountableFile.forClasspathResource("db/migration/V1__init.sql"),
-              "/docker-entrypoint-initdb.d/01-init.sql");
+              "/docker-entrypoint-initdb.d/01-init.sql")
+          .withCopyFileToContainer(
+              MountableFile.forClasspathResource(
+                  "db/migration/V3__add_updated_at_to_processing_documents.sql"),
+              "/docker-entrypoint-initdb.d/03-add-updated-at.sql");
 
   private DataSource dataSource;
   private JdbcDashboardRepository repository;
@@ -98,6 +102,21 @@ class JdbcDashboardRepositoryIT {
     assertThat(processing)
         .extracting(ProcessingItem::processingDocumentId)
         .doesNotContain(procDone);
+  }
+
+  @Test
+  void listProcessing_capsResultAtLimit() {
+    JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+    int rowCount = 500;
+    int expectedLimit = 200;
+    for (int i = 0; i < rowCount; i++) {
+      UUID stored = insertStoredDocument(jdbc, ORG_A, "in-flight-" + i + ".pdf");
+      insertProcessingDocument(jdbc, stored, ORG_A, "CLASSIFYING", null, FIXED_NOW.minusSeconds(i));
+    }
+
+    List<ProcessingItem> processing = repository.listProcessing(ORG_A);
+
+    assertThat(processing).hasSize(expectedLimit);
   }
 
   @Test

@@ -53,7 +53,10 @@ class OrganizationControllerTest {
 
   @Container
   static final PostgreSQLContainer<?> POSTGRES =
-      new PostgreSQLContainer<>("postgres:16-alpine").withInitScript("db/migration/V1__init.sql");
+      new PostgreSQLContainer<>("postgres:16-alpine")
+          .withInitScripts(
+              "db/migration/V1__init.sql",
+              "db/migration/V3__add_updated_at_to_processing_documents.sql");
 
   @DynamicPropertySource
   static void dataSourceProperties(DynamicPropertyRegistry registry) {

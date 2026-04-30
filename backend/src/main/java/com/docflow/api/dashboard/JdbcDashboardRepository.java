@@ -38,7 +38,8 @@ class JdbcDashboardRepository implements DashboardRepository {
           + "JOIN stored_documents sd ON sd.id = pd.stored_document_id "
           + "LEFT JOIN documents d ON d.stored_document_id = pd.stored_document_id "
           + "WHERE pd.organization_id = :orgId AND d.id IS NULL "
-          + "ORDER BY pd.created_at DESC";
+          + "ORDER BY pd.created_at DESC "
+          + "LIMIT 200";
 
   private static final String LIST_DOCUMENTS_SQL =
       "SELECT d.id AS document_id, d.organization_id, sd.source_filename, sd.mime_type, "

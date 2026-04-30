@@ -11,6 +11,7 @@ CREATE TABLE processing_documents (
     raw_text           TEXT,
     last_error         TEXT,
     created_at         TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at         TIMESTAMPTZ  NOT NULL DEFAULT now(),
     CONSTRAINT ck_processing_documents_current_step
         CHECK (current_step IN ('TEXT_EXTRACTING', 'CLASSIFYING', 'EXTRACTING', 'FAILED'))
 );
@@ -20,6 +21,9 @@ CREATE INDEX idx_processing_documents_org_created
 
 CREATE INDEX idx_processing_documents_stored
     ON processing_documents (stored_document_id);
+
+CREATE INDEX idx_processing_documents_step_updated
+    ON processing_documents (current_step, updated_at);
 
 CREATE TABLE llm_call_audit (
     id                     UUID         PRIMARY KEY,

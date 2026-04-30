@@ -159,7 +159,11 @@ class FlywayBaselineTest {
               .sorted()
               .toList();
     }
-    assertThat(versioned).containsExactly("V1__init.sql", "V2__index_documents_org_doctype.sql");
+    assertThat(versioned)
+        .containsExactly(
+            "V1__init.sql",
+            "V2__index_documents_org_doctype.sql",
+            "V3__add_updated_at_to_processing_documents.sql");
   }
 
   private static Flyway classpathFlyway() {

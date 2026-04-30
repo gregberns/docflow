@@ -31,14 +31,15 @@ class JdbcProcessingDocumentWriter implements ProcessingDocumentWriter {
           + ":createdAt)";
 
   private static final String UPDATE_STEP_SQL =
-      "UPDATE processing_documents SET current_step = :currentStep WHERE id = :id";
+      "UPDATE processing_documents SET current_step = :currentStep, updated_at = now() "
+          + "WHERE id = :id";
 
   private static final String UPDATE_RAW_TEXT_SQL =
-      "UPDATE processing_documents SET raw_text = :rawText WHERE id = :id";
+      "UPDATE processing_documents SET raw_text = :rawText, updated_at = now() WHERE id = :id";
 
   private static final String UPDATE_FAILED_SQL =
-      "UPDATE processing_documents SET current_step = :currentStep, last_error = :lastError "
-          + "WHERE id = :id";
+      "UPDATE processing_documents SET current_step = :currentStep, last_error = :lastError, "
+          + "updated_at = now() WHERE id = :id";
 
   private static final String SELECT_OWNER_SQL =
       "SELECT organization_id, stored_document_id FROM processing_documents WHERE id = :id";

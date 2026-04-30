@@ -73,7 +73,8 @@ class LlmCallAuditCheckConstraintIT {
             "current_step",
             "raw_text",
             "last_error",
-            "created_at");
+            "created_at",
+            "updated_at");
     assertThat(checkConstraintNames("processing_documents"))
         .contains("ck_processing_documents_current_step");
     assertThat(indexNames("processing_documents"))
