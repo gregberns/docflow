@@ -41,30 +41,36 @@ For a ~10 min architecture & design tour, read `.kerf/project/docflow/SPEC.md`. 
 
 ## Document pipeline
 
-A document is represented by three distinct domain entities as it flows through the system, each owning a different phase of its life:
-
-- **`StoredDocument`** — the immutable byte content and upload metadata. Created once when the file lands, never mutated, persists for the document's full lifetime. Backed by the filesystem-storage seam (`StoredDocumentStorage`); the DB row holds only the path + content type.
-- **`ProcessingDocument`** — transient pipeline state that lives only while text extraction, classification, and field extraction are in flight. Carries retry/failure status, current pipeline step, and any partial output. Retired the moment extraction completes; ProcessingDocument failures don't touch the filed state.
-- **`Document`** — the human-reviewable, workflow-bearing entity that materializes when extraction succeeds. Holds the extracted fields, the resolved doc type, and (via the linked `WorkflowInstance`) the current review/approval state through to Filed or Rejected.
-
-This split keeps each table narrow and write-path-specific: pipeline retries write only to `ProcessingDocument`, the workflow engine writes only to `Document`/`WorkflowInstance`, and the dashboard read is scoped to `Document` alone with a small in-flight join against `ProcessingDocument` for the "still processing" indicator.
+The ingestion pipeline takes a PDF from upload to a fully-extracted, ready-for-review state in four steps; the document then comes to rest and is handed off to the workflow engine for human review and approval.
 
 ```
-Upload  ─►  Text Extract (PDFBox)  ─►  Classify (LLM)  ─►  Extract Fields (LLM)
-                                                                   │
-                                                                   ▼
-                                                                Review  ──► Rejected (terminal)
-                                                                   │
-                                                                   ▼
-                                                  Approval stage 1 ─► … ─► Approval stage N ─► Filed
-                                                                   │
-                                                                   ▼
-                                                       Flag (with comment)
-                                                       returns to Review,
-                                                       remembers origin stage
+Upload  ─►  Text Extract (PDFBox)  ─►  Classify (LLM)  ─►  Extract Fields (LLM)  ─►  ready for Review
 ```
 
-`StoredDocument` is alive for the whole flow above. `ProcessingDocument` covers Upload through Extract Fields. `Document` is born at Review and persists through every subsequent state.
+A document is represented by three distinct domain entities — `StoredDocument` (immutable bytes), `ProcessingDocument` (transient pipeline state), and `Document` (the human-reviewable, workflow-bearing entity that materializes when extraction succeeds). Each owns one phase of the lifecycle and has exactly one writer.
+
+```
+                    ┌─────────────────────┐
+                    │   StoredDocument    │  immutable bytes
+                    │   (lives forever)   │  + metadata
+                    └──────────┬──────────┘
+                              1:1
+              ┌────────────────┴────────────────┐
+              ▼                                 ▼
+   ┌─────────────────────┐           ┌─────────────────────┐
+   │ ProcessingDocument  │           │      Document       │  extracted fields
+   │  pipeline state     │           │  (born when extract │  + doc type
+   │  retired on done    │           │   succeeds)         │
+   └─────────────────────┘           └──────────┬──────────┘
+                                               1:1
+                                                ▼
+                                     ┌─────────────────────┐
+                                     │  WorkflowInstance   │  stage, status,
+                                     │                     │  origin, comment
+                                     └─────────────────────┘
+```
+
+This split keeps the dashboard read scoped to `Document` alone (with a small in-flight join against `ProcessingDocument` for the "still processing" indicator), lets the pipeline iterate on its own state shape without touching filed records, and gives each entity exactly one writer.
 
 - The **approval chain is org × doc-type specific** — defined in YAML under `backend/src/main/resources/seed/workflows/<org>/<doc-type>.yaml`. Pinnacle invoices go Review → Attorney Approval → Billing Approval → Filed; Riverside invoices go Review → Manager Approval → Filed; Ironworks invoices go Review → Project Manager Approval → Accounting Approval → Filed.
 - **Flag** is valid only from approval stages. It returns the document to Review, requires a comment, and stores the origin stage so Resolve sends the document back where it came from.

@@ -1,137 +1,60 @@
-<!-- PP-TRIAL:v2 2026-04-29 implementation -->
+<!-- PP-TRIAL:v2 2026-04-30 implementation -->
 
 # Tester-lane handoff
 
-This branch runs two agent lanes in parallel:
-- **Implementor** writes / refreshes `HANDOFF.md` — code fixes.
-- **Tester** (this file) exercises the running system, files beads, plans adjacent work. **Tester does not modify production code.**
+Two-lane convention still in effect: implementor edits code (HANDOFF.md), tester (this file) exercises the running stack and files beads. **Tester does not modify production code** — except docs (README, etc.), which both lanes touch.
 
 # Status
 
-Stack runs end-to-end. Containers were just restarted (`make stop && make start && make build`) so the `df-woj` health-endpoint fix is now live; UI renders the org picker. Backend tests **381/381**, frontend **105/105**, API round-trip clean as of 2026-04-29 evening. The Stop hook is disabled (`.claude/settings.json: disableAllHooks: true`) because of a Gradle 9.4.1 + JDK 25 wart that wipes the test-results dir mid-run; leave it off for now.
+Stack runs clean. **Implementor closed 25 beads this session** (see commit `e303eef`), including every P1 I filed (df-313, df-xj2, df-1xy, df-qzh, df-jsm, df-gza) plus the older df-pv0 / df-nx5. Only 5 beads remain open — all P2/P3 cleanup. The next tester session has very little queue and a big **verification surface**: drill the closed P1 fixes against the running stack.
 
-# Read these first (in this order)
+# Read these first
 
 1. `CLAUDE.md` — conventions, beads, "done means green".
-2. `TESTING-PLAYBOOK.md` — read-first guide for the tester lane. 8 layered tests + log conventions + bug-filing protocol + 10 exploratory prompts.
-3. `test-logs/TEMPLATE.md` — copy this for your session log.
-4. `test-logs/2026-04-29T215332Z-tester-session-broad.md` — the prior session's record so you don't repeat it.
-5. `.kerf/project/styling/02-review-pass-1.md` — CSS-rebuild review findings (only relevant if you're touching CSS work).
-6. `HANDOFF.md` — what the implementor lane is doing right now.
+2. `HANDOFF.md` — implementor's view; will tell you what was actually changed and how.
+3. `TESTING-PLAYBOOK.md` — layered tests, log conventions, bug-filing.
+4. `test-logs/TEMPLATE.md` — copy for your session log.
+5. `git log --oneline ^main implementation` — see all the work since branch.
 
-# What the next session should do — focus: core workflow
+# What the next session should do
 
-The user explicitly wants this session to **drill the core workflow**: upload → classify → extract → review → approve → filed (and the off-paths: flag, resolve, reclassify, retype, reject). Cover it broadly first, then exercise edge cases.
+## 1. Verify the closed P1s (the priority — 30 min)
 
-## 1. Pre-flight + L1 smoke (under 1 min)
+Each of these had a clear repro. Re-run it and confirm the fix held:
 
-Open a session log under `test-logs/` (use `TEMPLATE.md`). Then:
+- **df-nx5** — `curl -i http://localhost:8551/api/health` → expect 200 with small JSON. Bonus: `curl -i http://localhost:8551/api/does-not-exist` → expect 404 (not 500).
+- **df-pv0** — Approve → Flag → POST `/review/retype`. Expect: `workflow_instances` flips to `Review/AWAITING_REVIEW` with `workflow_origin_stage=NULL`, `flag_comment=NULL`, and `document_type_id` matching the new doc type.
+- **df-gza** — POST `/api/documents/{id}/review/retype` against a non-flagged Review doc → expect 202 Accepted, then `IN_PROGRESS` → eventual completion at the new doc type's Review stage.
+- **df-jsm** — flag a doc back from Attorney Approval, then Approve through Review → assert the new approval-stage row has `workflow_origin_stage IS NULL` and `flag_comment IS NULL`.
+- **df-313** — load a Pinnacle Invoice in the SPA → assert `Invoice Date` renders as a date picker, `Amount` renders as currency-formatted, and Receipt's `Category` renders as a dropdown.
+- **df-xj2** — fire 5 concurrent retypes against different docs → confirm no `connection-acquisition timeout` and that other endpoints stay responsive.
+- **df-1xy** — insert 500 in-flight `processing_documents` rows directly via psql → assert dashboard returns ≤ 200 in the processing list.
+- **df-qzh** — run `make test`; verify the new IT proves insert+read in the same transaction sees the inserted row through JPA.
 
-- `docker ps` — backend, frontend, postgres all `Up`.
-- `curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8551/api/health` — expect **200** now (was 500 last session).
-- `curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:5173` — expect 200.
-- `docker exec basata-postgres-1 psql -U docflow -d docflow -c 'select count(*) from organizations'` — expect 3.
-- `br sync --import-only -vv` — refresh bead DB.
+Log evidence into `test-logs/<UTC>-tester-p1-verification.md`.
 
-If any of these fail: file a P1 bead and stop. If all green: proceed.
+## 2. CSS pass 2 (10 min)
 
-## 2. L4 API round-trip — three orgs (5–10 min)
+`df-qv7` (Tailwind v4 + design tokens) is closed. Walk `frontend/src/index.css` `@theme` block against `.kerf/project/styling/01-plan.md` + `02-review-pass-1.md`. File a bead if drift.
 
-Repeat the curl-upload + DB-poll pattern from the playbook L4 across **all three orgs** to confirm the pipeline works end-to-end for each:
+## 3. Re-drill off-paths from the prior tester log
 
-- `pinnacle-legal` — invoice (e.g. `samples/pinnacle-legal/invoices/von_stuffington_expert_witness_jan2024.pdf`)
-- `riverside-bistro` — invoice or receipt
-- `ironworks-construction` — invoice or change-order
+Once df-pv0 is verified: re-run **off-paths 2, 3, 4** from `test-logs/2026-04-29T225434Z-tester-core-workflow.md` §"Off-paths".
 
-For each: upload via curl, sleep 12s, query `documents` table, confirm `detected_document_type` matches expectation and `extracted_fields` is populated, confirm workflow_instances row exists at `Review/AWAITING_REVIEW`. Log doc IDs in your session log. Any failure → P1 bead.
-
-## 3. Core workflow via UI — happy path per org (15–20 min)
-
-Open `http://localhost:5173`. For **each of the three orgs** in turn:
-
-1. Pick the org.
-2. See the dashboard. Confirm processing rows show, then transition to AWAITING_REVIEW.
-3. Click into one document.
-4. Verify the PDF renders, the extracted fields appear in the form panel, and StageProgress shows correctly.
-5. **Approve** through every stage (Review → next → next → Filed). Watch SSE updates the dashboard in real time.
-6. Confirm Filed state in the DB and in the UI.
-
-Log: per-org any visual glitches (raw HTML showing, broken images, layout overflow, console errors). Don't file CSS bugs as new beads — they're tracked under `df-7cr` umbrella. **Do** file functional bugs (wrong fields, wrong stages, SSE not updating, action buttons broken).
-
-## 4. Off-paths — drill each branch (20–30 min)
-
-Each as a separate document so paths don't entangle:
-
-- **Flag → Resolve from Review.** Upload, AWAITING_REVIEW, click Flag, type a comment, submit. Confirm flag banner appears, document status flips. Resolve. Confirm origin restoration (banner says origin = previous stage). Approve to filed.
-- **Flag from Approval (origin = approval stage).** Same as above but flag from a later stage; confirm the resolve flow returns to that stage.
-- **Reclassify mid-Review.** Upload, AWAITING_REVIEW, click Reclassify, pick a different doc type, submit. Confirm re-extraction kicks off (banner), new fields populate, status returns to AWAITING_REVIEW for the new type.
-- **Reject from final stage.** Upload, walk through to last approval stage, click Reject. Confirm doc goes to terminal Rejected state with the rejected stage-progress styling.
-- **Retype after approval (terminal-state action).** This is what `df-97e` covers when it lands. Try the action; expected behavior depends on whether the implementor merged df-97e + df-ifz from their wip branch.
-
-For each branch, log the doc ID + the SSE event sequence + the final DB state. **Discrepancies between expected workflow vs observed → P1 bead.**
-
-## 5. Edge cases of the core workflow (15 min)
-
-Pick at least 3:
-
-- **Concurrent uploads** — fire 3 uploads at once via curl `&`. Confirm all three are processed independently, no cross-contamination of fields.
-- **Malformed PDF** — upload a non-PDF file (e.g. a .txt renamed to .pdf). Expected: pipeline error path, document marked failed, error visible in UI.
-- **Wrong-type classification** — upload a doc that doesn't match any of the org's expected types. Expected: classification error or "uncategorized", surfaces in dashboard.
-- **Missing-required-field extraction** — upload a doc the model can't extract a required field from. Expected: extraction-error path, dashboard shows the failure, retry available.
-- **SSE drop / reconnect** — open the dashboard, kill the network briefly, restore. Confirm dashboard reconnects and catches up.
-- **Switch org mid-flow** — start a doc upload on org A, switch to org B, switch back. Confirm dashboard state is consistent.
-- **Browser refresh during processing** — upload, refresh while still in CLASSIFYING. Confirm dashboard re-reads state correctly.
-
-## 6. Re-run eval scoring (5 min)
-
-`python3 eval/harness/run_db_direct.py` — full mode. Last run scored 23/23 doc-type, 106/111 fields. If field accuracy regresses, file a bead.
-
-## 7. Scenario harness — only if df-97e + df-ifz merged (10 min)
-
-Check `git log --oneline -10` for those bead IDs landing on main. If yes:
-
-- Pre-clean: `rm -rf backend/build/test-results/test/binary` (workaround for the Gradle wart).
-- Run `cd backend && ./gradlew test --no-daemon --tests 'com.docflow.scenario.*'`.
-- If exit code is non-zero AND the wart is the cause, check `backend/build/test-results/test/*.xml` directly for actual pass/fail counts. The wart leaves the dir empty if it crashes early — that means real failures may be hidden.
-
-## 8. CSS review-pass 2 — only if df-qv7 has been implemented (10 min)
-
-- Check if `frontend/src/index.css` exists and `tailwindcss` is in `package.json`.
-- If yes: read the file, walk the actual `index.css` `@theme` block against the design tokens listed in `.kerf/project/styling/01-plan.md` and the corrections in `02-review-pass-1.md`. File a bead if the implementation drifted.
-- If no: skip; df-qv7 is still open.
-
-# Beads — current state
+# Open beads (5)
 
 ```
-br ready  → 7 unblocked (post-restart):
-  df-qv7 P1 — Tailwind v4 toolchain (start of CSS rebuild)
-  df-97e P2 — Scenarios 04, 09, 10, 11 (implementor wip)
-  df-skw P2 — Scenarios 06, 07, 08, 12
-  df-efg P2 — Scenario 05 (concurrent uploads + SSE)
-  df-vf8 P3 — ProblemDetail Jackson leak
-  df-qwc P3 — SSE Broken Pipe spam
-  df-ifz P3 — scenario harness deviations (implementor wip)
-
-Blocked on df-qv7: 8 styling children (df-5ua, df-vw1, df-qcu, df-4p1, df-hly, df-ib5, df-k0u, df-ge4) under umbrella df-7cr.
+df-l81  P2  persistence: consolidate stored_documents + processing_documents INSERT into single writer
+df-ys7  P3  persistence: demote public static INSERT_SQL/UPDATE_SQL constants to private
+df-9x1  P3  perf: cursor-based pagination for dashboard documents list
+df-hre  P3  scenario harness: add succeed-on-retry mechanism to ScenarioLlmExtractorStub
+df-myn  P3  scenario 10: express retype-time terminal failure with intact pre-retype Document fields
 ```
 
-Closed yesterday: `df-woj`, `df-3k9` (implementor), `df-36y`, `df-txl` (earlier).
+# Caveats
 
-# Filing bugs
-
-Per `TESTING-PLAYBOOK.md` §"Bug-filing protocol":
-
-```
-br create --title="<short>" --description="<body with repro>" --type=bug --priority=1|2|3
-```
-
-Cross-link the bead ID into your session log as `[df-xyz]`. Always run `br sync --flush-only` before ending the session.
-
-# Caveats / known state
-
-- **Stop hook is disabled.** `.claude/settings.json` has `disableAllHooks: true`. Don't rely on the hook to enforce green tests — run them yourself per the playbook.
-- **Gradle wart.** `./gradlew check` (and `make test`) crashes with `NoSuchFileException: in-progress-results-generic*.bin` ~2 min in. Workaround: clear `backend/build/test-results/test/binary` between runs and inspect the XMLs directly for actual pass/fail. The wart's BUILD FAILED line is unreliable — trust the XMLs.
-- **Implementor wip branch.** df-97e + df-ifz are not on main yet. Don't rerun those scenarios assuming they pass; check git first.
-- **Container freshness.** If you don't see expected behavior after a backend code change merges, `make stop && make start && make build` to pick it up.
+- **Stop hook still disabled** (`.claude/settings.json: disableAllHooks: true`) per Gradle 9.4.1 + JDK 25 wart. Run `make test` yourself.
+- **Agent-as-tester limit:** UI visual rendering still can't be validated without Playwright (L7 exempt). All workflow drilling stays via the actions API.
+- **README pipeline section was edited late this session** (now uses an ER diagram for the 3-entity domain model + a trimmed Upload→ready-for-Review flow chart). If the implementor lane wants to swing through the README again, that's the most recently changed area.
 
 # No blocking question.
