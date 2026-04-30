@@ -1,5 +1,6 @@
 import { useDocumentActions } from "../hooks/useDocumentActions";
-import { WarningIcon } from "./icons/Icons";
+import { formatDocType } from "../util/formatters";
+import { ChevronRightIcon, WarningIcon } from "./icons/Icons";
 
 interface ReclassifyModalProps {
   documentId: string;
@@ -51,7 +52,7 @@ export function ReclassifyModal({
               data-testid="reclassify-modal-heading"
               className="text-16 font-bold text-brand-navy"
             >
-              Reclassify document?
+              Change Document Type?
             </h2>
             <div className="mt-0.5 text-12 text-neutral-500">
               This will re-process the document.
@@ -63,9 +64,11 @@ export function ReclassifyModal({
             data-testid="reclassify-modal-body"
             className="text-13 leading-relaxed text-neutral-700"
           >
-            Re-extract this document as{" "}
-            <strong className="text-brand-navy">{newDocumentType}</strong> instead of{" "}
-            <strong className="text-brand-navy">{previousDocumentType}</strong>?
+            Changing the document type from{" "}
+            <strong className="text-brand-navy">{formatDocType(previousDocumentType)}</strong> to{" "}
+            <strong className="text-brand-navy">{formatDocType(newDocumentType)}</strong> will
+            discard the current extracted data and re-extract using the new document type&apos;s
+            fields. <strong className="text-brand-navy">This cannot be undone.</strong>
           </p>
         </div>
         <div
@@ -79,7 +82,7 @@ export function ReclassifyModal({
             disabled={submitting}
             className="flex h-9 items-center gap-1.5 rounded-md border border-neutral-300 bg-card px-[18px] text-13 font-semibold text-neutral-500 transition-colors duration-150 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Cancel
+            Keep as {formatDocType(previousDocumentType)}
           </button>
           <button
             type="button"
@@ -88,7 +91,8 @@ export function ReclassifyModal({
             disabled={submitting}
             className="flex h-9 items-center gap-1.5 rounded-md bg-warn px-[18px] text-13 font-semibold text-white transition-colors duration-150 hover:bg-[#d97706] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-warn"
           >
-            Confirm
+            <ChevronRightIcon size={14} />
+            Re-extract as {formatDocType(newDocumentType)}
           </button>
         </div>
       </div>

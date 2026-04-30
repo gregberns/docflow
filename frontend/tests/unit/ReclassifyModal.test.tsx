@@ -59,8 +59,8 @@ describe("ReclassifyModal — direct render", () => {
     );
     const modal = screen.getByTestId("reclassify-modal");
     expect(modal).toHaveAttribute("role", "dialog");
-    expect(modal.textContent).toMatch(/client-intake/);
-    expect(modal.textContent).toMatch(/pinnacle-invoice/);
+    expect(modal.textContent).toMatch(/[Cc]lient-intake/);
+    expect(modal.textContent).toMatch(/[Pp]innacle-invoice/);
   });
 
   it("Cancel invokes onCancel and does NOT call /review/retype", () => {
