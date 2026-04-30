@@ -17,10 +17,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
@@ -87,7 +95,18 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
   @TestFactory
   Stream<DynamicTest> runScenarios() {
     return scenarios()
+        .filter(fixture -> fixture.inputs() == null || fixture.inputs().isEmpty())
         .map(fixture -> DynamicTest.dynamicTest(fixture.scenarioId(), () -> runScenario(fixture)));
+  }
+
+  @Test
+  void scenario05_concurrentUploads() throws Exception {
+    ScenarioFixture fixture =
+        scenarios()
+            .filter(f -> "05-concurrent-uploads".equals(f.scenarioId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("scenario 05 fixture not found"));
+    runConcurrentScenario(fixture);
   }
 
   private void runScenario(ScenarioFixture fixture) throws IOException {
@@ -144,6 +163,360 @@ class ScenarioRunnerIT extends AbstractScenarioIT {
   private boolean successfullyAccepted(ScenarioFixture.Action action) {
     int expected = action.expectedStatus() != null ? action.expectedStatus() : 202;
     return expected < 400;
+  }
+
+  private void runConcurrentScenario(ScenarioFixture fixture) throws Exception {
+    resetScenarioState();
+    truncateDataTables();
+
+    scenarioContext.setActive(fixture);
+
+    String orgId = fixture.organizationId();
+    List<ScenarioFixture.Input> inputs = fixture.inputs();
+    assertThat(inputs).as("scenario 05 inputs").hasSize(2);
+
+    String sseUrl = url("/api/organizations/" + orgId + "/stream");
+    try (ScenarioSseClient sse = new ScenarioSseClient()) {
+      sse.open(sseUrl);
+      awaitSseReady(sse);
+
+      Map<String, byte[]> pdfBytesByPath = new HashMap<>();
+      for (ScenarioFixture.Input in : inputs) {
+        pdfBytesByPath.put(in.inputPdf(), readPdf(in.inputPdf()));
+      }
+
+      ExecutorService uploadPool = Executors.newFixedThreadPool(inputs.size());
+      try {
+        List<CompletableFuture<UploadAccepted>> futures = new ArrayList<>();
+        for (ScenarioFixture.Input in : inputs) {
+          byte[] bytes = pdfBytesByPath.get(in.inputPdf());
+          futures.add(
+              CompletableFuture.supplyAsync(
+                  () -> uploadDocument(orgId, in.inputPdf(), bytes), uploadPool));
+        }
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+            .get(30, TimeUnit.SECONDS);
+
+        Map<String, UUID> storedByInput = new HashMap<>();
+        for (int i = 0; i < inputs.size(); i++) {
+          UploadAccepted accepted = futures.get(i).get();
+          storedByInput.put(inputs.get(i).inputPdf(), accepted.storedDocumentId());
+        }
+
+        Map<String, UUID> documentIdByInput = new HashMap<>();
+        long deadlineNanos = System.nanoTime() + Duration.ofSeconds(30).toNanos();
+        for (Map.Entry<String, UUID> e : storedByInput.entrySet()) {
+          long remainingNanos = deadlineNanos - System.nanoTime();
+          if (remainingNanos <= 0) {
+            failWithFrames(
+                sse, "timed out waiting for both documents to reach AWAITING_REVIEW", inputs);
+          }
+          UUID documentId =
+              awaitDocumentReachesReviewWithin(
+                  e.getValue(), Duration.ofNanos(Math.max(remainingNanos, 1)));
+          if (documentId == null) {
+            failWithFrames(
+                sse, "timed out waiting for both documents to reach AWAITING_REVIEW", inputs);
+          }
+          documentIdByInput.put(e.getKey(), documentId);
+        }
+
+        assertConcurrentEndState(fixture, storedByInput, documentIdByInput, sse);
+      } finally {
+        uploadPool.shutdownNow();
+      }
+    }
+  }
+
+  private void awaitSseReady(ScenarioSseClient sse) {
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(50))
+        .until(() -> sse.frames().stream().anyMatch(line -> line.startsWith(":")));
+  }
+
+  private UUID awaitDocumentReachesReviewWithin(UUID storedDocumentId, Duration timeout) {
+    try {
+      return await()
+          .atMost(timeout)
+          .pollInterval(Duration.ofMillis(200))
+          .until(() -> findReviewDocument(storedDocumentId), v -> v != null);
+    } catch (org.awaitility.core.ConditionTimeoutException e) {
+      return null;
+    }
+  }
+
+  private void failWithFrames(
+      ScenarioSseClient sse, String message, List<ScenarioFixture.Input> inputs) {
+    StringBuilder sb = new StringBuilder(message).append("\n");
+    sb.append("inputs:\n");
+    for (ScenarioFixture.Input in : inputs) {
+      sb.append("  - ").append(in.inputPdf()).append("\n");
+    }
+    sb.append("captured SSE frames (").append(sse.frames().size()).append("):\n");
+    for (String frame : sse.frames()) {
+      sb.append("  ").append(frame).append("\n");
+    }
+    throw new AssertionError(sb.toString());
+  }
+
+  private void assertConcurrentEndState(
+      ScenarioFixture fixture,
+      Map<String, UUID> storedByInput,
+      Map<String, UUID> documentIdByInput,
+      ScenarioSseClient sse)
+      throws ExecutionException, InterruptedException, TimeoutException {
+    JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+    Long docCount = jdbc.queryForObject("SELECT COUNT(*) FROM documents", Long.class);
+    assertThat(docCount).as("documents row count").isEqualTo(2);
+
+    Long workflowCount =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM workflow_instances WHERE current_status = 'AWAITING_REVIEW'",
+            Long.class);
+    assertThat(workflowCount).as("workflow_instances AWAITING_REVIEW count").isEqualTo(2);
+
+    for (Map.Entry<String, UUID> e : documentIdByInput.entrySet()) {
+      ScenarioFixture.ExpectedInput expected = expectedFor(fixture, e.getKey());
+      if (expected != null) {
+        assertPerInputEndState(e.getKey(), e.getValue(), expected);
+      }
+    }
+
+    awaitSseFrameCount(sse, 8, Duration.ofSeconds(30), inputsFor(fixture));
+
+    Map<String, UUID> storedToDocument = new HashMap<>();
+    for (Map.Entry<String, UUID> e : storedByInput.entrySet()) {
+      storedToDocument.put(e.getValue().toString(), documentIdByInput.get(e.getKey()));
+    }
+
+    Map<UUID, List<String>> framesByDocument = groupFramesByDocument(sse, storedToDocument);
+
+    for (Map.Entry<String, UUID> e : documentIdByInput.entrySet()) {
+      ScenarioFixture.ExpectedInput expected = expectedFor(fixture, e.getKey());
+      if (expected != null && expected.events() != null) {
+        assertPerInputSseEvents(
+            fixture, sse, e.getKey(), e.getValue(), expected.events(), framesByDocument);
+      }
+    }
+  }
+
+  private void assertPerInputEndState(
+      String inputPdf, UUID documentId, ScenarioFixture.ExpectedInput expected) {
+    Document document = documentReader.get(documentId).orElse(null);
+    if (document == null) {
+      throw new AssertionError("document not found for input " + inputPdf + ": " + documentId);
+    }
+    if (expected.document() != null) {
+      assertThat(document.detectedDocumentType())
+          .isEqualTo(expected.document().detectedDocumentType());
+      assertThat(document.reextractionStatus().name())
+          .isEqualTo(expected.document().reextractionStatus());
+      if (expected.document().extractedFieldsContains() != null) {
+        expected
+            .document()
+            .extractedFieldsContains()
+            .forEach(
+                (k, v) ->
+                    assertThat(document.extractedFields())
+                        .as("extracted field " + k + " for " + inputPdf)
+                        .containsEntry(k, v));
+      }
+    }
+    if (expected.workflowInstance() != null) {
+      WorkflowInstance instance = workflowInstanceReader.getByDocumentId(documentId).orElse(null);
+      if (instance == null) {
+        throw new AssertionError(
+            "workflow instance not found for input " + inputPdf + ": " + documentId);
+      }
+      assertThat(instance.currentStageId()).isEqualTo(expected.workflowInstance().currentStageId());
+      assertThat(instance.currentStatus())
+          .isEqualTo(WorkflowStatus.valueOf(expected.workflowInstance().currentStatus()));
+      assertThat(instance.workflowOriginStage())
+          .isEqualTo(expected.workflowInstance().workflowOriginStage());
+      assertThat(instance.flagComment()).isEqualTo(expected.workflowInstance().flagComment());
+    }
+  }
+
+  private void assertPerInputSseEvents(
+      ScenarioFixture fixture,
+      ScenarioSseClient sse,
+      String inputPdf,
+      UUID documentId,
+      List<ScenarioFixture.EventExpectation> events,
+      Map<UUID, List<String>> framesByDocument) {
+    List<String> frames = framesByDocument.getOrDefault(documentId, List.of());
+    try {
+      assertSseFramesContainInOrder(frames, events);
+    } catch (AssertionError err) {
+      failWithFrames(
+          sse,
+          "per-document SSE assertion failed for "
+              + inputPdf
+              + " (documentId="
+              + documentId
+              + "): "
+              + err.getMessage(),
+          inputsFor(fixture));
+    }
+  }
+
+  private List<ScenarioFixture.Input> inputsFor(ScenarioFixture fixture) {
+    return fixture.inputs() == null ? List.of() : fixture.inputs();
+  }
+
+  private ScenarioFixture.ExpectedInput expectedFor(ScenarioFixture fixture, String inputPdf) {
+    if (fixture.expectedInputs() == null) {
+      return null;
+    }
+    return fixture.expectedInputs().stream()
+        .filter(ei -> inputPdf.equals(ei.inputPdf()))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private void awaitSseFrameCount(
+      ScenarioSseClient sse,
+      int minDataLines,
+      Duration timeout,
+      List<ScenarioFixture.Input> inputs) {
+    try {
+      await()
+          .atMost(timeout)
+          .pollInterval(Duration.ofMillis(100))
+          .until(
+              () ->
+                  sse.frames().stream().filter(line -> line.startsWith("data:")).count()
+                      >= minDataLines);
+    } catch (org.awaitility.core.ConditionTimeoutException e) {
+      failWithFrames(sse, "timed out waiting for SSE frames", inputs);
+    }
+  }
+
+  private Map<UUID, List<String>> groupFramesByDocument(
+      ScenarioSseClient sse, Map<String, UUID> storedToDocument) {
+    Map<UUID, List<String>> result = new HashMap<>();
+    String currentEventName = null;
+    for (String line : sse.frames()) {
+      if (line.startsWith("event:")) {
+        currentEventName = line.substring("event:".length()).trim();
+      } else if (line.startsWith("data:")) {
+        String payload = line.substring("data:".length()).trim();
+        UUID documentId = extractDocumentId(payload, storedToDocument);
+        if (documentId != null) {
+          String composed = (currentEventName == null ? "?" : currentEventName) + " " + payload;
+          appendFrame(result, documentId, composed);
+        }
+        currentEventName = null;
+      } else if (line.isEmpty()) {
+        currentEventName = null;
+      }
+    }
+    return result;
+  }
+
+  private static void appendFrame(
+      Map<UUID, List<String>> sink, UUID documentId, String composedFrame) {
+    List<String> bucket = sink.get(documentId);
+    if (bucket == null) {
+      bucket = new ArrayList<>();
+      sink.put(documentId, bucket);
+    }
+    bucket.add(composedFrame);
+  }
+
+  private UUID extractDocumentId(String jsonPayload, Map<String, UUID> storedToDocument) {
+    String docId = extractJsonField(jsonPayload, "documentId");
+    if (docId != null) {
+      try {
+        return UUID.fromString(docId);
+      } catch (IllegalArgumentException ignored) {
+        // fall through
+      }
+    }
+    String storedId = extractJsonField(jsonPayload, "storedDocumentId");
+    if (storedId != null) {
+      return storedToDocument.get(storedId);
+    }
+    return null;
+  }
+
+  private static final char QUOTE = '"';
+
+  private String extractJsonField(String json, String field) {
+    String key = QUOTE + field + "\":";
+    int idx = json.indexOf(key);
+    if (idx < 0) {
+      return null;
+    }
+    int start = idx + key.length();
+    while (start < json.length() && Character.isWhitespace(json.charAt(start))) {
+      start++;
+    }
+    if (start >= json.length()) {
+      return null;
+    }
+    if (json.charAt(start) == QUOTE) {
+      int end = json.indexOf(QUOTE, start + 1);
+      return end < 0 ? null : json.substring(start + 1, end);
+    }
+    if (json.startsWith("null", start)) {
+      return null;
+    }
+    int end = start;
+    while (end < json.length()
+        && json.charAt(end) != ','
+        && json.charAt(end) != '}'
+        && !Character.isWhitespace(json.charAt(end))) {
+      end++;
+    }
+    return json.substring(start, end);
+  }
+
+  private void assertSseFramesContainInOrder(
+      List<String> frames, List<ScenarioFixture.EventExpectation> expectations) {
+    int cursor = 0;
+    for (ScenarioFixture.EventExpectation expectation : expectations) {
+      boolean matched = false;
+      for (int i = cursor; i < frames.size(); i++) {
+        if (frameMatches(frames.get(i), expectation)) {
+          cursor = i + 1;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        throw new AssertionError(
+            "expected SSE event not found in per-document subset (order-preserving): "
+                + expectation
+                + "\nframes: "
+                + frames);
+      }
+    }
+  }
+
+  private boolean frameMatches(String frame, ScenarioFixture.EventExpectation expectation) {
+    if (expectation.type() != null && !frame.startsWith(expectation.type() + " ")) {
+      return false;
+    }
+    String payload = frame.substring(frame.indexOf(' ') + 1);
+    if (expectation.currentStep() != null
+        && !expectation.currentStep().equals(extractJsonField(payload, "currentStep"))) {
+      return false;
+    }
+    if (expectation.currentStage() != null
+        && !expectation.currentStage().equals(extractJsonField(payload, "currentStage"))) {
+      return false;
+    }
+    if (expectation.currentStatus() != null
+        && !expectation.currentStatus().equals(extractJsonField(payload, "currentStatus"))) {
+      return false;
+    }
+    if (expectation.action() != null
+        && !expectation.action().equals(extractJsonField(payload, "action"))) {
+      return false;
+    }
+    return true;
   }
 
   private boolean expectsPipelineFailure(ScenarioFixture fixture) {

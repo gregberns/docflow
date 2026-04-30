@@ -1,0 +1,86 @@
+scenarioId: 05-concurrent-uploads
+description: >
+  Concurrency stress. Open an SSE GET on /api/organizations/riverside-bistro/stream
+  in a background thread BEFORE upload, so the subscription is established before
+  any pipeline event fires. Upload two distinct Riverside invoice PDFs in parallel.
+  Both pipelines run to AWAITING_REVIEW. Stubs match by exact rawText. Bounded
+  30 s SSE wait window; on timeout the captured frame log is printed. Each
+  document's per-document SSE event subset is asserted independently
+  (ProcessingStepChanged TEXT_EXTRACTING/CLASSIFYING/EXTRACTING in order, then
+  DocumentStateChanged Review/AWAITING_REVIEW). Different documents' frames may
+  interleave; within-document order is preserved.
+organizationId: riverside-bistro
+inputs:
+  - inputPdf: riverside-bistro/invoices/artisanal_ice_cube_march_2024.pdf
+    organizationId: riverside-bistro
+    classification:
+      docType: invoice
+    extraction:
+      fields:
+        vendor: "Artisanal Ice Cube Co."
+        invoiceNumber: "AIC-2024-031"
+        invoiceDate: "2024-03-15"
+        dueDate: "2024-04-14"
+        paymentTerms: "Net 30"
+        subtotal: "850.00"
+        tax: "76.50"
+        totalAmount: "926.50"
+  - inputPdf: riverside-bistro/invoices/senor_tacos_wholesale_march_2024.pdf
+    organizationId: riverside-bistro
+    classification:
+      docType: invoice
+    extraction:
+      fields:
+        vendor: "Señor Tacos Wholesale"
+        invoiceNumber: "STW-2024-0312"
+        invoiceDate: "2024-03-12"
+        dueDate: "2024-04-11"
+        paymentTerms: "Net 30"
+        subtotal: "1240.00"
+        tax: "111.60"
+        totalAmount: "1351.60"
+expectedInputs:
+  - inputPdf: riverside-bistro/invoices/artisanal_ice_cube_march_2024.pdf
+    document:
+      detectedDocumentType: invoice
+      reextractionStatus: NONE
+      extractedFieldsContains:
+        vendor: "Artisanal Ice Cube Co."
+        invoiceNumber: "AIC-2024-031"
+    workflowInstance:
+      currentStageId: Review
+      currentStatus: AWAITING_REVIEW
+      workflowOriginStage: null
+      flagComment: null
+    events:
+      - type: ProcessingStepChanged
+        currentStep: TEXT_EXTRACTING
+      - type: ProcessingStepChanged
+        currentStep: CLASSIFYING
+      - type: ProcessingStepChanged
+        currentStep: EXTRACTING
+      - type: DocumentStateChanged
+        currentStage: Review
+        currentStatus: AWAITING_REVIEW
+  - inputPdf: riverside-bistro/invoices/senor_tacos_wholesale_march_2024.pdf
+    document:
+      detectedDocumentType: invoice
+      reextractionStatus: NONE
+      extractedFieldsContains:
+        vendor: "Señor Tacos Wholesale"
+        invoiceNumber: "STW-2024-0312"
+    workflowInstance:
+      currentStageId: Review
+      currentStatus: AWAITING_REVIEW
+      workflowOriginStage: null
+      flagComment: null
+    events:
+      - type: ProcessingStepChanged
+        currentStep: TEXT_EXTRACTING
+      - type: ProcessingStepChanged
+        currentStep: CLASSIFYING
+      - type: ProcessingStepChanged
+        currentStep: EXTRACTING
+      - type: DocumentStateChanged
+        currentStage: Review
+        currentStatus: AWAITING_REVIEW

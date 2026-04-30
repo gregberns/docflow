@@ -12,13 +12,20 @@ public record ScenarioFixture(
     Classification classification,
     Extraction extraction,
     List<Action> actions,
-    ExpectedEndState expectedEndState) {
+    ExpectedEndState expectedEndState,
+    List<ExpectedInput> expectedInputs) {
 
   public record Input(
       String inputPdf,
       String organizationId,
       Classification classification,
       Extraction extraction) {}
+
+  public record ExpectedInput(
+      String inputPdf,
+      DocumentExpectations document,
+      WorkflowInstanceExpectations workflowInstance,
+      List<EventExpectation> events) {}
 
   public record Classification(String docType, String error) {}
 

@@ -85,16 +85,43 @@ public final class ScenarioFixtureLoader {
       validateInputPdfExists(fixture.inputPdf(), source, "inputPdf");
       validateClassification(fixture.classification(), source, "classification");
       validateExtraction(fixture.extraction(), source, "extraction");
+      if (fixture.expectedInputs() != null && !fixture.expectedInputs().isEmpty()) {
+        throw new ScenarioFixtureLoadException(
+            source + ": 'expectedInputs' is only valid when 'inputs' is declared");
+      }
     } else {
+      Set<String> declaredInputPdfs = new java.util.HashSet<>();
       for (int i = 0; i < fixture.inputs().size(); i++) {
         ScenarioFixture.Input input = fixture.inputs().get(i);
         if (input.inputPdf() == null || input.inputPdf().isBlank()) {
           throw new ScenarioFixtureLoadException(
               source + ": inputs[" + i + "].inputPdf must be present");
         }
+        if (!declaredInputPdfs.add(input.inputPdf())) {
+          throw new ScenarioFixtureLoadException(
+              source + ": inputs[" + i + "].inputPdf '" + input.inputPdf() + "' is duplicated");
+        }
         validateInputPdfExists(input.inputPdf(), source, "inputs[" + i + "].inputPdf");
         validateClassification(input.classification(), source, "inputs[" + i + "].classification");
         validateExtraction(input.extraction(), source, "inputs[" + i + "].extraction");
+      }
+      if (fixture.expectedInputs() != null) {
+        for (int i = 0; i < fixture.expectedInputs().size(); i++) {
+          ScenarioFixture.ExpectedInput ei = fixture.expectedInputs().get(i);
+          if (ei.inputPdf() == null || ei.inputPdf().isBlank()) {
+            throw new ScenarioFixtureLoadException(
+                source + ": expectedInputs[" + i + "].inputPdf must be present");
+          }
+          if (!declaredInputPdfs.contains(ei.inputPdf())) {
+            throw new ScenarioFixtureLoadException(
+                source
+                    + ": expectedInputs["
+                    + i
+                    + "].inputPdf '"
+                    + ei.inputPdf()
+                    + "' does not match any declared inputs[].inputPdf");
+          }
+        }
       }
     }
     return fixture;
