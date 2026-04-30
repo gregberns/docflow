@@ -1,3 +1,5 @@
+import { resolveOrgIcon } from "../util/orgIcon";
+
 type TopbarProps = {
   orgName?: string;
   orgIcon?: string;
@@ -14,7 +16,7 @@ export function Topbar({ orgName, orgIcon, onSwitchOrg }: TopbarProps) {
         <div className="flex items-center gap-3">
           {orgIcon ? (
             <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#6c9bff] text-14 font-semibold text-white">
-              {orgIcon}
+              {resolveOrgIcon(orgIcon)}
             </span>
           ) : null}
           <span className="text-13 text-[#c4c9d9]">{orgName}</span>

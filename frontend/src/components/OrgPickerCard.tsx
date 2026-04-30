@@ -1,4 +1,5 @@
 import type { OrganizationListItem } from "../types/readModels";
+import { resolveOrgIcon } from "../util/orgIcon";
 
 interface OrgPickerCardProps {
   organization: OrganizationListItem;
@@ -13,28 +14,8 @@ const PASTEL_TILES = [
   "bg-stage-filed-bg",
 ] as const;
 
-const ICON_GLYPHS: Record<string, string> = {
-  "icon-bistro": "\u{1F37D}",
-  "icon-legal": "⚖",
-  "icon-construction": "\u{1F6A7}",
-  bistro: "\u{1F37D}",
-  legal: "⚖",
-  construction: "\u{1F6A7}",
-  hardhat: "\u{1F477}",
-  "knife-fork": "\u{1F37D}",
-  briefcase: "\u{1F4BC}",
-  hammer: "\u{1F528}",
-  toolbox: "\u{1F9F0}",
-  scales: "⚖",
-  building: "\u{1F3E2}",
-  shop: "\u{1F3EA}",
-};
-
-const FALLBACK_GLYPH = "\u{1F4C1}";
-
 function glyphFor(icon: string | null | undefined): string {
-  if (!icon) return FALLBACK_GLYPH;
-  return ICON_GLYPHS[icon] ?? FALLBACK_GLYPH;
+  return resolveOrgIcon(icon ?? undefined);
 }
 
 function tileClassFor(orgId: string): string {
