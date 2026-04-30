@@ -376,6 +376,78 @@ class WorkflowEngineExampleTest {
   }
 
   @Test
+  void resolveWithTypeChangeFromUnflaggedReviewPublishesInProgressAndRetypeRequestedEvents() {
+    Document document = document(ReextractionStatus.NONE);
+    WorkflowInstance reviewInstance = instance(STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, null);
+    when(documentReader.get(documentId)).thenReturn(Optional.of(document));
+    when(instanceReader.getByDocumentId(documentId)).thenReturn(Optional.of(reviewInstance));
+
+    WorkflowOutcome outcome =
+        engine.applyAction(documentId, new WorkflowAction.Resolve(NEW_DOC_TYPE_ID));
+
+    assertThat(outcome).isInstanceOf(WorkflowOutcome.Success.class);
+    verify(instanceWriter, never()).clearFlag(any(), any(WorkflowCatalog.class), any(), any());
+    verify(instanceWriter, never())
+        .advanceStage(any(), any(), any(WorkflowCatalog.class), any(), any());
+
+    ArgumentCaptor<DocumentEvent> captor = ArgumentCaptor.forClass(DocumentEvent.class);
+    verify(eventBus, times(2)).publish(captor.capture());
+    List<DocumentEvent> published = captor.getAllValues();
+
+    DocumentStateChanged inProgressEvent = (DocumentStateChanged) published.get(0);
+    assertThat(inProgressEvent.documentId()).isEqualTo(documentId);
+    assertThat(inProgressEvent.currentStage()).isEqualTo(STAGE_REVIEW);
+    assertThat(inProgressEvent.currentStatus()).isEqualTo(WorkflowStatus.AWAITING_REVIEW.name());
+    assertThat(inProgressEvent.reextractionStatus())
+        .isEqualTo(ReextractionStatus.IN_PROGRESS.name());
+    assertThat(inProgressEvent.action()).isEqualTo("RESOLVE");
+    assertThat(inProgressEvent.comment()).isNull();
+
+    RetypeRequested retypeRequested = (RetypeRequested) published.get(1);
+    assertThat(retypeRequested.documentId()).isEqualTo(documentId);
+    assertThat(retypeRequested.organizationId()).isEqualTo(ORG_ID);
+    assertThat(retypeRequested.newDocTypeId()).isEqualTo(NEW_DOC_TYPE_ID);
+  }
+
+  @Test
+  void resolveWithoutTypeChangeFromUnflaggedReviewReturnsInvalidAction() {
+    Document document = document(ReextractionStatus.NONE);
+    WorkflowInstance reviewInstance = instance(STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, null);
+    when(documentReader.get(documentId)).thenReturn(Optional.of(document));
+    when(instanceReader.getByDocumentId(documentId)).thenReturn(Optional.of(reviewInstance));
+
+    WorkflowOutcome outcome = engine.applyAction(documentId, new WorkflowAction.Resolve(null));
+
+    assertThat(outcome).isInstanceOf(WorkflowOutcome.Failure.class);
+    WorkflowError.InvalidAction err =
+        (WorkflowError.InvalidAction) ((WorkflowOutcome.Failure) outcome).error();
+    assertThat(err.currentStageId()).isEqualTo(STAGE_REVIEW);
+    assertThat(err.actionType()).isEqualTo("RESOLVE");
+    verifyNoInteractions(instanceWriter);
+    verifyNoInteractions(eventBus);
+  }
+
+  @Test
+  void resolveWithTypeChangeFromUnflaggedNonReviewStageReturnsInvalidAction() {
+    Document document = document(ReextractionStatus.NONE);
+    WorkflowInstance managerInstance =
+        instance(STAGE_MANAGER, WorkflowStatus.AWAITING_APPROVAL, null);
+    when(documentReader.get(documentId)).thenReturn(Optional.of(document));
+    when(instanceReader.getByDocumentId(documentId)).thenReturn(Optional.of(managerInstance));
+
+    WorkflowOutcome outcome =
+        engine.applyAction(documentId, new WorkflowAction.Resolve(NEW_DOC_TYPE_ID));
+
+    assertThat(outcome).isInstanceOf(WorkflowOutcome.Failure.class);
+    WorkflowError.InvalidAction err =
+        (WorkflowError.InvalidAction) ((WorkflowOutcome.Failure) outcome).error();
+    assertThat(err.currentStageId()).isEqualTo(STAGE_MANAGER);
+    assertThat(err.actionType()).isEqualTo("RESOLVE");
+    verifyNoInteractions(instanceWriter);
+    verifyNoInteractions(eventBus);
+  }
+
+  @Test
   void approveWhenWriterReportsStaleState_returnsInvalidActionAndDoesNotPublish() {
     Document document = document(ReextractionStatus.NONE);
     WorkflowInstance reviewInstance = instance(STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, null);

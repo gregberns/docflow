@@ -235,6 +235,71 @@ class RetypeFlowIT {
   }
 
   @Test
+  void resolveWithTypeChange_unflaggedReview_extractionCompleted_updatesDocAndWorkflowInstance() {
+    UUID storedDocumentId = insertStoredDocument();
+    UUID documentId =
+        seedUnflaggedReviewDocument(storedDocumentId, ReextractionStatus.NONE, OLD_DOC_TYPE_ID);
+
+    Map<String, Object> newFields = new LinkedHashMap<>();
+    newFields.put("merchant", "Bagel Hut");
+    newFields.put("total", "7.50");
+
+    doAnswer(
+            (InvocationOnMock inv) -> {
+              UUID docId = inv.getArgument(0);
+              new JdbcTemplate(dataSource)
+                  .update(
+                      "UPDATE documents SET reextraction_status = 'IN_PROGRESS' WHERE id = ?",
+                      docId);
+              return null;
+            })
+        .when(llmExtractor)
+        .extract(eq(documentId), eq(NEW_DOC_TYPE_ID));
+
+    workflowEngine.applyAction(documentId, new WorkflowAction.Resolve(NEW_DOC_TYPE_ID));
+
+    DocumentStateChanged inProgress =
+        awaitEventWithReextractionStatus(ReextractionStatus.IN_PROGRESS);
+    assertThat(inProgress.documentId()).isEqualTo(documentId);
+    assertThat(inProgress.organizationId()).isEqualTo(ORG_ID);
+    assertThat(inProgress.action()).isEqualTo("RESOLVE");
+    assertThat(inProgress.currentStage()).isEqualTo(STAGE_REVIEW_INV);
+    assertThat(inProgress.currentStatus()).isEqualTo(WorkflowStatus.AWAITING_REVIEW.name());
+
+    verify(llmExtractor, times(1)).extract(eq(documentId), eq(NEW_DOC_TYPE_ID));
+
+    eventPublisher.publishEvent(
+        new ExtractionCompleted(
+            documentId, ORG_ID, newFields, NEW_DOC_TYPE_ID, Instant.parse("2026-04-29T11:00:00Z")));
+
+    DocumentStateChanged completed = awaitEventWithReextractionStatus(ReextractionStatus.NONE);
+    assertThat(completed.documentId()).isEqualTo(documentId);
+    assertThat(completed.currentStage()).isEqualTo(STAGE_REVIEW_REC);
+    assertThat(completed.currentStatus()).isEqualTo(WorkflowStatus.AWAITING_REVIEW.name());
+    assertThat(completed.action()).isNull();
+    assertThat(completed.comment()).isNull();
+
+    JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+    Map<String, Object> docRow =
+        jdbc.queryForMap(
+            "SELECT detected_document_type, reextraction_status FROM documents WHERE id = ?",
+            documentId);
+    assertThat(docRow.get("detected_document_type")).isEqualTo(NEW_DOC_TYPE_ID);
+    assertThat(docRow.get("reextraction_status")).isEqualTo("NONE");
+
+    Map<String, Object> wiRow =
+        jdbc.queryForMap(
+            "SELECT current_stage_id, current_status, workflow_origin_stage, flag_comment,"
+                + " document_type_id FROM workflow_instances WHERE document_id = ?",
+            documentId);
+    assertThat(wiRow.get("current_stage_id")).isEqualTo(STAGE_REVIEW_REC);
+    assertThat(wiRow.get("current_status")).isEqualTo(WorkflowStatus.AWAITING_REVIEW.name());
+    assertThat(wiRow.get("workflow_origin_stage")).isNull();
+    assertThat(wiRow.get("flag_comment")).isNull();
+    assertThat(wiRow.get("document_type_id")).isEqualTo(NEW_DOC_TYPE_ID);
+  }
+
+  @Test
   void resolveWithTypeChange_returnsImmediatelyAndListenerInvokesExtractorAsync()
       throws InterruptedException {
     UUID storedDocumentId = insertStoredDocument();
@@ -452,6 +517,42 @@ class RetypeFlowIT {
             "application/pdf",
             "/tmp/" + id + ".bin");
     return id;
+  }
+
+  private UUID seedUnflaggedReviewDocument(
+      UUID storedDocumentId, ReextractionStatus status, String docTypeId) {
+    UUID documentId = UuidCreator.getTimeOrderedEpoch();
+    UUID workflowInstanceId = UuidCreator.getTimeOrderedEpoch();
+    Instant now = Instant.now();
+    JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+    jdbc.update(
+        "INSERT INTO documents "
+            + "(id, stored_document_id, organization_id, detected_document_type, "
+            + "extracted_fields, raw_text, processed_at, reextraction_status) "
+            + "VALUES (?, ?, ?, ?, CAST(? AS jsonb), ?, ?, ?)",
+        documentId,
+        storedDocumentId,
+        ORG_ID,
+        docTypeId,
+        "{\"vendor\":\"Acme\"}",
+        "raw text",
+        Timestamp.from(now),
+        status.name());
+    jdbc.update(
+        "INSERT INTO workflow_instances "
+            + "(id, document_id, organization_id, document_type_id, current_stage_id, "
+            + "current_status, workflow_origin_stage, flag_comment, updated_at) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        workflowInstanceId,
+        documentId,
+        ORG_ID,
+        docTypeId,
+        STAGE_REVIEW_INV,
+        WorkflowStatus.AWAITING_REVIEW.name(),
+        null,
+        null,
+        Timestamp.from(now));
+    return documentId;
   }
 
   private UUID seedFlaggedDocument(

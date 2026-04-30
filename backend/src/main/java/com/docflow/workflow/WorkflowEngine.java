@@ -1,7 +1,9 @@
 package com.docflow.workflow;
 
+import com.docflow.config.catalog.StageView;
 import com.docflow.config.catalog.TransitionView;
 import com.docflow.config.catalog.WorkflowCatalog;
+import com.docflow.config.catalog.WorkflowView;
 import com.docflow.document.Document;
 import com.docflow.document.DocumentReader;
 import com.docflow.document.ReextractionStatus;
@@ -11,6 +13,7 @@ import com.docflow.workflow.events.RetypeRequested;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -18,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class WorkflowEngine {
+
+  private static final String STAGE_KIND_REVIEW = "review";
 
   private final WorkflowCatalog catalog;
   private final DocumentReader documentReader;
@@ -108,17 +113,20 @@ public class WorkflowEngine {
 
   private WorkflowOutcome handleResolve(
       Document document, WorkflowInstance instance, WorkflowAction.Resolve action) {
-    if (instance.workflowOriginStage() == null) {
-      return new WorkflowOutcome.Failure(
-          new WorkflowError.InvalidAction(instance.currentStageId(), "RESOLVE"));
-    }
-
     String currentDocType = document.detectedDocumentType();
     String requestedDocType = action.newDocTypeId();
     boolean typeChange =
         requestedDocType != null
             && !requestedDocType.isBlank()
             && !requestedDocType.equals(currentDocType);
+
+    if (instance.workflowOriginStage() == null
+        && !(typeChange
+            && isReviewStage(
+                document.organizationId(), currentDocType, instance.currentStageId()))) {
+      return new WorkflowOutcome.Failure(
+          new WorkflowError.InvalidAction(instance.currentStageId(), "RESOLVE"));
+    }
 
     if (typeChange) {
       return handleResolveWithTypeChange(document, requestedDocType);
@@ -194,6 +202,22 @@ public class WorkflowEngine {
         .getByDocumentId(documentId)
         .orElseThrow(
             () -> new IllegalStateException("workflow instance vanished for " + documentId));
+  }
+
+  private boolean isReviewStage(String orgId, String docTypeId, String stageId) {
+    if (orgId == null || docTypeId == null || stageId == null) {
+      return false;
+    }
+    WorkflowView workflow = catalog.getWorkflow(orgId, docTypeId).orElse(null);
+    if (workflow == null) {
+      return false;
+    }
+    for (StageView stage : workflow.stages()) {
+      if (stage.id().equals(stageId)) {
+        return STAGE_KIND_REVIEW.equals(stage.kind().toLowerCase(Locale.ROOT));
+      }
+    }
+    return false;
   }
 
   private void publish(
