@@ -42,7 +42,7 @@ class JdbcDashboardRepository implements DashboardRepository {
 
   private static final String LIST_DOCUMENTS_SQL =
       "SELECT d.id AS document_id, d.organization_id, sd.source_filename, sd.mime_type, "
-          + "sd.uploaded_at, d.processed_at, d.raw_text, "
+          + "sd.uploaded_at, d.processed_at, "
           + "wi.current_stage_id, s.display_name AS stage_display_name, wi.current_status, "
           + "wi.workflow_origin_stage, wi.flag_comment, "
           + "d.detected_document_type, d.extracted_fields, d.reextraction_status, "
@@ -166,7 +166,7 @@ class JdbcDashboardRepository implements DashboardRepository {
           rs.getString("mime_type"),
           uploadedAt == null ? null : uploadedAt.toInstant(),
           processedAt == null ? null : processedAt.toInstant(),
-          rs.getString("raw_text"),
+          null,
           rs.getString("current_stage_id"),
           rs.getString("stage_display_name"),
           parseStatus(rs),

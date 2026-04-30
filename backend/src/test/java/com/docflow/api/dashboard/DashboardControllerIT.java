@@ -2,12 +2,15 @@ package com.docflow.api.dashboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
+import org.hamcrest.Matchers;
+import org.hamcrest.core.IsNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -102,6 +105,8 @@ class DashboardControllerIT {
         .andExpect(jsonPath("$.documents[0].documentId").value(documentId.toString()))
         .andExpect(jsonPath("$.documents[0].currentStatus").value("AWAITING_REVIEW"))
         .andExpect(jsonPath("$.documents[0].detectedDocumentType").value(DOC_TYPE))
+        .andExpect(jsonPath("$.documents[0].rawText").value(IsNull.nullValue()))
+        .andExpect(content().string(Matchers.not(Matchers.containsString("raw text"))))
         .andExpect(jsonPath("$.stats.awaitingReview").value(1))
         .andExpect(jsonPath("$.stats.inProgress").value(1));
   }
