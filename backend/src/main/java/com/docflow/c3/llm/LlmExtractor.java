@@ -86,12 +86,11 @@ public class LlmExtractor {
         sink.reader()
             .get(documentId)
             .orElseThrow(() -> new IllegalArgumentException("document not found: " + documentId));
-    if (document.reextractionStatus() == ReextractionStatus.IN_PROGRESS) {
-      throw new RetypeAlreadyInProgressException(documentId);
-    }
 
     DocumentTypeSchemaView schema = lookupDocType(document.organizationId(), newDocTypeId);
-    sink.writer().setReextractionStatus(documentId, ReextractionStatus.IN_PROGRESS);
+    if (!sink.writer().claimReextractionInProgress(documentId)) {
+      throw new RetypeAlreadyInProgressException(documentId);
+    }
 
     Map<String, Object> extracted;
     try {

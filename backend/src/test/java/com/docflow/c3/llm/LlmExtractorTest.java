@@ -235,13 +235,16 @@ class LlmExtractorTest {
             Instant.parse("2026-04-27T10:00:00Z"),
             ReextractionStatus.NONE);
     when(documentReader.get(documentId)).thenReturn(Optional.of(document));
+    when(documentWriter.claimReextractionInProgress(documentId)).thenReturn(true);
     Map<String, Object> newFields = Map.of("merchant", "New Merchant");
     when(executor.execute(any(MessageCreateParams.class), any(ToolSchema.class)))
         .thenReturn(JsonValue.from(newFields));
 
     extractor.extract(documentId, NEW_DOC_TYPE_ID);
 
-    verify(documentWriter).setReextractionStatus(documentId, ReextractionStatus.IN_PROGRESS);
+    verify(documentWriter).claimReextractionInProgress(documentId);
+    verify(documentWriter, never())
+        .setReextractionStatus(documentId, ReextractionStatus.IN_PROGRESS);
     ArgumentCaptor<Map<String, Object>> fieldsCaptor = mapCaptor();
     verify(documentWriter)
         .updateExtraction(eq(documentId), eq(NEW_DOC_TYPE_ID), fieldsCaptor.capture());
@@ -276,6 +279,7 @@ class LlmExtractorTest {
             Instant.parse("2026-04-27T10:00:00Z"),
             ReextractionStatus.NONE);
     when(documentReader.get(documentId)).thenReturn(Optional.of(document));
+    when(documentWriter.claimReextractionInProgress(documentId)).thenReturn(true);
     when(executor.execute(any(MessageCreateParams.class), any(ToolSchema.class)))
         .thenReturn(JsonValue.from(Map.of("merchant", "X")));
 
@@ -308,10 +312,12 @@ class LlmExtractorTest {
             Instant.parse("2026-04-27T10:00:00Z"),
             ReextractionStatus.IN_PROGRESS);
     when(documentReader.get(documentId)).thenReturn(Optional.of(document));
+    when(documentWriter.claimReextractionInProgress(documentId)).thenReturn(false);
 
     assertThatThrownBy(() -> extractor.extract(documentId, NEW_DOC_TYPE_ID))
         .isInstanceOf(RetypeAlreadyInProgressException.class);
 
+    verify(documentWriter).claimReextractionInProgress(documentId);
     verify(executor, never()).execute(any(), any());
     verify(auditWriter, never()).insert(any());
     verify(documentWriter, never()).setReextractionStatus(any(), any());
@@ -334,6 +340,7 @@ class LlmExtractorTest {
             Instant.parse("2026-04-27T10:00:00Z"),
             ReextractionStatus.NONE);
     when(documentReader.get(documentId)).thenReturn(Optional.of(document));
+    when(documentWriter.claimReextractionInProgress(documentId)).thenReturn(true);
     when(executor.execute(any(MessageCreateParams.class), any(ToolSchema.class)))
         .thenThrow(new LlmSchemaViolation("first"))
         .thenThrow(new LlmSchemaViolation("second"));
@@ -342,7 +349,7 @@ class LlmExtractorTest {
         .isInstanceOf(LlmSchemaViolation.class)
         .hasMessage("LlmCall failed: LlmSchemaViolation");
 
-    verify(documentWriter).setReextractionStatus(documentId, ReextractionStatus.IN_PROGRESS);
+    verify(documentWriter).claimReextractionInProgress(documentId);
     verify(documentWriter).setReextractionStatus(documentId, ReextractionStatus.FAILED);
     verify(documentWriter, never()).updateExtraction(any(), any(), any());
     verify(executor, times(2)).execute(any(), any());
@@ -397,6 +404,7 @@ class LlmExtractorTest {
             Instant.parse("2026-04-27T10:00:00Z"),
             ReextractionStatus.NONE);
     when(documentReader.get(documentId)).thenReturn(Optional.of(document));
+    when(documentWriter.claimReextractionInProgress(documentId)).thenReturn(true);
     when(executor.execute(any(MessageCreateParams.class), any(ToolSchema.class)))
         .thenThrow(new LlmTimeout(sensitive));
 

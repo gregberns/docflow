@@ -31,6 +31,10 @@ public class JdbcDocumentWriter implements DocumentWriter {
   public static final String UPDATE_REEXTRACTION_STATUS_SQL =
       "UPDATE documents SET reextraction_status = :reextractionStatus WHERE id = :id";
 
+  public static final String CLAIM_REEXTRACTION_IN_PROGRESS_SQL =
+      "UPDATE documents SET reextraction_status = 'IN_PROGRESS' "
+          + "WHERE id = :id AND reextraction_status != 'IN_PROGRESS'";
+
   private final NamedParameterJdbcOperations jdbc;
   private final ObjectMapper jsonMapper;
 
@@ -72,6 +76,12 @@ public class JdbcDocumentWriter implements DocumentWriter {
             .addValue("id", documentId)
             .addValue("reextractionStatus", status.name());
     jdbc.update(UPDATE_REEXTRACTION_STATUS_SQL, params);
+  }
+
+  @Override
+  public boolean claimReextractionInProgress(UUID documentId) {
+    MapSqlParameterSource params = new MapSqlParameterSource().addValue("id", documentId);
+    return jdbc.update(CLAIM_REEXTRACTION_IN_PROGRESS_SQL, params) == 1;
   }
 
   private String toJsonString(Map<String, Object> fields) {

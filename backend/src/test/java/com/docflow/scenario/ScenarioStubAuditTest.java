@@ -181,6 +181,11 @@ class ScenarioStubAuditTest {
     @Override
     public void setReextractionStatus(
         UUID documentId, com.docflow.document.ReextractionStatus status) {}
+
+    @Override
+    public boolean claimReextractionInProgress(UUID documentId) {
+      return true;
+    }
   }
 
   static final class NoopEventPublisher

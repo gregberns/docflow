@@ -13,6 +13,7 @@ import com.docflow.c3.llm.LlmProtocolError;
 import com.docflow.c3.llm.LlmSchemaViolation;
 import com.docflow.c3.llm.LlmTimeout;
 import com.docflow.c3.llm.LlmUnavailable;
+import com.docflow.c3.llm.RetypeAlreadyInProgressException;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -213,6 +214,16 @@ class GlobalExceptionHandlerContractTest {
   }
 
   @Test
+  void retypeAlreadyInProgressMapsTo409() throws Exception {
+    mockMvc
+        .perform(get("/test/throw").param("kind", "retypeAlreadyInProgress"))
+        .andExpect(status().isConflict())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("REEXTRACTION_IN_PROGRESS"))
+        .andExpect(jsonPath("$.status").value(409));
+  }
+
+  @Test
   void llmFamilyUnavailableMapsTo502() throws Exception {
     mockMvc
         .perform(get("/test/throw").param("kind", "llmFamilyUnavailable"))
@@ -337,6 +348,9 @@ class GlobalExceptionHandlerContractTest {
         case "llmFamilyProtocol" -> throw new LlmProtocolError("LlmCall failed: LlmProtocolError");
         case "llmFamilySchema" ->
             throw new LlmSchemaViolation("LlmCall failed: LlmSchemaViolation");
+        case "retypeAlreadyInProgress" ->
+            throw new RetypeAlreadyInProgressException(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"));
         case "optimisticLock" ->
             throw new OptimisticLockingFailureException(
                 "workflow_instances row for document_id=abc changed during update");

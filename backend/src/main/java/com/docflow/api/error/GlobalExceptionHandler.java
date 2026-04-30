@@ -5,6 +5,7 @@ import com.docflow.c3.llm.LlmProtocolError;
 import com.docflow.c3.llm.LlmSchemaViolation;
 import com.docflow.c3.llm.LlmTimeout;
 import com.docflow.c3.llm.LlmUnavailable;
+import com.docflow.c3.llm.RetypeAlreadyInProgressException;
 import com.docflow.ingestion.UnsupportedMediaTypeException;
 import java.util.List;
 import org.slf4j.Logger;
@@ -83,6 +84,12 @@ public class GlobalExceptionHandler {
         ErrorCode.VALIDATION_FAILED,
         "Invalid path parameter",
         List.of(new DetailEntry(ex.getName(), "invalid value")));
+  }
+
+  @ExceptionHandler(RetypeAlreadyInProgressException.class)
+  public ResponseEntity<ProblemDetail> handleRetypeAlreadyInProgress(
+      RetypeAlreadyInProgressException ex) {
+    return build(ErrorCode.REEXTRACTION_IN_PROGRESS, ex.getMessage(), List.of());
   }
 
   @ExceptionHandler(LlmException.class)

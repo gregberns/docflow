@@ -649,6 +649,11 @@ class RetypeFlowIT {
     public void setReextractionStatus(UUID documentId, ReextractionStatus status) {
       delegate.setReextractionStatus(documentId, status);
     }
+
+    @Override
+    public boolean claimReextractionInProgress(UUID documentId) {
+      return delegate.claimReextractionInProgress(documentId);
+    }
   }
 
   @SpringBootApplication
