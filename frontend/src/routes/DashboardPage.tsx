@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getDashboard } from "../api/dashboard";
-import type { WorkflowStatus } from "../types/readModels";
+import { getOrganization } from "../api/organizations";
 import { DashboardStatsBar } from "../components/DashboardStatsBar";
 import { DashboardFilterBar } from "../components/DashboardFilterBar";
 import { ProcessingSection } from "../components/ProcessingSection";
@@ -12,7 +12,7 @@ import { useUploadDocument } from "../hooks/useUploadDocument";
 
 export function DashboardPage() {
   const { orgId } = useParams<{ orgId: string }>();
-  const [statusFilter, setStatusFilter] = useState<WorkflowStatus | "ALL">("ALL");
+  const [stageFilter, setStageFilter] = useState<string | "ALL">("ALL");
   const [docTypeFilter, setDocTypeFilter] = useState<string | "ALL">("ALL");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -23,21 +23,27 @@ export function DashboardPage() {
     enabled: typeof orgId === "string" && orgId.length > 0,
   });
 
+  const { data: orgDetail } = useQuery({
+    queryKey: ["organization", orgId],
+    queryFn: () => getOrganization(orgId ?? ""),
+    enabled: typeof orgId === "string" && orgId.length > 0,
+  });
+
   useOrgEvents(orgId);
   const upload = useUploadDocument(orgId);
 
-  const statusOptions = useMemo<ReadonlyArray<WorkflowStatus>>(() => {
-    if (!data) {
+  const stageOptions = useMemo<ReadonlyArray<string>>(() => {
+    if (!orgDetail) {
       return [];
     }
-    const seen = new Set<WorkflowStatus>();
-    for (const doc of data.documents) {
-      if (doc.currentStatus) {
-        seen.add(doc.currentStatus);
+    const seen = new Set<string>();
+    for (const workflow of orgDetail.workflows) {
+      for (const stage of workflow.stages) {
+        seen.add(stage.displayName);
       }
     }
     return [...seen];
-  }, [data]);
+  }, [orgDetail]);
 
   const docTypeOptions = useMemo<ReadonlyArray<string>>(() => {
     if (!data) {
@@ -57,7 +63,7 @@ export function DashboardPage() {
       return [];
     }
     return data.documents.filter((doc) => {
-      if (statusFilter !== "ALL" && doc.currentStatus !== statusFilter) {
+      if (stageFilter !== "ALL" && doc.currentStageDisplayName !== stageFilter) {
         return false;
       }
       if (docTypeFilter !== "ALL" && doc.detectedDocumentType !== docTypeFilter) {
@@ -65,7 +71,7 @@ export function DashboardPage() {
       }
       return true;
     });
-  }, [data, statusFilter, docTypeFilter]);
+  }, [data, stageFilter, docTypeFilter]);
 
   const onUploadClick = () => {
     setUploadError(null);
@@ -135,11 +141,11 @@ export function DashboardPage() {
         <>
           <DashboardStatsBar stats={data.stats} />
           <DashboardFilterBar
-            status={statusFilter}
+            stage={stageFilter}
             docType={docTypeFilter}
-            statusOptions={statusOptions}
+            stageOptions={stageOptions}
             docTypeOptions={docTypeOptions}
-            onStatusChange={setStatusFilter}
+            onStageChange={setStageFilter}
             onDocTypeChange={setDocTypeFilter}
             onUploadClick={onUploadClick}
             uploadDisabled={upload.isPending || !orgId}

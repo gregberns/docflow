@@ -23,7 +23,10 @@ class StubDashboardRepository implements DashboardRepository {
 
   @Override
   public List<DocumentView> listDocuments(
-      String orgId, Optional<WorkflowStatus> statusFilter, Optional<String> docTypeFilter) {
+      String orgId,
+      Optional<WorkflowStatus> statusFilter,
+      Optional<String> stageDisplayNameFilter,
+      Optional<String> docTypeFilter) {
     return List.of();
   }
 

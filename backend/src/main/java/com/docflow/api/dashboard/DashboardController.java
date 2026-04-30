@@ -36,18 +36,22 @@ public class DashboardController {
   public DashboardResponse dashboard(
       @PathVariable String orgId,
       @RequestParam(required = false) String status,
+      @RequestParam(required = false) String stage,
       @RequestParam(required = false) String docType) {
     if (organizationCatalog.getOrganization(orgId).isEmpty()) {
       throw new UnknownOrganizationException(orgId);
     }
 
     Optional<WorkflowStatus> statusFilter = parseStatus(status);
+    Optional<String> stageDisplayNameFilter =
+        (stage == null || stage.isBlank()) ? Optional.empty() : Optional.of(stage);
     Optional<String> docTypeFilter =
         (docType == null || docType.isBlank()) ? Optional.empty() : Optional.of(docType);
 
     List<ProcessingItem> processing = dashboardRepository.listProcessing(orgId);
     List<DocumentView> documents =
-        dashboardRepository.listDocuments(orgId, statusFilter, docTypeFilter);
+        dashboardRepository.listDocuments(
+            orgId, statusFilter, stageDisplayNameFilter, docTypeFilter);
     DashboardStats stats = dashboardRepository.stats(orgId);
 
     return new DashboardResponse(processing, documents, stats);

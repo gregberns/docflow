@@ -56,6 +56,7 @@ class JdbcDashboardRepository implements DashboardRepository {
           + "  AND s.id = wi.current_stage_id "
           + "WHERE d.organization_id = :orgId "
           + "  AND (CAST(:status AS VARCHAR) IS NULL OR wi.current_status = :status) "
+          + "  AND (CAST(:stage AS VARCHAR) IS NULL OR s.display_name = :stage) "
           + "  AND (CAST(:docType AS VARCHAR) IS NULL OR d.detected_document_type = :docType) "
           + "ORDER BY wi.updated_at DESC "
           + "LIMIT 200";
@@ -91,11 +92,15 @@ class JdbcDashboardRepository implements DashboardRepository {
 
   @Override
   public List<DocumentView> listDocuments(
-      String orgId, Optional<WorkflowStatus> statusFilter, Optional<String> docTypeFilter) {
+      String orgId,
+      Optional<WorkflowStatus> statusFilter,
+      Optional<String> stageDisplayNameFilter,
+      Optional<String> docTypeFilter) {
     MapSqlParameterSource params =
         new MapSqlParameterSource()
             .addValue("orgId", orgId)
             .addValue("status", statusFilter.map(Enum::name).orElse(null))
+            .addValue("stage", stageDisplayNameFilter.orElse(null))
             .addValue("docType", docTypeFilter.orElse(null));
     return jdbc.query(LIST_DOCUMENTS_SQL, params, documentRowMapper());
   }

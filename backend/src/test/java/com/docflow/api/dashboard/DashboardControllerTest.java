@@ -51,7 +51,7 @@ class DashboardControllerTest {
     when(organizationCatalog.getOrganization("does-not-exist")).thenReturn(Optional.empty());
 
     when(dashboardRepository.listProcessing(any())).thenReturn(List.of());
-    when(dashboardRepository.listDocuments(any(), any(), any())).thenReturn(List.of());
+    when(dashboardRepository.listDocuments(any(), any(), any(), any())).thenReturn(List.of());
     when(dashboardRepository.stats(any())).thenReturn(new DashboardStats(0L, 0L, 0L, 0L));
 
     mockMvc =
@@ -72,7 +72,7 @@ class DashboardControllerTest {
             List.of(
                 new ProcessingItem(
                     processingId, storedId, "invoice-001.pdf", "CLASSIFYING", null, now)));
-    when(dashboardRepository.listDocuments(eq(KNOWN_ORG), any(), any()))
+    when(dashboardRepository.listDocuments(eq(KNOWN_ORG), any(), any(), any()))
         .thenReturn(
             List.of(
                 new DocumentView(
@@ -120,7 +120,7 @@ class DashboardControllerTest {
         .andExpect(jsonPath("$.status").value(404));
 
     verify(dashboardRepository, never()).listProcessing(any());
-    verify(dashboardRepository, never()).listDocuments(any(), any(), any());
+    verify(dashboardRepository, never()).listDocuments(any(), any(), any(), any());
     verify(dashboardRepository, never()).stats(any());
   }
 
@@ -135,11 +135,15 @@ class DashboardControllerTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Optional<WorkflowStatus>> statusCaptor = ArgumentCaptor.forClass(Optional.class);
     @SuppressWarnings("unchecked")
+    ArgumentCaptor<Optional<String>> stageCaptor = ArgumentCaptor.forClass(Optional.class);
+    @SuppressWarnings("unchecked")
     ArgumentCaptor<Optional<String>> docTypeCaptor = ArgumentCaptor.forClass(Optional.class);
 
     verify(dashboardRepository)
-        .listDocuments(eq(KNOWN_ORG), statusCaptor.capture(), docTypeCaptor.capture());
+        .listDocuments(
+            eq(KNOWN_ORG), statusCaptor.capture(), stageCaptor.capture(), docTypeCaptor.capture());
     assertThat(statusCaptor.getValue()).contains(WorkflowStatus.AWAITING_REVIEW);
+    assertThat(stageCaptor.getValue()).isEmpty();
     assertThat(docTypeCaptor.getValue()).isEmpty();
 
     verify(dashboardRepository).listProcessing(KNOWN_ORG);
@@ -156,7 +160,7 @@ class DashboardControllerTest {
         .andExpect(jsonPath("$.status").value(400))
         .andExpect(jsonPath("$.details[0].path").value("status"));
 
-    verify(dashboardRepository, never()).listDocuments(any(), any(), any());
+    verify(dashboardRepository, never()).listDocuments(any(), any(), any(), any());
   }
 
   @Test
@@ -168,11 +172,15 @@ class DashboardControllerTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Optional<WorkflowStatus>> statusCaptor = ArgumentCaptor.forClass(Optional.class);
     @SuppressWarnings("unchecked")
+    ArgumentCaptor<Optional<String>> stageCaptor = ArgumentCaptor.forClass(Optional.class);
+    @SuppressWarnings("unchecked")
     ArgumentCaptor<Optional<String>> docTypeCaptor = ArgumentCaptor.forClass(Optional.class);
 
     verify(dashboardRepository)
-        .listDocuments(eq(KNOWN_ORG), statusCaptor.capture(), docTypeCaptor.capture());
+        .listDocuments(
+            eq(KNOWN_ORG), statusCaptor.capture(), stageCaptor.capture(), docTypeCaptor.capture());
     assertThat(statusCaptor.getValue()).isEmpty();
+    assertThat(stageCaptor.getValue()).isEmpty();
     assertThat(docTypeCaptor.getValue()).contains("invoice");
   }
 
@@ -188,14 +196,39 @@ class DashboardControllerTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Optional<WorkflowStatus>> statusCaptor = ArgumentCaptor.forClass(Optional.class);
     @SuppressWarnings("unchecked")
+    ArgumentCaptor<Optional<String>> stageCaptor = ArgumentCaptor.forClass(Optional.class);
+    @SuppressWarnings("unchecked")
     ArgumentCaptor<Optional<String>> docTypeCaptor = ArgumentCaptor.forClass(Optional.class);
 
     verify(dashboardRepository)
-        .listDocuments(eq(KNOWN_ORG), statusCaptor.capture(), docTypeCaptor.capture());
+        .listDocuments(
+            eq(KNOWN_ORG), statusCaptor.capture(), stageCaptor.capture(), docTypeCaptor.capture());
     assertThat(statusCaptor.getValue()).contains(WorkflowStatus.FLAGGED);
+    assertThat(stageCaptor.getValue()).isEmpty();
     assertThat(docTypeCaptor.getValue()).contains("invoice");
 
     verify(dashboardRepository).listProcessing(KNOWN_ORG);
     verify(dashboardRepository).stats(KNOWN_ORG);
+  }
+
+  @Test
+  void stageFilter_isPassedToListDocuments() throws Exception {
+    mockMvc
+        .perform(get("/api/organizations/{orgId}/documents", KNOWN_ORG).param("stage", "Review"))
+        .andExpect(status().isOk());
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Optional<WorkflowStatus>> statusCaptor = ArgumentCaptor.forClass(Optional.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Optional<String>> stageCaptor = ArgumentCaptor.forClass(Optional.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Optional<String>> docTypeCaptor = ArgumentCaptor.forClass(Optional.class);
+
+    verify(dashboardRepository)
+        .listDocuments(
+            eq(KNOWN_ORG), statusCaptor.capture(), stageCaptor.capture(), docTypeCaptor.capture());
+    assertThat(statusCaptor.getValue()).isEmpty();
+    assertThat(stageCaptor.getValue()).contains("Review");
+    assertThat(docTypeCaptor.getValue()).isEmpty();
   }
 }

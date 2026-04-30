@@ -12,7 +12,10 @@ public interface DashboardRepository {
   List<ProcessingItem> listProcessing(String orgId);
 
   List<DocumentView> listDocuments(
-      String orgId, Optional<WorkflowStatus> statusFilter, Optional<String> docTypeFilter);
+      String orgId,
+      Optional<WorkflowStatus> statusFilter,
+      Optional<String> stageDisplayNameFilter,
+      Optional<String> docTypeFilter);
 
   DashboardStats stats(String orgId);
 }

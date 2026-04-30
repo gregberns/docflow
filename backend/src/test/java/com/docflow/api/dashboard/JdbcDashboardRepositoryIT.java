@@ -129,7 +129,8 @@ class JdbcDashboardRepositoryIT {
     insertWorkflowInstance(
         jdbc, docB, ORG_B, STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, FIXED_NOW);
 
-    List<DocumentView> docs = repository.listDocuments(ORG_A, Optional.empty(), Optional.empty());
+    List<DocumentView> docs =
+        repository.listDocuments(ORG_A, Optional.empty(), Optional.empty(), Optional.empty());
 
     assertThat(docs).extracting(DocumentView::documentId).containsExactly(docA);
     DocumentView view = docs.get(0);
@@ -160,7 +161,8 @@ class JdbcDashboardRepositoryIT {
     insertWorkflowInstance(
         jdbc, doc2, ORG_A, STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, FIXED_NOW);
 
-    List<DocumentView> docs = repository.listDocuments(ORG_A, Optional.empty(), Optional.empty());
+    List<DocumentView> docs =
+        repository.listDocuments(ORG_A, Optional.empty(), Optional.empty(), Optional.empty());
 
     assertThat(docs).extracting(DocumentView::documentId).containsExactly(doc2, doc1);
   }
@@ -178,7 +180,7 @@ class JdbcDashboardRepositoryIT {
 
     List<DocumentView> reviewing =
         repository.listDocuments(
-            ORG_A, Optional.of(WorkflowStatus.AWAITING_REVIEW), Optional.empty());
+            ORG_A, Optional.of(WorkflowStatus.AWAITING_REVIEW), Optional.empty(), Optional.empty());
 
     assertThat(reviewing).extracting(DocumentView::documentId).containsExactly(doc1);
   }
@@ -192,9 +194,10 @@ class JdbcDashboardRepositoryIT {
         jdbc, doc1, ORG_A, STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, FIXED_NOW);
 
     List<DocumentView> matching =
-        repository.listDocuments(ORG_A, Optional.empty(), Optional.of(DOC_TYPE));
+        repository.listDocuments(ORG_A, Optional.empty(), Optional.empty(), Optional.of(DOC_TYPE));
     List<DocumentView> nonMatching =
-        repository.listDocuments(ORG_A, Optional.empty(), Optional.of("does-not-exist"));
+        repository.listDocuments(
+            ORG_A, Optional.empty(), Optional.empty(), Optional.of("does-not-exist"));
 
     assertThat(matching).extracting(DocumentView::documentId).containsExactly(doc1);
     assertThat(nonMatching).isEmpty();

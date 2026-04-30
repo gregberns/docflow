@@ -1,21 +1,12 @@
-import type { WorkflowStatus } from "../types/readModels";
 import { formatDocType } from "../util/formatters";
 import { UploadIcon } from "./icons/Icons";
 
-const STATUS_LABELS: Record<WorkflowStatus, string> = {
-  AWAITING_REVIEW: "Awaiting Review",
-  FLAGGED: "Flagged",
-  AWAITING_APPROVAL: "Awaiting Approval",
-  FILED: "Filed",
-  REJECTED: "Rejected",
-};
-
 interface DashboardFilterBarProps {
-  status: WorkflowStatus | "ALL";
+  stage: string | "ALL";
   docType: string | "ALL";
-  statusOptions: ReadonlyArray<WorkflowStatus>;
+  stageOptions: ReadonlyArray<string>;
   docTypeOptions: ReadonlyArray<string>;
-  onStatusChange: (status: WorkflowStatus | "ALL") => void;
+  onStageChange: (stage: string | "ALL") => void;
   onDocTypeChange: (docType: string | "ALL") => void;
   onUploadClick?: () => void;
   uploadDisabled?: boolean;
@@ -27,11 +18,11 @@ const SELECT_CLASSES =
 const FILTER_LABEL_CLASSES = "text-12 font-semibold uppercase tracking-[0.5px] text-neutral-500";
 
 export function DashboardFilterBar({
-  status,
+  stage,
   docType,
-  statusOptions,
+  stageOptions,
   docTypeOptions,
-  onStatusChange,
+  onStageChange,
   onDocTypeChange,
   onUploadClick,
   uploadDisabled,
@@ -39,17 +30,17 @@ export function DashboardFilterBar({
   return (
     <section data-testid="dashboard-filters" className="mb-5 flex items-center gap-2.5">
       <label className="flex items-center gap-1.5">
-        <span className={FILTER_LABEL_CLASSES}>Status</span>
+        <span className={FILTER_LABEL_CLASSES}>Stage</span>
         <select
-          data-testid="filter-status"
-          value={status}
-          onChange={(event) => onStatusChange(event.target.value as WorkflowStatus | "ALL")}
+          data-testid="filter-stage"
+          value={stage}
+          onChange={(event) => onStageChange(event.target.value)}
           className={SELECT_CLASSES}
         >
-          <option value="ALL">All Statuses</option>
-          {statusOptions.map((value) => (
+          <option value="ALL">All Stages</option>
+          {stageOptions.map((value) => (
             <option key={value} value={value}>
-              {STATUS_LABELS[value]}
+              {value}
             </option>
           ))}
         </select>

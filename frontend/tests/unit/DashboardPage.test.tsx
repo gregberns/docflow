@@ -39,15 +39,15 @@ describe("DashboardPage", () => {
     expect(screen.getAllByTestId("processing-row")).toHaveLength(1);
     expect(screen.getAllByTestId("document-row")).toHaveLength(4);
 
-    fireEvent.change(screen.getByTestId("filter-status"), {
-      target: { value: "AWAITING_REVIEW" },
+    fireEvent.change(screen.getByTestId("filter-stage"), {
+      target: { value: "Filed" },
     });
     await waitFor(() => {
       expect(screen.getAllByTestId("document-row")).toHaveLength(1);
     });
-    expect(screen.getByTestId("document-row")).toHaveAttribute("data-status", "AWAITING_REVIEW");
+    expect(screen.getByTestId("document-row")).toHaveAttribute("data-status", "FILED");
 
-    fireEvent.change(screen.getByTestId("filter-status"), { target: { value: "ALL" } });
+    fireEvent.change(screen.getByTestId("filter-stage"), { target: { value: "ALL" } });
     fireEvent.change(screen.getByTestId("filter-doctype"), {
       target: { value: "client-intake" },
     });

@@ -38,6 +38,18 @@ describe("API client", () => {
     expect(observedUrl).toContain("docType=court-filing");
   });
 
+  it("getDashboard appends stage filter as query param", async () => {
+    let observedUrl = "";
+    server.use(
+      http.get("/api/organizations/:orgId/documents", ({ request }) => {
+        observedUrl = request.url;
+        return HttpResponse.json(fixtures.dashboard);
+      }),
+    );
+    await getDashboard("pinnacle-legal", { stage: "Review" });
+    expect(observedUrl).toContain("stage=Review");
+  });
+
   it("getDocument returns the document fixture", async () => {
     const result = await getDocument(fixtures.document.documentId);
     expect(result.documentId).toBe(fixtures.document.documentId);
