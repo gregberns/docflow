@@ -243,7 +243,7 @@ class JdbcDashboardRepositoryIT {
 
     DashboardStats stats = repository.stats(ORG_A);
 
-    assertThat(stats.inProgress()).isEqualTo(1L);
+    assertThat(stats.inProgress()).isEqualTo(2L);
     assertThat(stats.awaitingReview()).isEqualTo(1L);
     assertThat(stats.flagged()).isEqualTo(1L);
     assertThat(stats.filedThisMonth()).isEqualTo(1L);

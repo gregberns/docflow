@@ -61,19 +61,16 @@ class JdbcDashboardRepository implements DashboardRepository {
           + "ORDER BY wi.updated_at DESC "
           + "LIMIT 200";
 
-  private static final String IN_PROGRESS_COUNT_SQL =
-      "SELECT COUNT(*) FROM processing_documents pd "
-          + "LEFT JOIN documents d ON d.stored_document_id = pd.stored_document_id "
-          + "WHERE pd.organization_id = :orgId AND d.id IS NULL";
-
-  private static final String STATUS_COUNT_SQL =
-      "SELECT COUNT(*) FROM workflow_instances "
-          + "WHERE organization_id = :orgId AND current_status = :status";
-
-  private static final String FILED_THIS_MONTH_SQL =
-      "SELECT COUNT(*) FROM workflow_instances "
-          + "WHERE organization_id = :orgId AND current_status = 'FILED' "
-          + "  AND updated_at >= :monthStart";
+  private static final String STATS_AGGREGATE_SQL =
+      "SELECT "
+          + "COUNT(*) FILTER (WHERE current_status NOT IN ('FILED','REJECTED')) "
+          + "  AS in_progress, "
+          + "COUNT(*) FILTER (WHERE current_status = 'AWAITING_REVIEW') AS awaiting_review, "
+          + "COUNT(*) FILTER (WHERE current_status = 'FLAGGED') AS flagged, "
+          + "COUNT(*) FILTER (WHERE current_status = 'FILED' AND updated_at >= :monthStart) "
+          + "  AS filed_this_month "
+          + "FROM workflow_instances "
+          + "WHERE organization_id = :orgId";
 
   private final NamedParameterJdbcOperations jdbc;
   private final ObjectMapper jsonMapper;
@@ -107,28 +104,20 @@ class JdbcDashboardRepository implements DashboardRepository {
 
   @Override
   public DashboardStats stats(String orgId) {
-    long inProgress = countOne(IN_PROGRESS_COUNT_SQL, new MapSqlParameterSource("orgId", orgId));
-    long awaitingReview =
-        countOne(
-            STATUS_COUNT_SQL,
-            new MapSqlParameterSource("orgId", orgId)
-                .addValue("status", WorkflowStatus.AWAITING_REVIEW.name()));
-    long flagged =
-        countOne(
-            STATUS_COUNT_SQL,
-            new MapSqlParameterSource("orgId", orgId)
-                .addValue("status", WorkflowStatus.FLAGGED.name()));
-    long filedThisMonth =
-        countOne(
-            FILED_THIS_MONTH_SQL,
-            new MapSqlParameterSource("orgId", orgId)
-                .addValue("monthStart", Timestamp.from(currentMonthStart())));
-    return new DashboardStats(inProgress, awaitingReview, flagged, filedThisMonth);
+    MapSqlParameterSource params =
+        new MapSqlParameterSource()
+            .addValue("orgId", orgId)
+            .addValue("monthStart", Timestamp.from(currentMonthStart()));
+    return jdbc.queryForObject(STATS_AGGREGATE_SQL, params, statsRowMapper());
   }
 
-  private long countOne(String sql, MapSqlParameterSource params) {
-    Long value = jdbc.queryForObject(sql, params, Long.class);
-    return value == null ? 0L : value;
+  private static RowMapper<DashboardStats> statsRowMapper() {
+    return (ResultSet rs, int rowNum) ->
+        new DashboardStats(
+            rs.getLong("in_progress"),
+            rs.getLong("awaiting_review"),
+            rs.getLong("flagged"),
+            rs.getLong("filed_this_month"));
   }
 
   private Instant currentMonthStart() {
