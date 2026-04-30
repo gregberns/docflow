@@ -280,11 +280,9 @@ class DashboardControllerTest {
         .andExpect(jsonPath("$.nextCursor.id").value(next.id().toString()));
 
     @SuppressWarnings("unchecked")
-    ArgumentCaptor<Optional<DocumentCursor>> cursorCaptor =
-        ArgumentCaptor.forClass(Optional.class);
+    ArgumentCaptor<Optional<DocumentCursor>> cursorCaptor = ArgumentCaptor.forClass(Optional.class);
     verify(dashboardRepository)
-        .listDocumentsPage(
-            eq(KNOWN_ORG), any(), any(), any(), cursorCaptor.capture(), anyInt());
+        .listDocumentsPage(eq(KNOWN_ORG), any(), any(), any(), cursorCaptor.capture(), anyInt());
     assertThat(cursorCaptor.getValue()).isPresent();
     assertThat(cursorCaptor.getValue().get().updatedAt()).isEqualTo(cursorTs);
     assertThat(cursorCaptor.getValue().get().id()).isEqualTo(cursorId);

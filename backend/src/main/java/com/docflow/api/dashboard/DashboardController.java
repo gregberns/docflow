@@ -93,16 +93,14 @@ public class DashboardController {
       throw new ValidationException(
           "Invalid cursor",
           List.of(
-              new FieldError(
-                  "cursor", "cursorUpdatedAt and cursorId must be supplied together")));
+              new FieldError("cursor", "cursorUpdatedAt and cursorId must be supplied together")));
     }
     Instant updatedAt;
     try {
       updatedAt = Instant.parse(cursorUpdatedAt);
     } catch (DateTimeParseException ex) {
       throw new ValidationException(
-          "Invalid cursor",
-          List.of(new FieldError("cursorUpdatedAt", "must be ISO-8601 instant")));
+          "Invalid cursor", List.of(new FieldError("cursorUpdatedAt", "must be ISO-8601 instant")));
     }
     UUID id;
     try {

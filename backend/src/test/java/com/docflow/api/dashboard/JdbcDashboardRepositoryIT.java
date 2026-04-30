@@ -264,7 +264,8 @@ class JdbcDashboardRepositoryIT {
     JdbcTemplate jdbc = new JdbcTemplate(dataSource);
     UUID stored = insertStoredDocument(jdbc, ORG_A, "single.pdf");
     UUID doc = insertDocument(jdbc, stored, ORG_A, FIXED_NOW);
-    insertWorkflowInstance(jdbc, doc, ORG_A, STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, FIXED_NOW);
+    insertWorkflowInstance(
+        jdbc, doc, ORG_A, STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, FIXED_NOW);
 
     DocumentsPage page =
         repository.listDocumentsPage(

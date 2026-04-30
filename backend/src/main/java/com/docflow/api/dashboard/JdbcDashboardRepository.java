@@ -109,8 +109,7 @@ class JdbcDashboardRepository implements DashboardRepository {
             .addValue("stage", stageDisplayNameFilter.orElse(null))
             .addValue("docType", docTypeFilter.orElse(null))
             .addValue(
-                "cursorUpdatedAt",
-                cursor.map(c -> Timestamp.from(c.updatedAt())).orElse(null))
+                "cursorUpdatedAt", cursor.map(c -> Timestamp.from(c.updatedAt())).orElse(null))
             .addValue("cursorId", cursor.map(DocumentCursor::id).orElse(null))
             .addValue("limit", limit);
     List<DocumentRowWithCursor> rows =
@@ -119,8 +118,7 @@ class JdbcDashboardRepository implements DashboardRepository {
     for (DocumentRowWithCursor row : rows) {
       items.add(row.view());
     }
-    DocumentCursor nextCursor =
-        rows.size() < limit ? null : rows.get(rows.size() - 1).cursor();
+    DocumentCursor nextCursor = rows.size() < limit ? null : rows.get(rows.size() - 1).cursor();
     return new DocumentsPage(items, nextCursor);
   }
 
@@ -190,8 +188,7 @@ class JdbcDashboardRepository implements DashboardRepository {
               fields,
               parseReextractionStatus(rs));
       DocumentCursor cursor =
-          new DocumentCursor(
-              updatedAt == null ? null : updatedAt.toInstant(), workflowInstanceId);
+          new DocumentCursor(updatedAt == null ? null : updatedAt.toInstant(), workflowInstanceId);
       return new DocumentRowWithCursor(view, cursor);
     };
   }
