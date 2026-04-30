@@ -5,6 +5,7 @@ import com.docflow.document.Document;
 import com.docflow.document.ReextractionStatus;
 import com.docflow.ingestion.StoredDocument;
 import com.docflow.ingestion.StoredDocumentId;
+import com.docflow.ingestion.StoredDocumentWriter;
 import com.docflow.ingestion.storage.StoredDocumentStorage;
 import com.docflow.workflow.WorkflowInstance;
 import com.docflow.workflow.WorkflowInstanceWriter;
@@ -60,6 +61,7 @@ public class SeedDataLoader {
   private static final String FILE_SUFFIX = ".bin";
 
   private final StoredDocumentStorage storage;
+  private final StoredDocumentWriter storedDocumentWriter;
   private final WorkflowInstanceWriter workflowInstanceWriter;
   private final JdbcTemplate jdbc;
   private final TransactionTemplate transactionTemplate;
@@ -68,11 +70,13 @@ public class SeedDataLoader {
 
   public SeedDataLoader(
       StoredDocumentStorage storage,
+      StoredDocumentWriter storedDocumentWriter,
       WorkflowInstanceWriter workflowInstanceWriter,
       JdbcTemplate jdbc,
       PlatformTransactionManager transactionManager,
       AppConfig appConfig) {
     this.storage = storage;
+    this.storedDocumentWriter = storedDocumentWriter;
     this.workflowInstanceWriter = workflowInstanceWriter;
     this.jdbc = jdbc;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -159,18 +163,13 @@ public class SeedDataLoader {
 
     storage.save(storedId, bytes);
 
+    StoredDocument storedDocument =
+        new StoredDocument(
+            storedId, entry.organizationId(), now, entry.path(), MIME_PDF, storagePath);
+
     transactionTemplate.executeWithoutResult(
         status -> {
-          jdbc.update(
-              "INSERT INTO stored_documents "
-                  + "(id, organization_id, uploaded_at, source_filename, mime_type, storage_path) "
-                  + "VALUES (?, ?, ?, ?, ?, ?)",
-              storedId.value(),
-              entry.organizationId(),
-              Timestamp.from(now),
-              entry.path(),
-              MIME_PDF,
-              storagePath);
+          storedDocumentWriter.insert(storedDocument);
 
           jdbc.update(
               "INSERT INTO documents "

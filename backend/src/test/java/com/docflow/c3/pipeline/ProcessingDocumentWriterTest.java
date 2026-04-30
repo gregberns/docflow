@@ -52,6 +52,37 @@ class ProcessingDocumentWriterTest {
   @Autowired private DataSource dataSource;
 
   @Test
+  void insertPersistsRowVisibleToReader() {
+    JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+    insertOrganization(jdbc, "riverside-bistro");
+
+    StoredDocumentId storedId = StoredDocumentId.generate();
+    Instant uploadedAt = Instant.now();
+    jdbc.update(
+        "INSERT INTO stored_documents "
+            + "(id, organization_id, uploaded_at, source_filename, mime_type, storage_path) "
+            + "VALUES (?, ?, ?, ?, ?, ?)",
+        storedId.value(),
+        "riverside-bistro",
+        Timestamp.from(uploadedAt),
+        "doc.pdf",
+        "application/pdf",
+        "./storage/" + storedId.value() + ".bin");
+
+    ProcessingDocumentId procId = ProcessingDocumentId.generate();
+    Instant createdAt = Instant.now();
+    writer.insert(procId, storedId, "riverside-bistro", "TEXT_EXTRACTING", createdAt);
+
+    ProcessingDocument loaded = reader.get(procId).orElseThrow();
+    assertThat(loaded.id()).isEqualTo(procId);
+    assertThat(loaded.storedDocumentId()).isEqualTo(storedId);
+    assertThat(loaded.organizationId()).isEqualTo("riverside-bistro");
+    assertThat(loaded.currentStep()).isEqualTo("TEXT_EXTRACTING");
+    assertThat(loaded.rawText()).isNull();
+    assertThat(loaded.lastError()).isNull();
+  }
+
+  @Test
   void updateStepPersists() {
     Fixture f = seed("riverside-bistro");
 
@@ -160,8 +191,7 @@ class ProcessingDocumentWriterTest {
 
   @SpringBootApplication(
       scanBasePackages = {"com.docflow.c3.pipeline.internal", "com.docflow.ingestion.internal"})
-  @EntityScan(basePackages = {"com.docflow.c3.pipeline.internal", "com.docflow.ingestion.internal"})
-  @EnableJpaRepositories(
-      basePackages = {"com.docflow.c3.pipeline.internal", "com.docflow.ingestion.internal"})
+  @EntityScan(basePackages = "com.docflow.ingestion.internal")
+  @EnableJpaRepositories(basePackages = "com.docflow.ingestion.internal")
   static class JpaTestApp {}
 }

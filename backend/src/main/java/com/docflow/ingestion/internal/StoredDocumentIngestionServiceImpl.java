@@ -3,11 +3,14 @@ package com.docflow.ingestion.internal;
 import com.docflow.api.error.UnknownOrganizationException;
 import com.docflow.c3.events.StoredDocumentIngested;
 import com.docflow.c3.pipeline.ProcessingDocumentId;
+import com.docflow.c3.pipeline.ProcessingDocumentWriter;
 import com.docflow.config.AppConfig;
 import com.docflow.config.catalog.OrganizationCatalog;
 import com.docflow.ingestion.IngestionResult;
+import com.docflow.ingestion.StoredDocument;
 import com.docflow.ingestion.StoredDocumentId;
 import com.docflow.ingestion.StoredDocumentIngestionService;
+import com.docflow.ingestion.StoredDocumentWriter;
 import com.docflow.ingestion.UnsupportedMediaTypeException;
 import com.docflow.ingestion.storage.StoredDocumentStorage;
 import com.docflow.platform.DocumentEventBus;
@@ -17,13 +20,11 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Set;
-import java.util.UUID;
 import org.apache.tika.detect.Detector;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.mime.MediaType;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -46,7 +47,8 @@ class StoredDocumentIngestionServiceImpl implements StoredDocumentIngestionServi
   private final OrganizationCatalog organizationCatalog;
   private final Detector detector;
   private final StoredDocumentStorage storage;
-  private final JdbcTemplate jdbcTemplate;
+  private final StoredDocumentWriter storedDocumentWriter;
+  private final ProcessingDocumentWriter processingDocumentWriter;
   private final DocumentEventBus eventBus;
   private final TransactionTemplate transactionTemplate;
   private final Path storageRoot;
@@ -55,14 +57,16 @@ class StoredDocumentIngestionServiceImpl implements StoredDocumentIngestionServi
       OrganizationCatalog organizationCatalog,
       Detector detector,
       StoredDocumentStorage storage,
-      JdbcTemplate jdbcTemplate,
+      StoredDocumentWriter storedDocumentWriter,
+      ProcessingDocumentWriter processingDocumentWriter,
       DocumentEventBus eventBus,
       PlatformTransactionManager transactionManager,
       AppConfig appConfig) {
     this.organizationCatalog = organizationCatalog;
     this.detector = detector;
     this.storage = storage;
-    this.jdbcTemplate = jdbcTemplate;
+    this.storedDocumentWriter = storedDocumentWriter;
+    this.processingDocumentWriter = processingDocumentWriter;
     this.eventBus = eventBus;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.storageRoot = Path.of(appConfig.storage().storageRoot());
@@ -82,37 +86,25 @@ class StoredDocumentIngestionServiceImpl implements StoredDocumentIngestionServi
     String mimeType = sniff(bytes, sourceFilename, claimedContentType);
 
     StoredDocumentId storedId = StoredDocumentId.generate();
-    UUID processingId = ProcessingDocumentId.generate().value();
+    ProcessingDocumentId processingId = ProcessingDocumentId.generate();
     Instant uploadedAt = Instant.now();
     String storagePath = storageRoot.resolve(storedId.value() + FILE_SUFFIX).toString();
 
     storage.save(storedId, bytes);
 
     StoredDocumentIngested event =
-        new StoredDocumentIngested(storedId.value(), organizationId, processingId, uploadedAt);
+        new StoredDocumentIngested(
+            storedId.value(), organizationId, processingId.value(), uploadedAt);
+
+    StoredDocument storedDocument =
+        new StoredDocument(
+            storedId, organizationId, uploadedAt, sourceFilename, mimeType, storagePath);
 
     transactionTemplate.executeWithoutResult(
         status -> {
-          jdbcTemplate.update(
-              "INSERT INTO stored_documents "
-                  + "(id, organization_id, uploaded_at, source_filename, mime_type, storage_path) "
-                  + "VALUES (?, ?, ?, ?, ?, ?)",
-              storedId.value(),
-              organizationId,
-              java.sql.Timestamp.from(uploadedAt),
-              sourceFilename,
-              mimeType,
-              storagePath);
-
-          jdbcTemplate.update(
-              "INSERT INTO processing_documents "
-                  + "(id, stored_document_id, organization_id, current_step, raw_text, "
-                  + "last_error, created_at) VALUES (?, ?, ?, ?, NULL, NULL, ?)",
-              processingId,
-              storedId.value(),
-              organizationId,
-              INITIAL_STEP,
-              java.sql.Timestamp.from(uploadedAt));
+          storedDocumentWriter.insert(storedDocument);
+          processingDocumentWriter.insert(
+              processingId, storedId, organizationId, INITIAL_STEP, uploadedAt);
 
           TransactionSynchronizationManager.registerSynchronization(
               new TransactionSynchronization() {
@@ -123,7 +115,7 @@ class StoredDocumentIngestionServiceImpl implements StoredDocumentIngestionServi
               });
         });
 
-    return new IngestionResult(storedId.value(), processingId);
+    return new IngestionResult(storedId.value(), processingId.value());
   }
 
   private String sniff(byte[] bytes, String claimedFilename, String claimedContentType) {

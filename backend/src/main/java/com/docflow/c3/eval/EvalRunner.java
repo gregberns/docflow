@@ -5,14 +5,18 @@ import com.docflow.c3.eval.EvalScorer.AggregateScore;
 import com.docflow.c3.eval.EvalScorer.SampleScore;
 import com.docflow.c3.llm.LlmClassifier;
 import com.docflow.c3.llm.LlmExtractor;
+import com.docflow.c3.pipeline.ProcessingDocumentId;
+import com.docflow.c3.pipeline.ProcessingDocumentWriter;
 import com.docflow.config.AppConfig;
+import com.docflow.ingestion.StoredDocument;
+import com.docflow.ingestion.StoredDocumentId;
+import com.docflow.ingestion.StoredDocumentWriter;
 import com.github.f4b6a3.uuid.UuidCreator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -55,7 +59,7 @@ public final class EvalRunner {
 
   private final LlmClassifier classifier;
   private final LlmExtractor extractor;
-  private final JdbcTemplate jdbc;
+  private final Persistence persistence;
   private final EvalScorer scorer;
   private final EvalReportWriter reportWriter;
   private final Path samplesRoot;
@@ -65,7 +69,7 @@ public final class EvalRunner {
   public EvalRunner(
       LlmClassifier classifier,
       LlmExtractor extractor,
-      JdbcTemplate jdbc,
+      Persistence persistence,
       EvalScorer scorer,
       EvalReportWriter reportWriter,
       Path samplesRoot,
@@ -73,13 +77,18 @@ public final class EvalRunner {
       Clock clock) {
     this.classifier = classifier;
     this.extractor = extractor;
-    this.jdbc = jdbc;
+    this.persistence = persistence;
     this.scorer = scorer;
     this.reportWriter = reportWriter;
     this.samplesRoot = samplesRoot;
     this.reportPath = reportPath;
     this.clock = clock;
   }
+
+  public record Persistence(
+      JdbcTemplate jdbc,
+      StoredDocumentWriter storedDocumentWriter,
+      ProcessingDocumentWriter processingDocumentWriter) {}
 
   public static void main(String[] args) {
     SpringApplication app = new SpringApplication(Application.class);
@@ -90,11 +99,16 @@ public final class EvalRunner {
       AppConfig appConfig = ctx.getBean(AppConfig.class);
       Path samplesRoot = resolveSamplesRoot();
       Path reportPath = Path.of(appConfig.llm().eval().reportPath()).toAbsolutePath();
+      Persistence persistence =
+          new Persistence(
+              ctx.getBean(JdbcTemplate.class),
+              ctx.getBean(StoredDocumentWriter.class),
+              ctx.getBean(ProcessingDocumentWriter.class));
       EvalRunner runner =
           new EvalRunner(
               ctx.getBean(LlmClassifier.class),
               ctx.getBean(LlmExtractor.class),
-              ctx.getBean(JdbcTemplate.class),
+              persistence,
               new EvalScorer(),
               new EvalReportWriter(),
               samplesRoot,
@@ -146,8 +160,10 @@ public final class EvalRunner {
     byte[] pdfBytes = readBytes(samplePath);
     String rawText = extractText(pdfBytes, entry.path());
 
-    UUID storedDocumentId = ensureStoredDocument(entry);
-    UUID processingDocumentId = insertProcessingDocument(storedDocumentId, entry);
+    StoredDocumentId storedId = ensureStoredDocument(entry);
+    ProcessingDocumentId processingId = insertProcessingDocument(storedId, entry);
+    UUID storedDocumentId = storedId.value();
+    UUID processingDocumentId = processingId.value();
 
     String predictedDocType = null;
     Map<String, Object> predictedFields = Map.of();
@@ -243,40 +259,44 @@ public final class EvalRunner {
     }
   }
 
-  private UUID ensureStoredDocument(EvalManifestEntry entry) {
+  private StoredDocumentId ensureStoredDocument(EvalManifestEntry entry) {
     List<UUID> existing =
-        jdbc.queryForList(
-            "SELECT id FROM stored_documents WHERE organization_id = ? AND source_filename = ?",
-            UUID.class,
-            entry.organizationId(),
-            entry.path());
+        persistence
+            .jdbc()
+            .queryForList(
+                "SELECT id FROM stored_documents "
+                    + "WHERE organization_id = ? AND source_filename = ?",
+                UUID.class,
+                entry.organizationId(),
+                entry.path());
     if (!existing.isEmpty()) {
-      return existing.get(0);
+      return StoredDocumentId.of(existing.get(0));
     }
-    UUID id = UuidCreator.getTimeOrderedEpoch();
-    jdbc.update(
-        "INSERT INTO stored_documents "
-            + "(id, organization_id, uploaded_at, source_filename, mime_type, storage_path) "
-            + "VALUES (?, ?, ?, ?, ?, ?)",
-        id,
-        entry.organizationId(),
-        Timestamp.from(Instant.now(clock)),
-        entry.path(),
-        MIME_PDF,
-        EVAL_STORAGE_PATH);
+    StoredDocumentId id = StoredDocumentId.of(UuidCreator.getTimeOrderedEpoch());
+    persistence
+        .storedDocumentWriter()
+        .insert(
+            new StoredDocument(
+                id,
+                entry.organizationId(),
+                Instant.now(clock),
+                entry.path(),
+                MIME_PDF,
+                EVAL_STORAGE_PATH));
     return id;
   }
 
-  private UUID insertProcessingDocument(UUID storedDocumentId, EvalManifestEntry entry) {
-    UUID id = UuidCreator.getTimeOrderedEpoch();
-    jdbc.update(
-        "INSERT INTO processing_documents "
-            + "(id, stored_document_id, organization_id, current_step) "
-            + "VALUES (?, ?, ?, ?)",
-        id,
-        storedDocumentId,
-        entry.organizationId(),
-        CURRENT_STEP_EXTRACTING);
+  private ProcessingDocumentId insertProcessingDocument(
+      StoredDocumentId storedDocumentId, EvalManifestEntry entry) {
+    ProcessingDocumentId id = ProcessingDocumentId.of(UuidCreator.getTimeOrderedEpoch());
+    persistence
+        .processingDocumentWriter()
+        .insert(
+            id,
+            storedDocumentId,
+            entry.organizationId(),
+            CURRENT_STEP_EXTRACTING,
+            Instant.now(clock));
     return id;
   }
 

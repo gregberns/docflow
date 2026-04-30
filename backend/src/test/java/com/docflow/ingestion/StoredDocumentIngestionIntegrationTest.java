@@ -196,7 +196,12 @@ class StoredDocumentIngestionIntegrationTest {
   }
 
   @SpringBootApplication(
-      scanBasePackages = {"com.docflow.ingestion", "com.docflow.config", "com.docflow.platform"})
+      scanBasePackages = {
+        "com.docflow.ingestion",
+        "com.docflow.config",
+        "com.docflow.platform",
+        "com.docflow.c3.pipeline.internal"
+      })
   @EntityScan({"com.docflow.ingestion.internal", "com.docflow.config.persistence"})
   @EnableJpaRepositories({"com.docflow.ingestion.internal", "com.docflow.config.persistence"})
   @ConfigurationPropertiesScan("com.docflow.config")

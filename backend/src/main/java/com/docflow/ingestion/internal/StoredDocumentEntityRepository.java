@@ -8,5 +8,7 @@ interface StoredDocumentEntityRepository extends Repository<StoredDocumentEntity
 
   StoredDocumentEntity save(StoredDocumentEntity entity);
 
+  StoredDocumentEntity saveAndFlush(StoredDocumentEntity entity);
+
   Optional<StoredDocumentEntity> findById(UUID id);
 }

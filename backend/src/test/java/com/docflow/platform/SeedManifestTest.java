@@ -175,7 +175,8 @@ class SeedManifestTest {
         "com.docflow.platform",
         "com.docflow.ingestion",
         "com.docflow.workflow",
-        "com.docflow.document"
+        "com.docflow.document",
+        "com.docflow.c3.pipeline.internal"
       })
   @EntityScan({"com.docflow.config.persistence", "com.docflow.ingestion.internal"})
   @EnableJpaRepositories({"com.docflow.config.persistence", "com.docflow.ingestion.internal"})
