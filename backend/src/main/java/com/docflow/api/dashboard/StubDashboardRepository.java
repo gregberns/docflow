@@ -1,7 +1,8 @@
 package com.docflow.api.dashboard;
 
 import com.docflow.api.dto.DashboardStats;
-import com.docflow.api.dto.DocumentView;
+import com.docflow.api.dto.DocumentCursor;
+import com.docflow.api.dto.DocumentsPage;
 import com.docflow.api.dto.ProcessingItem;
 import com.docflow.workflow.WorkflowStatus;
 import java.util.List;
@@ -22,12 +23,14 @@ class StubDashboardRepository implements DashboardRepository {
   }
 
   @Override
-  public List<DocumentView> listDocuments(
+  public DocumentsPage listDocumentsPage(
       String orgId,
       Optional<WorkflowStatus> statusFilter,
       Optional<String> stageDisplayNameFilter,
-      Optional<String> docTypeFilter) {
-    return List.of();
+      Optional<String> docTypeFilter,
+      Optional<DocumentCursor> cursor,
+      int pageSize) {
+    return new DocumentsPage(List.of(), null);
   }
 
   @Override

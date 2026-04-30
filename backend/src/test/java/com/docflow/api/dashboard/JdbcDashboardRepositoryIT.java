@@ -3,7 +3,9 @@ package com.docflow.api.dashboard;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.docflow.api.dto.DashboardStats;
+import com.docflow.api.dto.DocumentCursor;
 import com.docflow.api.dto.DocumentView;
+import com.docflow.api.dto.DocumentsPage;
 import com.docflow.api.dto.ProcessingItem;
 import com.docflow.document.ReextractionStatus;
 import com.docflow.workflow.WorkflowStatus;
@@ -184,6 +186,97 @@ class JdbcDashboardRepositoryIT {
         repository.listDocuments(ORG_A, Optional.empty(), Optional.empty(), Optional.empty());
 
     assertThat(docs).extracting(DocumentView::documentId).containsExactly(doc2, doc1);
+  }
+
+  @Test
+  void listDocumentsPage_cursorIsStableAcrossUpdatedAtTies() {
+    JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+    int rowCount = 10;
+    Instant tieInstant = FIXED_NOW.minusSeconds(60);
+    for (int i = 0; i < rowCount; i++) {
+      UUID stored = insertStoredDocument(jdbc, ORG_A, "tie-" + i + ".pdf");
+      UUID doc = insertDocument(jdbc, stored, ORG_A, tieInstant);
+      insertWorkflowInstance(
+          jdbc, doc, ORG_A, STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, tieInstant);
+    }
+
+    int pageSize = 4;
+    DocumentsPage page1 =
+        repository.listDocumentsPage(
+            ORG_A,
+            Optional.empty(),
+            Optional.empty(),
+            Optional.empty(),
+            Optional.empty(),
+            pageSize);
+    assertThat(page1.items()).hasSize(pageSize);
+    assertThat(page1.nextCursor()).isNotNull();
+
+    DocumentsPage page2 =
+        repository.listDocumentsPage(
+            ORG_A,
+            Optional.empty(),
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(page1.nextCursor()),
+            pageSize);
+    assertThat(page2.items()).hasSize(pageSize);
+    assertThat(page2.nextCursor()).isNotNull();
+
+    DocumentsPage page2Repeat =
+        repository.listDocumentsPage(
+            ORG_A,
+            Optional.empty(),
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(page1.nextCursor()),
+            pageSize);
+    assertThat(page2Repeat.items().stream().map(DocumentView::documentId).toList())
+        .as("page-2 must be deterministic for the same cursor")
+        .isEqualTo(page2.items().stream().map(DocumentView::documentId).toList());
+
+    DocumentsPage page3 =
+        repository.listDocumentsPage(
+            ORG_A,
+            Optional.empty(),
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(page2.nextCursor()),
+            pageSize);
+    assertThat(page3.items()).hasSize(rowCount - 2 * pageSize);
+    assertThat(page3.nextCursor()).as("last page must signal end with null cursor").isNull();
+
+    List<UUID> page1Ids = page1.items().stream().map(DocumentView::documentId).toList();
+    List<UUID> page2Ids = page2.items().stream().map(DocumentView::documentId).toList();
+    List<UUID> page3Ids = page3.items().stream().map(DocumentView::documentId).toList();
+    assertThat(page1Ids).doesNotContainAnyElementsOf(page2Ids);
+    assertThat(page2Ids).doesNotContainAnyElementsOf(page3Ids);
+    assertThat(page1Ids).doesNotContainAnyElementsOf(page3Ids);
+
+    int totalCovered = page1Ids.size() + page2Ids.size() + page3Ids.size();
+    assertThat(totalCovered)
+        .as("all rows must be reachable across pages with no gaps")
+        .isEqualTo(rowCount);
+  }
+
+  @Test
+  void listDocumentsPage_emptyCursorOnPartialPage() {
+    JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+    UUID stored = insertStoredDocument(jdbc, ORG_A, "single.pdf");
+    UUID doc = insertDocument(jdbc, stored, ORG_A, FIXED_NOW);
+    insertWorkflowInstance(jdbc, doc, ORG_A, STAGE_REVIEW, WorkflowStatus.AWAITING_REVIEW, FIXED_NOW);
+
+    DocumentsPage page =
+        repository.listDocumentsPage(
+            ORG_A,
+            Optional.empty(),
+            Optional.empty(),
+            Optional.empty(),
+            Optional.<DocumentCursor>empty(),
+            10);
+
+    assertThat(page.items()).hasSize(1);
+    assertThat(page.nextCursor()).isNull();
   }
 
   @Test

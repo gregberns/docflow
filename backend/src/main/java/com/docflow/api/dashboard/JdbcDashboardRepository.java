@@ -1,7 +1,9 @@
 package com.docflow.api.dashboard;
 
 import com.docflow.api.dto.DashboardStats;
+import com.docflow.api.dto.DocumentCursor;
 import com.docflow.api.dto.DocumentView;
+import com.docflow.api.dto.DocumentsPage;
 import com.docflow.api.dto.ProcessingItem;
 import com.docflow.document.ReextractionStatus;
 import com.docflow.workflow.WorkflowStatus;
@@ -12,6 +14,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,7 +50,7 @@ class JdbcDashboardRepository implements DashboardRepository {
           + "wi.current_stage_id, s.display_name AS stage_display_name, wi.current_status, "
           + "wi.workflow_origin_stage, wi.flag_comment, "
           + "d.detected_document_type, d.extracted_fields, d.reextraction_status, "
-          + "wi.updated_at "
+          + "wi.id AS workflow_instance_id, wi.updated_at "
           + "FROM documents d "
           + "JOIN stored_documents sd ON sd.id = d.stored_document_id "
           + "JOIN workflow_instances wi ON wi.document_id = d.id "
@@ -59,8 +62,10 @@ class JdbcDashboardRepository implements DashboardRepository {
           + "  AND (CAST(:status AS VARCHAR) IS NULL OR wi.current_status = :status) "
           + "  AND (CAST(:stage AS VARCHAR) IS NULL OR s.display_name = :stage) "
           + "  AND (CAST(:docType AS VARCHAR) IS NULL OR d.detected_document_type = :docType) "
-          + "ORDER BY wi.updated_at DESC "
-          + "LIMIT 200";
+          + "  AND (CAST(:cursorUpdatedAt AS TIMESTAMPTZ) IS NULL "
+          + "       OR (wi.updated_at, wi.id) < (:cursorUpdatedAt, :cursorId)) "
+          + "ORDER BY wi.updated_at DESC, wi.id DESC "
+          + "LIMIT :limit";
 
   private static final String STATS_AGGREGATE_SQL =
       "SELECT "
@@ -89,18 +94,34 @@ class JdbcDashboardRepository implements DashboardRepository {
   }
 
   @Override
-  public List<DocumentView> listDocuments(
+  public DocumentsPage listDocumentsPage(
       String orgId,
       Optional<WorkflowStatus> statusFilter,
       Optional<String> stageDisplayNameFilter,
-      Optional<String> docTypeFilter) {
+      Optional<String> docTypeFilter,
+      Optional<DocumentCursor> cursor,
+      int pageSize) {
+    int limit = pageSize <= 0 ? DEFAULT_DOCUMENTS_PAGE_SIZE : pageSize;
     MapSqlParameterSource params =
         new MapSqlParameterSource()
             .addValue("orgId", orgId)
             .addValue("status", statusFilter.map(Enum::name).orElse(null))
             .addValue("stage", stageDisplayNameFilter.orElse(null))
-            .addValue("docType", docTypeFilter.orElse(null));
-    return jdbc.query(LIST_DOCUMENTS_SQL, params, documentRowMapper());
+            .addValue("docType", docTypeFilter.orElse(null))
+            .addValue(
+                "cursorUpdatedAt",
+                cursor.map(c -> Timestamp.from(c.updatedAt())).orElse(null))
+            .addValue("cursorId", cursor.map(DocumentCursor::id).orElse(null))
+            .addValue("limit", limit);
+    List<DocumentRowWithCursor> rows =
+        jdbc.query(LIST_DOCUMENTS_SQL, params, documentRowWithCursorMapper());
+    List<DocumentView> items = new ArrayList<>(rows.size());
+    for (DocumentRowWithCursor row : rows) {
+      items.add(row.view());
+    }
+    DocumentCursor nextCursor =
+        rows.size() < limit ? null : rows.get(rows.size() - 1).cursor();
+    return new DocumentsPage(items, nextCursor);
   }
 
   @Override
@@ -140,7 +161,7 @@ class JdbcDashboardRepository implements DashboardRepository {
     };
   }
 
-  private RowMapper<DocumentView> documentRowMapper() {
+  private RowMapper<DocumentRowWithCursor> documentRowWithCursorMapper() {
     return (ResultSet rs, int rowNum) -> {
       Object extractedFieldsRaw = rs.getObject("extracted_fields");
       Map<String, Object> fields =
@@ -149,22 +170,29 @@ class JdbcDashboardRepository implements DashboardRepository {
               : jsonMapper.readValue(extractedFieldsRaw.toString(), FIELD_MAP_TYPE);
       Timestamp uploadedAt = rs.getTimestamp("uploaded_at");
       Timestamp processedAt = rs.getTimestamp("processed_at");
-      return new DocumentView(
-          (UUID) rs.getObject("document_id"),
-          rs.getString("organization_id"),
-          rs.getString("source_filename"),
-          rs.getString("mime_type"),
-          uploadedAt == null ? null : uploadedAt.toInstant(),
-          processedAt == null ? null : processedAt.toInstant(),
-          null,
-          rs.getString("current_stage_id"),
-          rs.getString("stage_display_name"),
-          parseStatus(rs),
-          rs.getString("workflow_origin_stage"),
-          rs.getString("flag_comment"),
-          rs.getString("detected_document_type"),
-          fields,
-          parseReextractionStatus(rs));
+      Timestamp updatedAt = rs.getTimestamp("updated_at");
+      UUID workflowInstanceId = (UUID) rs.getObject("workflow_instance_id");
+      DocumentView view =
+          new DocumentView(
+              (UUID) rs.getObject("document_id"),
+              rs.getString("organization_id"),
+              rs.getString("source_filename"),
+              rs.getString("mime_type"),
+              uploadedAt == null ? null : uploadedAt.toInstant(),
+              processedAt == null ? null : processedAt.toInstant(),
+              null,
+              rs.getString("current_stage_id"),
+              rs.getString("stage_display_name"),
+              parseStatus(rs),
+              rs.getString("workflow_origin_stage"),
+              rs.getString("flag_comment"),
+              rs.getString("detected_document_type"),
+              fields,
+              parseReextractionStatus(rs));
+      DocumentCursor cursor =
+          new DocumentCursor(
+              updatedAt == null ? null : updatedAt.toInstant(), workflowInstanceId);
+      return new DocumentRowWithCursor(view, cursor);
     };
   }
 
@@ -177,4 +205,6 @@ class JdbcDashboardRepository implements DashboardRepository {
     String value = rs.getString("reextraction_status");
     return value == null ? ReextractionStatus.NONE : ReextractionStatus.valueOf(value);
   }
+
+  private record DocumentRowWithCursor(DocumentView view, DocumentCursor cursor) {}
 }

@@ -62,10 +62,16 @@ export interface DocumentView {
   reextractionStatus: ReextractionStatus;
 }
 
+export interface DocumentCursor {
+  updatedAt: string;
+  id: string;
+}
+
 export interface DashboardResponse {
   processing: ProcessingItem[];
   documents: DocumentView[];
   stats: DashboardStats;
+  nextCursor: DocumentCursor | null;
 }
 
 export interface UploadAccepted {

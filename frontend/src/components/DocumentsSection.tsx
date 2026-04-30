@@ -5,6 +5,10 @@ import { docDisplayId, docSubtitle } from "../util/formatters";
 
 interface DocumentsSectionProps {
   documents: DocumentView[];
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
+  loadMoreError?: string | null;
 }
 
 type StageColorKey =
@@ -68,7 +72,13 @@ function TypeBadge({ value }: { value: string | null }) {
   );
 }
 
-export function DocumentsSection({ documents }: DocumentsSectionProps) {
+export function DocumentsSection({
+  documents,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
+  loadMoreError = null,
+}: DocumentsSectionProps) {
   const navigate = useNavigate();
   return (
     <section
@@ -159,11 +169,31 @@ export function DocumentsSection({ documents }: DocumentsSectionProps) {
               })}
             </tbody>
           </table>
-          <div className="flex items-center justify-between border-t border-neutral-200 bg-table-head px-4 py-3">
+          <div className="flex items-center justify-between gap-3 border-t border-neutral-200 bg-table-head px-4 py-3">
             <span className="text-12 text-neutral-500">
-              Showing {documents.length} of {documents.length} documents
+              Showing {documents.length} document{documents.length === 1 ? "" : "s"}
             </span>
+            {hasMore && onLoadMore && (
+              <button
+                type="button"
+                data-testid="documents-load-more"
+                onClick={onLoadMore}
+                disabled={loadingMore}
+                className="rounded-md border border-neutral-200 bg-card px-3 py-1.5 text-12 font-semibold text-brand-navy transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loadingMore ? "Loading…" : "Load more"}
+              </button>
+            )}
           </div>
+          {loadMoreError && (
+            <p
+              data-testid="documents-load-more-error"
+              role="alert"
+              className="border-t border-danger-soft bg-stage-rejected-bg px-4 py-2 text-12 text-danger"
+            >
+              {loadMoreError}
+            </p>
+          )}
         </>
       )}
     </section>

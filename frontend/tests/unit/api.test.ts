@@ -50,6 +50,21 @@ describe("API client", () => {
     expect(observedUrl).toContain("stage=Review");
   });
 
+  it("getDashboard appends cursor params when provided", async () => {
+    let observedUrl = "";
+    server.use(
+      http.get("/api/organizations/:orgId/documents", ({ request }) => {
+        observedUrl = request.url;
+        return HttpResponse.json(fixtures.dashboard);
+      }),
+    );
+    await getDashboard("pinnacle-legal", {
+      cursor: { updatedAt: "2026-04-27T12:00:00Z", id: "11111111-1111-1111-1111-111111111111" },
+    });
+    expect(observedUrl).toContain("cursorUpdatedAt=2026-04-27");
+    expect(observedUrl).toContain("cursorId=11111111-1111-1111-1111-111111111111");
+  });
+
   it("getDocument returns the document fixture", async () => {
     const result = await getDocument(fixtures.document.documentId);
     expect(result.documentId).toBe(fixtures.document.documentId);

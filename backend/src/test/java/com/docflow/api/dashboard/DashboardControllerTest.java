@@ -2,6 +2,7 @@ package com.docflow.api.dashboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,7 +14,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
 import com.docflow.api.dto.DashboardStats;
+import com.docflow.api.dto.DocumentCursor;
 import com.docflow.api.dto.DocumentView;
+import com.docflow.api.dto.DocumentsPage;
 import com.docflow.api.dto.ProcessingItem;
 import com.docflow.api.error.GlobalExceptionHandler;
 import com.docflow.config.catalog.OrganizationCatalog;
@@ -51,7 +54,8 @@ class DashboardControllerTest {
     when(organizationCatalog.getOrganization("does-not-exist")).thenReturn(Optional.empty());
 
     when(dashboardRepository.listProcessing(any())).thenReturn(List.of());
-    when(dashboardRepository.listDocuments(any(), any(), any(), any())).thenReturn(List.of());
+    when(dashboardRepository.listDocumentsPage(any(), any(), any(), any(), any(), anyInt()))
+        .thenReturn(new DocumentsPage(List.of(), null));
     when(dashboardRepository.stats(any())).thenReturn(new DashboardStats(0L, 0L, 0L, 0L));
 
     mockMvc =
@@ -72,25 +76,27 @@ class DashboardControllerTest {
             List.of(
                 new ProcessingItem(
                     processingId, storedId, "invoice-001.pdf", "CLASSIFYING", null, now)));
-    when(dashboardRepository.listDocuments(eq(KNOWN_ORG), any(), any(), any()))
+    when(dashboardRepository.listDocumentsPage(eq(KNOWN_ORG), any(), any(), any(), any(), anyInt()))
         .thenReturn(
-            List.of(
-                new DocumentView(
-                    documentId,
-                    KNOWN_ORG,
-                    "invoice-001.pdf",
-                    "application/pdf",
-                    now,
-                    now,
-                    "raw text",
-                    "review",
-                    "Review",
-                    WorkflowStatus.AWAITING_REVIEW,
-                    null,
-                    null,
-                    "invoice",
-                    Map.of(),
-                    ReextractionStatus.NONE)));
+            new DocumentsPage(
+                List.of(
+                    new DocumentView(
+                        documentId,
+                        KNOWN_ORG,
+                        "invoice-001.pdf",
+                        "application/pdf",
+                        now,
+                        now,
+                        "raw text",
+                        "review",
+                        "Review",
+                        WorkflowStatus.AWAITING_REVIEW,
+                        null,
+                        null,
+                        "invoice",
+                        Map.of(),
+                        ReextractionStatus.NONE)),
+                null));
     when(dashboardRepository.stats(KNOWN_ORG)).thenReturn(new DashboardStats(3L, 5L, 1L, 12L));
 
     mockMvc
@@ -107,7 +113,8 @@ class DashboardControllerTest {
         .andExpect(jsonPath("$.stats.inProgress").value(3))
         .andExpect(jsonPath("$.stats.awaitingReview").value(5))
         .andExpect(jsonPath("$.stats.flagged").value(1))
-        .andExpect(jsonPath("$.stats.filedThisMonth").value(12));
+        .andExpect(jsonPath("$.stats.filedThisMonth").value(12))
+        .andExpect(jsonPath("$.nextCursor").doesNotExist());
   }
 
   @Test
@@ -120,7 +127,8 @@ class DashboardControllerTest {
         .andExpect(jsonPath("$.status").value(404));
 
     verify(dashboardRepository, never()).listProcessing(any());
-    verify(dashboardRepository, never()).listDocuments(any(), any(), any(), any());
+    verify(dashboardRepository, never())
+        .listDocumentsPage(any(), any(), any(), any(), any(), anyInt());
     verify(dashboardRepository, never()).stats(any());
   }
 
@@ -140,8 +148,13 @@ class DashboardControllerTest {
     ArgumentCaptor<Optional<String>> docTypeCaptor = ArgumentCaptor.forClass(Optional.class);
 
     verify(dashboardRepository)
-        .listDocuments(
-            eq(KNOWN_ORG), statusCaptor.capture(), stageCaptor.capture(), docTypeCaptor.capture());
+        .listDocumentsPage(
+            eq(KNOWN_ORG),
+            statusCaptor.capture(),
+            stageCaptor.capture(),
+            docTypeCaptor.capture(),
+            any(),
+            anyInt());
     assertThat(statusCaptor.getValue()).contains(WorkflowStatus.AWAITING_REVIEW);
     assertThat(stageCaptor.getValue()).isEmpty();
     assertThat(docTypeCaptor.getValue()).isEmpty();
@@ -160,7 +173,8 @@ class DashboardControllerTest {
         .andExpect(jsonPath("$.status").value(400))
         .andExpect(jsonPath("$.details[0].path").value("status"));
 
-    verify(dashboardRepository, never()).listDocuments(any(), any(), any(), any());
+    verify(dashboardRepository, never())
+        .listDocumentsPage(any(), any(), any(), any(), any(), anyInt());
   }
 
   @Test
@@ -177,8 +191,13 @@ class DashboardControllerTest {
     ArgumentCaptor<Optional<String>> docTypeCaptor = ArgumentCaptor.forClass(Optional.class);
 
     verify(dashboardRepository)
-        .listDocuments(
-            eq(KNOWN_ORG), statusCaptor.capture(), stageCaptor.capture(), docTypeCaptor.capture());
+        .listDocumentsPage(
+            eq(KNOWN_ORG),
+            statusCaptor.capture(),
+            stageCaptor.capture(),
+            docTypeCaptor.capture(),
+            any(),
+            anyInt());
     assertThat(statusCaptor.getValue()).isEmpty();
     assertThat(stageCaptor.getValue()).isEmpty();
     assertThat(docTypeCaptor.getValue()).contains("invoice");
@@ -201,8 +220,13 @@ class DashboardControllerTest {
     ArgumentCaptor<Optional<String>> docTypeCaptor = ArgumentCaptor.forClass(Optional.class);
 
     verify(dashboardRepository)
-        .listDocuments(
-            eq(KNOWN_ORG), statusCaptor.capture(), stageCaptor.capture(), docTypeCaptor.capture());
+        .listDocumentsPage(
+            eq(KNOWN_ORG),
+            statusCaptor.capture(),
+            stageCaptor.capture(),
+            docTypeCaptor.capture(),
+            any(),
+            anyInt());
     assertThat(statusCaptor.getValue()).contains(WorkflowStatus.FLAGGED);
     assertThat(stageCaptor.getValue()).isEmpty();
     assertThat(docTypeCaptor.getValue()).contains("invoice");
@@ -225,10 +249,67 @@ class DashboardControllerTest {
     ArgumentCaptor<Optional<String>> docTypeCaptor = ArgumentCaptor.forClass(Optional.class);
 
     verify(dashboardRepository)
-        .listDocuments(
-            eq(KNOWN_ORG), statusCaptor.capture(), stageCaptor.capture(), docTypeCaptor.capture());
+        .listDocumentsPage(
+            eq(KNOWN_ORG),
+            statusCaptor.capture(),
+            stageCaptor.capture(),
+            docTypeCaptor.capture(),
+            any(),
+            anyInt());
     assertThat(statusCaptor.getValue()).isEmpty();
     assertThat(stageCaptor.getValue()).contains("Review");
     assertThat(docTypeCaptor.getValue()).isEmpty();
+  }
+
+  @Test
+  void cursorParams_arePassedToListDocumentsPage() throws Exception {
+    Instant cursorTs = Instant.parse("2026-04-27T12:00:00Z");
+    UUID cursorId = UUID.randomUUID();
+    DocumentCursor next =
+        new DocumentCursor(Instant.parse("2026-04-26T11:00:00Z"), UUID.randomUUID());
+    when(dashboardRepository.listDocumentsPage(any(), any(), any(), any(), any(), anyInt()))
+        .thenReturn(new DocumentsPage(List.of(), next));
+
+    mockMvc
+        .perform(
+            get("/api/organizations/{orgId}/documents", KNOWN_ORG)
+                .param("cursorUpdatedAt", cursorTs.toString())
+                .param("cursorId", cursorId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.nextCursor.updatedAt").value(next.updatedAt().toString()))
+        .andExpect(jsonPath("$.nextCursor.id").value(next.id().toString()));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Optional<DocumentCursor>> cursorCaptor =
+        ArgumentCaptor.forClass(Optional.class);
+    verify(dashboardRepository)
+        .listDocumentsPage(
+            eq(KNOWN_ORG), any(), any(), any(), cursorCaptor.capture(), anyInt());
+    assertThat(cursorCaptor.getValue()).isPresent();
+    assertThat(cursorCaptor.getValue().get().updatedAt()).isEqualTo(cursorTs);
+    assertThat(cursorCaptor.getValue().get().id()).isEqualTo(cursorId);
+  }
+
+  @Test
+  void cursorParam_partial_returns400() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/organizations/{orgId}/documents", KNOWN_ORG)
+                .param("cursorUpdatedAt", "2026-04-27T12:00:00Z"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+  }
+
+  @Test
+  void cursorParam_invalidFormat_returns400() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/organizations/{orgId}/documents", KNOWN_ORG)
+                .param("cursorUpdatedAt", "not-a-timestamp")
+                .param("cursorId", UUID.randomUUID().toString()))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
   }
 }

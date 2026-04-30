@@ -59,6 +59,7 @@ export function useUploadDocument(
           processing: [optimisticItem],
           documents: [],
           stats: { inProgress: 1, awaitingReview: 0, flagged: 0, filedThisMonth: 0 },
+          nextCursor: null,
         });
       }
       return { previousDashboard, optimisticId };

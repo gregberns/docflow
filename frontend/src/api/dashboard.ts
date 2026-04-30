@@ -1,10 +1,11 @@
 import { API_BASE, fetchJson } from "./client";
-import type { DashboardResponse, WorkflowStatus } from "../types/readModels";
+import type { DashboardResponse, DocumentCursor, WorkflowStatus } from "../types/readModels";
 
 export interface DashboardQuery {
   status?: WorkflowStatus;
   stage?: string;
   docType?: string;
+  cursor?: DocumentCursor;
 }
 
 export function getDashboard(
@@ -20,6 +21,10 @@ export function getDashboard(
   }
   if (query.docType) {
     params.set("docType", query.docType);
+  }
+  if (query.cursor) {
+    params.set("cursorUpdatedAt", query.cursor.updatedAt);
+    params.set("cursorId", query.cursor.id);
   }
   const suffix = params.toString();
   const path = `${API_BASE}/organizations/${encodeURIComponent(orgId)}/documents`;

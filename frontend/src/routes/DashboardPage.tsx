@@ -9,6 +9,7 @@ import { ProcessingSection } from "../components/ProcessingSection";
 import { DocumentsSection } from "../components/DocumentsSection";
 import { useOrgEvents } from "../hooks/useOrgEvents";
 import { useUploadDocument } from "../hooks/useUploadDocument";
+import type { DocumentCursor, DocumentView } from "../types/readModels";
 
 export function DashboardPage() {
   const { orgId } = useParams<{ orgId: string }>();
@@ -16,10 +17,19 @@ export function DashboardPage() {
   const [docTypeFilter, setDocTypeFilter] = useState<string | "ALL">("ALL");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [extraPages, setExtraPages] = useState<DocumentView[]>([]);
+  const [activeCursor, setActiveCursor] = useState<DocumentCursor | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["dashboard", orgId],
-    queryFn: () => getDashboard(orgId ?? ""),
+    queryFn: () => {
+      setExtraPages([]);
+      setActiveCursor(null);
+      setLoadMoreError(null);
+      return getDashboard(orgId ?? "");
+    },
     enabled: typeof orgId === "string" && orgId.length > 0,
   });
 
@@ -31,6 +41,15 @@ export function DashboardPage() {
 
   useOrgEvents(orgId);
   const upload = useUploadDocument(orgId);
+
+  const allDocuments = useMemo<DocumentView[]>(() => {
+    if (!data) {
+      return [];
+    }
+    return [...data.documents, ...extraPages];
+  }, [data, extraPages]);
+
+  const nextCursor: DocumentCursor | null = activeCursor ?? data?.nextCursor ?? null;
 
   const stageOptions = useMemo<ReadonlyArray<string>>(() => {
     if (!orgDetail) {
@@ -46,23 +65,17 @@ export function DashboardPage() {
   }, [orgDetail]);
 
   const docTypeOptions = useMemo<ReadonlyArray<string>>(() => {
-    if (!data) {
-      return [];
-    }
     const seen = new Set<string>();
-    for (const doc of data.documents) {
+    for (const doc of allDocuments) {
       if (doc.detectedDocumentType) {
         seen.add(doc.detectedDocumentType);
       }
     }
     return [...seen];
-  }, [data]);
+  }, [allDocuments]);
 
   const filteredDocuments = useMemo(() => {
-    if (!data) {
-      return [];
-    }
-    return data.documents.filter((doc) => {
+    return allDocuments.filter((doc) => {
       if (stageFilter !== "ALL" && doc.currentStageDisplayName !== stageFilter) {
         return false;
       }
@@ -71,7 +84,7 @@ export function DashboardPage() {
       }
       return true;
     });
-  }, [data, stageFilter, docTypeFilter]);
+  }, [allDocuments, stageFilter, docTypeFilter]);
 
   const onUploadClick = () => {
     setUploadError(null);
@@ -92,6 +105,23 @@ export function DashboardPage() {
         },
       },
     );
+  };
+
+  const onLoadMore = async () => {
+    if (!orgId || !nextCursor || loadingMore) {
+      return;
+    }
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const next = await getDashboard(orgId, { cursor: nextCursor });
+      setExtraPages((prev) => [...prev, ...next.documents]);
+      setActiveCursor(next.nextCursor);
+    } catch (err) {
+      setLoadMoreError(err instanceof Error ? err.message : "Unable to load more documents.");
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   return (
@@ -151,7 +181,13 @@ export function DashboardPage() {
             uploadDisabled={upload.isPending || !orgId}
           />
           <ProcessingSection items={data.processing} />
-          <DocumentsSection documents={filteredDocuments} />
+          <DocumentsSection
+            documents={filteredDocuments}
+            hasMore={nextCursor !== null}
+            loadingMore={loadingMore}
+            onLoadMore={onLoadMore}
+            loadMoreError={loadMoreError}
+          />
         </>
       )}
     </main>

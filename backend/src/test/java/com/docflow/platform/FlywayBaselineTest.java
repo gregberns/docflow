@@ -163,7 +163,8 @@ class FlywayBaselineTest {
         .containsExactly(
             "V1__init.sql",
             "V2__index_documents_org_doctype.sql",
-            "V3__add_updated_at_to_processing_documents.sql");
+            "V3__add_updated_at_to_processing_documents.sql",
+            "V4__index_workflow_instances_updated_at_id.sql");
   }
 
   private static Flyway classpathFlyway() {

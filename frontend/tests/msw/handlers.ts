@@ -169,6 +169,7 @@ const DASHBOARD_RESPONSE: DashboardResponse = {
     flagged: 1,
     filedThisMonth: 12,
   },
+  nextCursor: null,
 };
 
 const UPLOAD_ACCEPTED: UploadAccepted = {
