@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.event.EventListener;
@@ -22,6 +23,8 @@ import org.springframework.stereotype.Component;
 @DependsOn("orgConfigSeeder")
 @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
 public class WorkflowCatalogImpl implements WorkflowCatalog {
+
+  static final Set<String> SUPPORTED_GUARD_OPS = Set.of("EQ", "NEQ");
 
   private final WorkflowRepository workflowRepository;
   private final StageRepository stageRepository;
@@ -98,6 +101,23 @@ public class WorkflowCatalogImpl implements WorkflowCatalog {
           entity.getGuardField() == null
               ? null
               : new GuardView(entity.getGuardField(), entity.getGuardOp(), entity.getGuardValue());
+      if (guard != null && guard.op() != null && !SUPPORTED_GUARD_OPS.contains(guard.op())) {
+        throw new IllegalStateException(
+            "workflow ("
+                + orgId
+                + ", "
+                + docTypeId
+                + ") transition "
+                + entity.getFromStage()
+                + " --"
+                + entity.getAction()
+                + "--> "
+                + entity.getToStage()
+                + " declares unknown guard op '"
+                + guard.op()
+                + "'; supported ops are "
+                + SUPPORTED_GUARD_OPS);
+      }
       views.add(
           new TransitionView(
               entity.getFromStage(), entity.getToStage(), entity.getAction(), guard));

@@ -75,7 +75,9 @@ public record TransitionResolver(WorkflowCatalog catalog) {
     return switch (op) {
       case "EQ" -> Objects.equals(stringify(fields.get(guard.field())), guard.value());
       case "NEQ" -> !Objects.equals(stringify(fields.get(guard.field())), guard.value());
-      default -> false;
+      default ->
+          throw new IllegalArgumentException(
+              "unknown guard op '" + op + "'; supported ops are [EQ, NEQ]");
     };
   }
 

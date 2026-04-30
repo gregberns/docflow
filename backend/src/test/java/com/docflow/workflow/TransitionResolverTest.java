@@ -1,6 +1,7 @@
 package com.docflow.workflow;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.docflow.config.catalog.GuardView;
 import com.docflow.config.catalog.StageView;
@@ -260,6 +261,36 @@ class TransitionResolverTest {
 
     assertThat(((TransitionResolver.Result.Match) result).transition().toStage())
         .isEqualTo(STAGE_PM_APPROVAL);
+  }
+
+  @Test
+  void unknownGuardOpThrowsIllegalArgumentException() {
+    WorkflowCatalog catalog =
+        catalog(
+            new WorkflowView(
+                ORG,
+                DOC_TYPE,
+                stages(),
+                List.of(
+                    new TransitionView(
+                        STAGE_REVIEW,
+                        STAGE_FILED,
+                        "APPROVE",
+                        new GuardView("waiverType", "EQUALS", "unconditional")))));
+
+    assertThatThrownBy(
+            () ->
+                new TransitionResolver(catalog)
+                    .resolve(
+                        ORG,
+                        DOC_TYPE,
+                        STAGE_REVIEW,
+                        new WorkflowAction.Approve(),
+                        Map.of("waiverType", "unconditional")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("EQUALS")
+        .hasMessageContaining("EQ")
+        .hasMessageContaining("NEQ");
   }
 
   @Test
