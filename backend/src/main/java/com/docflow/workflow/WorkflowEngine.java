@@ -1,7 +1,5 @@
 package com.docflow.workflow;
 
-import com.docflow.c3.llm.LlmExtractor;
-import com.docflow.c3.llm.RetypeAlreadyInProgressException;
 import com.docflow.config.catalog.TransitionView;
 import com.docflow.config.catalog.WorkflowCatalog;
 import com.docflow.document.Document;
@@ -9,6 +7,7 @@ import com.docflow.document.DocumentReader;
 import com.docflow.document.ReextractionStatus;
 import com.docflow.platform.DocumentEventBus;
 import com.docflow.workflow.events.DocumentStateChanged;
+import com.docflow.workflow.events.RetypeRequested;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -24,7 +23,6 @@ public class WorkflowEngine {
   private final DocumentReader documentReader;
   private final WorkflowInstanceReader instanceReader;
   private final WorkflowInstanceWriter instanceWriter;
-  private final LlmExtractor llmExtractor;
   private final DocumentEventBus eventBus;
   private final TransitionResolver transitionResolver;
   private final Clock clock;
@@ -34,14 +32,12 @@ public class WorkflowEngine {
       DocumentReader documentReader,
       WorkflowInstanceReader instanceReader,
       WorkflowInstanceWriter instanceWriter,
-      LlmExtractor llmExtractor,
       DocumentEventBus eventBus,
       Clock clock) {
     this.catalog = Objects.requireNonNull(catalog, "catalog");
     this.documentReader = Objects.requireNonNull(documentReader, "documentReader");
     this.instanceReader = Objects.requireNonNull(instanceReader, "instanceReader");
     this.instanceWriter = Objects.requireNonNull(instanceWriter, "instanceWriter");
-    this.llmExtractor = Objects.requireNonNull(llmExtractor, "llmExtractor");
     this.eventBus = Objects.requireNonNull(eventBus, "eventBus");
     this.clock = Objects.requireNonNull(clock, "clock");
     this.transitionResolver = new TransitionResolver(catalog);
@@ -146,6 +142,7 @@ public class WorkflowEngine {
     }
 
     WorkflowInstance instance = requireUpdatedInstance(document.id());
+    Instant now = Instant.now(clock);
     eventBus.publish(
         new DocumentStateChanged(
             document.id(),
@@ -156,14 +153,10 @@ public class WorkflowEngine {
             ReextractionStatus.IN_PROGRESS.name(),
             "RESOLVE",
             null,
-            Instant.now(clock)));
-
-    try {
-      llmExtractor.extract(document.id(), newDocTypeId);
-    } catch (RetypeAlreadyInProgressException e) {
-      return new WorkflowOutcome.Failure(new WorkflowError.ExtractionInProgress(document.id()));
-    }
-    return new WorkflowOutcome.Success(requireUpdatedInstance(document.id()));
+            now));
+    eventBus.publish(
+        new RetypeRequested(document.id(), document.organizationId(), newDocTypeId, now));
+    return new WorkflowOutcome.Success(instance);
   }
 
   private WorkflowOutcome advanceViaResolver(

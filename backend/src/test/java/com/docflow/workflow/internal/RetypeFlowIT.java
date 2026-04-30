@@ -235,6 +235,71 @@ class RetypeFlowIT {
   }
 
   @Test
+  void resolveWithTypeChange_returnsImmediatelyAndListenerInvokesExtractorAsync()
+      throws InterruptedException {
+    UUID storedDocumentId = insertStoredDocument();
+    UUID documentId =
+        seedFlaggedDocument(storedDocumentId, ReextractionStatus.NONE, OLD_DOC_TYPE_ID);
+
+    java.util.concurrent.CountDownLatch extractGate = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.CountDownLatch extractEntered = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.atomic.AtomicReference<Long> extractThreadId =
+        new java.util.concurrent.atomic.AtomicReference<>();
+
+    doAnswer(
+            (InvocationOnMock inv) -> {
+              extractThreadId.set(Thread.currentThread().threadId());
+              extractEntered.countDown();
+              extractGate.await(5, java.util.concurrent.TimeUnit.SECONDS);
+              UUID docId = inv.getArgument(0);
+              String newType = inv.getArgument(1);
+              JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+              jdbc.update(
+                  "UPDATE documents SET detected_document_type = ?,"
+                      + " reextraction_status = 'NONE',"
+                      + " extracted_fields = CAST(? AS jsonb) WHERE id = ?",
+                  newType,
+                  "{\"merchant\":\"Async Cafe\",\"total\":\"5.00\"}",
+                  docId);
+              eventPublisher.publishEvent(
+                  new ExtractionCompleted(
+                      docId,
+                      ORG_ID,
+                      Map.of("merchant", "Async Cafe", "total", "5.00"),
+                      newType,
+                      Instant.now()));
+              return null;
+            })
+        .when(llmExtractor)
+        .extract(eq(documentId), eq(NEW_DOC_TYPE_ID));
+
+    long callerThreadId = Thread.currentThread().threadId();
+    long startNs = System.nanoTime();
+    workflowEngine.applyAction(documentId, new WorkflowAction.Resolve(NEW_DOC_TYPE_ID));
+    long elapsedMs = (System.nanoTime() - startNs) / 1_000_000L;
+
+    assertThat(elapsedMs).isLessThan(2_000L);
+
+    assertThat(extractEntered.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+    assertThat(extractThreadId.get()).isNotNull().isNotEqualTo(callerThreadId);
+
+    extractGate.countDown();
+
+    DocumentStateChanged completed = awaitEventWithReextractionStatus(ReextractionStatus.NONE);
+    assertThat(completed.documentId()).isEqualTo(documentId);
+    assertThat(completed.currentStage()).isEqualTo(STAGE_REVIEW_REC);
+    assertThat(completed.currentStatus()).isEqualTo(WorkflowStatus.AWAITING_REVIEW.name());
+
+    JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+    Map<String, Object> docRow =
+        jdbc.queryForMap(
+            "SELECT detected_document_type, reextraction_status FROM documents WHERE id = ?",
+            documentId);
+    assertThat(docRow.get("detected_document_type")).isEqualTo(NEW_DOC_TYPE_ID);
+    assertThat(docRow.get("reextraction_status")).isEqualTo("NONE");
+  }
+
+  @Test
   void extractionFailed_publishesFailedStateEvent() {
     UUID storedDocumentId = insertStoredDocument();
     UUID documentId =
@@ -500,7 +565,8 @@ class RetypeFlowIT {
     JdbcDocumentWriter.class,
     JdbcWorkflowInstanceReader.class,
     JdbcWorkflowInstanceWriter.class,
-    ExtractionEventListener.class
+    ExtractionEventListener.class,
+    RetypeRequestedListener.class
   })
   @EntityScan("com.docflow.config.persistence")
   @EnableJpaRepositories("com.docflow.config.persistence")
@@ -540,11 +606,10 @@ class RetypeFlowIT {
         DocumentReader documentReader,
         WorkflowInstanceReader instanceReader,
         WorkflowInstanceWriter instanceWriter,
-        LlmExtractor llmExtractor,
         DocumentEventBus eventBus,
         Clock clock) {
       return new WorkflowEngine(
-          catalog, documentReader, instanceReader, instanceWriter, llmExtractor, eventBus, clock);
+          catalog, documentReader, instanceReader, instanceWriter, eventBus, clock);
     }
   }
 }

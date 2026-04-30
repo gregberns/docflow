@@ -2,12 +2,14 @@ package com.docflow.workflow.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.Mockito.mock;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.docflow.c3.events.ProcessingCompleted;
+import com.docflow.c3.llm.LlmExtractor;
 import com.docflow.config.AppConfig;
 import com.docflow.config.catalog.DocumentTypeCatalogImpl;
 import com.docflow.config.catalog.OrganizationCatalogImpl;
@@ -482,6 +484,11 @@ class ProcessingCompletedListenerIT {
     FailingWorkflowInstanceWriter failingWorkflowInstanceWriter(
         JdbcWorkflowInstanceWriter delegate) {
       return new FailingWorkflowInstanceWriter(delegate);
+    }
+
+    @Bean
+    LlmExtractor llmExtractor() {
+      return mock(LlmExtractor.class);
     }
   }
 }

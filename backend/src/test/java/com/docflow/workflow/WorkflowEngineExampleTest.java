@@ -2,7 +2,6 @@ package com.docflow.workflow;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -12,8 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.docflow.c3.llm.LlmExtractor;
-import com.docflow.c3.llm.RetypeAlreadyInProgressException;
 import com.docflow.config.catalog.StageView;
 import com.docflow.config.catalog.TransitionView;
 import com.docflow.config.catalog.WorkflowCatalog;
@@ -24,6 +21,7 @@ import com.docflow.document.ReextractionStatus;
 import com.docflow.platform.DocumentEvent;
 import com.docflow.platform.DocumentEventBus;
 import com.docflow.workflow.events.DocumentStateChanged;
+import com.docflow.workflow.events.RetypeRequested;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -41,7 +39,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.invocation.InvocationOnMock;
 
 class WorkflowEngineExampleTest {
 
@@ -69,7 +66,6 @@ class WorkflowEngineExampleTest {
   private DocumentReader documentReader;
   private WorkflowInstanceReader instanceReader;
   private WorkflowInstanceWriter instanceWriter;
-  private LlmExtractor llmExtractor;
   private DocumentEventBus eventBus;
   private WorkflowEngine engine;
 
@@ -82,13 +78,12 @@ class WorkflowEngineExampleTest {
     documentReader = mock(DocumentReader.class);
     instanceReader = mock(WorkflowInstanceReader.class);
     instanceWriter = mock(WorkflowInstanceWriter.class);
-    llmExtractor = mock(LlmExtractor.class);
     eventBus = mock(DocumentEventBus.class);
 
     Clock clock = Clock.fixed(FIXED_NOW, ZoneOffset.UTC);
     engine =
         new WorkflowEngine(
-            catalog, documentReader, instanceReader, instanceWriter, llmExtractor, eventBus, clock);
+            catalog, documentReader, instanceReader, instanceWriter, eventBus, clock);
 
     documentId = UUID.randomUUID();
     storedDocumentId = UUID.randomUUID();
@@ -310,7 +305,6 @@ class WorkflowEngineExampleTest {
     assertThat(success.instance().workflowOriginStage()).isNull();
 
     verify(instanceWriter, times(1)).clearFlag(documentId, catalog, ORG_ID, DOC_TYPE_ID);
-    verify(llmExtractor, never()).extract(any(), any());
 
     DocumentStateChanged event = capturePublishedEvent();
     assertThat(event.currentStage()).isEqualTo(STAGE_MANAGER);
@@ -337,31 +331,17 @@ class WorkflowEngineExampleTest {
         (WorkflowError.ExtractionInProgress) ((WorkflowOutcome.Failure) outcome).error();
     assertThat(err.documentId()).isEqualTo(documentId);
 
-    verify(llmExtractor, never()).extract(any(), any());
     verifyNoInteractions(instanceWriter);
     verifyNoInteractions(eventBus);
   }
 
   @Test
-  void resolveWithTypeChangeDelegatesLifecycleToExtractorAndDoesNotDoubleMark() {
+  void resolveWithTypeChangePublishesInProgressAndRetypeRequestedEvents() {
     Document document = document(ReextractionStatus.NONE);
     WorkflowInstance flaggedInstance =
         instance(STAGE_REVIEW, WorkflowStatus.FLAGGED, STAGE_MANAGER);
     when(documentReader.get(documentId)).thenReturn(Optional.of(document));
     when(instanceReader.getByDocumentId(documentId)).thenReturn(Optional.of(flaggedInstance));
-
-    doAnswer(
-            (InvocationOnMock inv) -> {
-              Document seen = documentReader.get(documentId).orElseThrow();
-              if (seen.reextractionStatus() == ReextractionStatus.IN_PROGRESS) {
-                throw new RetypeAlreadyInProgressException(documentId);
-              }
-              return null;
-            })
-        .when(llmExtractor)
-        .extract(eq(documentId), eq(NEW_DOC_TYPE_ID));
-
-    org.mockito.InOrder order = org.mockito.Mockito.inOrder(eventBus, llmExtractor);
 
     WorkflowOutcome outcome =
         engine.applyAction(documentId, new WorkflowAction.Resolve(NEW_DOC_TYPE_ID));
@@ -371,7 +351,11 @@ class WorkflowEngineExampleTest {
     verify(instanceWriter, never())
         .advanceStage(any(), any(), any(WorkflowCatalog.class), any(), any());
 
-    DocumentStateChanged inProgressEvent = capturePublishedEvent();
+    ArgumentCaptor<DocumentEvent> captor = ArgumentCaptor.forClass(DocumentEvent.class);
+    verify(eventBus, times(2)).publish(captor.capture());
+    List<DocumentEvent> published = captor.getAllValues();
+
+    DocumentStateChanged inProgressEvent = (DocumentStateChanged) published.get(0);
     assertThat(inProgressEvent.documentId()).isEqualTo(documentId);
     assertThat(inProgressEvent.storedDocumentId()).isEqualTo(storedDocumentId);
     assertThat(inProgressEvent.organizationId()).isEqualTo(ORG_ID);
@@ -382,11 +366,13 @@ class WorkflowEngineExampleTest {
     assertThat(inProgressEvent.action()).isEqualTo("RESOLVE");
     assertThat(inProgressEvent.comment()).isNull();
     assertThat(inProgressEvent.occurredAt()).isEqualTo(FIXED_NOW);
-    verify(eventBus, times(1)).publish(any(DocumentEvent.class));
     verifyEventShape(inProgressEvent);
 
-    order.verify(eventBus).publish(any(DocumentEvent.class));
-    order.verify(llmExtractor).extract(eq(documentId), eq(NEW_DOC_TYPE_ID));
+    RetypeRequested retypeRequested = (RetypeRequested) published.get(1);
+    assertThat(retypeRequested.documentId()).isEqualTo(documentId);
+    assertThat(retypeRequested.organizationId()).isEqualTo(ORG_ID);
+    assertThat(retypeRequested.newDocTypeId()).isEqualTo(NEW_DOC_TYPE_ID);
+    assertThat(retypeRequested.occurredAt()).isEqualTo(FIXED_NOW);
   }
 
   @Test

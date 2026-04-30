@@ -3,7 +3,6 @@ package com.docflow.workflow;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import com.docflow.c3.llm.LlmExtractor;
 import com.docflow.config.catalog.GuardView;
 import com.docflow.config.catalog.StageView;
 import com.docflow.config.catalog.TransitionView;
@@ -264,18 +263,11 @@ class WorkflowEnginePropertyTest {
             FIXED_NOW);
     store.putInstance(instance);
 
-    LlmExtractor llmExtractor = mock(LlmExtractor.class);
     DocumentEventBus eventBus = new RecordingEventBus();
     WorkflowInstanceWriter writer = store.instanceWriter();
     WorkflowEngine engine =
         new WorkflowEngine(
-            catalog,
-            store.documentReader(),
-            store.instanceReader(),
-            writer,
-            llmExtractor,
-            eventBus,
-            FIXED_CLOCK);
+            catalog, store.documentReader(), store.instanceReader(), writer, eventBus, FIXED_CLOCK);
     return new Fixture(engine, store, documentId, view);
   }
 
@@ -312,18 +304,11 @@ class WorkflowEnginePropertyTest {
             null,
             FIXED_NOW);
     store.putInstance(instance);
-    LlmExtractor llmExtractor = mock(LlmExtractor.class);
     DocumentEventBus eventBus = new RecordingEventBus();
     WorkflowInstanceWriter writer = store.instanceWriter();
     WorkflowEngine engine =
         new WorkflowEngine(
-            catalog,
-            store.documentReader(),
-            store.instanceReader(),
-            writer,
-            llmExtractor,
-            eventBus,
-            FIXED_CLOCK);
+            catalog, store.documentReader(), store.instanceReader(), writer, eventBus, FIXED_CLOCK);
     return new Fixture(engine, store, documentId, view);
   }
 
