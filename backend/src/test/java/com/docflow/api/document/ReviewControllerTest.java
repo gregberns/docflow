@@ -53,6 +53,9 @@ class ReviewControllerTest {
   private static final String DOC_TYPE_ID = "invoice";
   private static final String OTHER_DOC_TYPE_ID = "receipt";
   private static final String STAGE_ID = "manager-approval";
+  private static final String REVIEW_STAGE_ID = "ai-review";
+  private static final String FILED_STAGE_ID = "filed";
+  private static final String REJECTED_STAGE_ID = "rejected";
   private static final Instant UPLOADED_AT = Instant.parse("2026-04-27T12:00:00Z");
   private static final Instant PROCESSED_AT = Instant.parse("2026-04-27T12:00:30Z");
 
@@ -182,6 +185,70 @@ class ReviewControllerTest {
   }
 
   @Test
+  void patchFields_approvalStage_returns409InvalidAction() throws Exception {
+    UUID documentId = UUID.randomUUID();
+    seedDocument(
+        documentId, DOC_TYPE_ID, Map.of("amount", 42), STAGE_ID, WorkflowStatus.AWAITING_APPROVAL);
+    seedSchema(
+        DOC_TYPE_ID,
+        List.of(new FieldView("amount", "DECIMAL", true, null, null, null, null, false)));
+
+    mockMvc
+        .perform(
+            patch("/api/documents/" + documentId + "/review/fields")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"extractedFields\":{\"amount\":99.5}}"))
+        .andExpect(status().isConflict())
+        .andExpect(content().contentType(PROBLEM_JSON))
+        .andExpect(jsonPath("$.code").value("INVALID_ACTION"))
+        .andExpect(jsonPath("$.status").value(409));
+
+    verify(documentWriter, never()).updateExtraction(any(), any(), any());
+  }
+
+  @Test
+  void patchFields_filedStatus_returns409InvalidAction() throws Exception {
+    UUID documentId = UUID.randomUUID();
+    seedDocument(
+        documentId, DOC_TYPE_ID, Map.of("amount", 42), FILED_STAGE_ID, WorkflowStatus.FILED);
+    seedSchema(
+        DOC_TYPE_ID,
+        List.of(new FieldView("amount", "DECIMAL", true, null, null, null, null, false)));
+
+    mockMvc
+        .perform(
+            patch("/api/documents/" + documentId + "/review/fields")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"extractedFields\":{\"amount\":99.5}}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("INVALID_ACTION"))
+        .andExpect(jsonPath("$.status").value(409));
+
+    verify(documentWriter, never()).updateExtraction(any(), any(), any());
+  }
+
+  @Test
+  void patchFields_rejectedStatus_returns409InvalidAction() throws Exception {
+    UUID documentId = UUID.randomUUID();
+    seedDocument(
+        documentId, DOC_TYPE_ID, Map.of("amount", 42), REJECTED_STAGE_ID, WorkflowStatus.REJECTED);
+    seedSchema(
+        DOC_TYPE_ID,
+        List.of(new FieldView("amount", "DECIMAL", true, null, null, null, null, false)));
+
+    mockMvc
+        .perform(
+            patch("/api/documents/" + documentId + "/review/fields")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"extractedFields\":{\"amount\":99.5}}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("INVALID_ACTION"))
+        .andExpect(jsonPath("$.status").value(409));
+
+    verify(documentWriter, never()).updateExtraction(any(), any(), any());
+  }
+
+  @Test
   void retype_validNewType_returns202AndCallsEngineResolveOnce() throws Exception {
     UUID documentId = UUID.randomUUID();
     seedDocument(documentId, DOC_TYPE_ID, Map.of());
@@ -291,6 +358,15 @@ class ReviewControllerTest {
   }
 
   private void seedDocument(UUID documentId, String docTypeId, Map<String, Object> fields) {
+    seedDocument(documentId, docTypeId, fields, REVIEW_STAGE_ID, WorkflowStatus.AWAITING_REVIEW);
+  }
+
+  private void seedDocument(
+      UUID documentId,
+      String docTypeId,
+      Map<String, Object> fields,
+      String currentStageId,
+      WorkflowStatus currentStatus) {
     UUID storedUuid = UUID.randomUUID();
     StoredDocumentId storedId = StoredDocumentId.of(storedUuid);
     Document document = buildDocument(documentId, docTypeId, fields);
@@ -302,8 +378,8 @@ class ReviewControllerTest {
             UUID.randomUUID(),
             documentId,
             ORG_ID,
-            STAGE_ID,
-            WorkflowStatus.AWAITING_REVIEW,
+            currentStageId,
+            currentStatus,
             null,
             null,
             UPLOADED_AT);
@@ -312,7 +388,10 @@ class ReviewControllerTest {
             ORG_ID,
             docTypeId,
             List.of(
-                new StageView(STAGE_ID, "Manager Approval", "approval", "AWAITING_APPROVAL", null)),
+                new StageView(REVIEW_STAGE_ID, "AI Review", "review", "AWAITING_REVIEW", null),
+                new StageView(STAGE_ID, "Manager Approval", "approval", "AWAITING_APPROVAL", null),
+                new StageView(FILED_STAGE_ID, "Filed", "terminal", "FILED", null),
+                new StageView(REJECTED_STAGE_ID, "Rejected", "terminal", "REJECTED", null)),
             List.of());
 
     when(documentReader.get(documentId)).thenReturn(Optional.of(document));

@@ -29,9 +29,11 @@ import com.docflow.workflow.WorkflowError;
 import com.docflow.workflow.WorkflowInstance;
 import com.docflow.workflow.WorkflowInstanceReader;
 import com.docflow.workflow.WorkflowOutcome;
+import com.docflow.workflow.WorkflowStatus;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -46,6 +48,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/documents")
 public class ReviewController {
+
+  private static final String STAGE_KIND_REVIEW = "review";
 
   private final WorkflowEngine workflowEngine;
   private final DocumentReader documentReader;
@@ -90,6 +94,15 @@ public class ReviewController {
             .getDocumentTypeSchema(orgId, docTypeId)
             .orElseThrow(() -> new UnknownDocTypeException(String.valueOf(docTypeId)));
 
+    WorkflowInstance instance =
+        workflowInstanceReader
+            .getByDocumentId(documentId)
+            .orElseThrow(() -> new UnknownDocumentException(documentId.toString()));
+    if (isTerminalStatus(instance.currentStatus())
+        || !isReviewStage(orgId, docTypeId, instance.currentStageId())) {
+      throw new InvalidActionException("Field edits are only allowed in Review.");
+    }
+
     List<FieldError> violations = new ArrayList<>();
     validateFields(schema.fields(), patch.extractedFields(), "extractedFields", violations);
     if (!violations.isEmpty()) {
@@ -98,6 +111,27 @@ public class ReviewController {
 
     documentWriter.updateExtraction(documentId, docTypeId, patch.extractedFields());
     return loadDocumentView(documentId);
+  }
+
+  private boolean isReviewStage(String orgId, String docTypeId, String stageId) {
+    if (orgId == null || docTypeId == null || stageId == null) {
+      return false;
+    }
+    WorkflowView workflow = workflowCatalog.getWorkflow(orgId, docTypeId).orElse(null);
+    if (workflow == null) {
+      return false;
+    }
+    for (StageView stage : workflow.stages()) {
+      if (stageId.equals(stage.id())) {
+        String kind = stage.kind();
+        return kind != null && STAGE_KIND_REVIEW.equals(kind.toLowerCase(Locale.ROOT));
+      }
+    }
+    return false;
+  }
+
+  private boolean isTerminalStatus(WorkflowStatus status) {
+    return status == WorkflowStatus.FILED || status == WorkflowStatus.REJECTED;
   }
 
   @PostMapping("/{documentId}/review/retype")
