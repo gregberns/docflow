@@ -34,17 +34,11 @@ transitions:
     action: APPROVE
     to: Accounting Approval
   - from: Project Manager Approval
-    action: REJECT
-    to: Rejected
-  - from: Project Manager Approval
     action: FLAG
     to: Review
   - from: Accounting Approval
     action: APPROVE
     to: Filed
-  - from: Accounting Approval
-    action: REJECT
-    to: Rejected
   - from: Accounting Approval
     action: FLAG
     to: Review

@@ -34,17 +34,11 @@ transitions:
     action: APPROVE
     to: Billing Approval
   - from: Attorney Approval
-    action: REJECT
-    to: Rejected
-  - from: Attorney Approval
     action: FLAG
     to: Review
   - from: Billing Approval
     action: APPROVE
     to: Filed
-  - from: Billing Approval
-    action: REJECT
-    to: Rejected
   - from: Billing Approval
     action: FLAG
     to: Review

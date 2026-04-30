@@ -29,8 +29,5 @@ transitions:
     action: APPROVE
     to: Filed
   - from: Manager Approval
-    action: REJECT
-    to: Rejected
-  - from: Manager Approval
     action: FLAG
     to: Review
