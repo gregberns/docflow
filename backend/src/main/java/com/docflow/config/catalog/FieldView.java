@@ -8,7 +8,9 @@ public record FieldView(
     boolean required,
     List<String> enumValues,
     String format,
-    List<FieldView> itemFields) {
+    List<FieldView> itemFields,
+    String layout,
+    boolean multiline) {
 
   public FieldView {
     enumValues = enumValues == null ? null : List.copyOf(enumValues);

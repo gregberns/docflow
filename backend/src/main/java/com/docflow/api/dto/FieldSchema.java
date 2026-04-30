@@ -9,4 +9,6 @@ public record FieldSchema(
     boolean required,
     List<String> enumValues,
     @JsonInclude(JsonInclude.Include.NON_NULL) String format,
-    List<FieldSchema> itemFields) {}
+    List<FieldSchema> itemFields,
+    @JsonInclude(JsonInclude.Include.NON_NULL) String layout,
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT) boolean multiline) {}

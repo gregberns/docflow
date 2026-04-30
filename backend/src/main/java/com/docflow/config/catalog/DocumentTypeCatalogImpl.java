@@ -137,7 +137,11 @@ public class DocumentTypeCatalogImpl implements DocumentTypeCatalog {
       itemFields = parseFields((Map<String, Object>) itemMap);
     }
 
-    return new FieldView(name, type, required, enumValues, format, itemFields);
+    String layout = stringOrNull(raw.get("layout"));
+    Object multilineObj = raw.get("multiline");
+    boolean multiline = multilineObj instanceof Boolean b && b;
+
+    return new FieldView(name, type, required, enumValues, format, itemFields, layout, multiline);
   }
 
   private static String stringOrNull(Object value) {

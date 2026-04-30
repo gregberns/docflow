@@ -7,6 +7,8 @@ export interface FieldSchema {
   enumValues: string[] | null;
   format?: string;
   itemFields: FieldSchema[] | null;
+  layout?: "full" | "half";
+  multiline?: boolean;
 }
 
 export interface ProblemDetailFieldError {

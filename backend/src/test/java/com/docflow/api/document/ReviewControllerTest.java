@@ -96,8 +96,8 @@ class ReviewControllerTest {
     seedSchema(
         DOC_TYPE_ID,
         List.of(
-            new FieldView("amount", "DECIMAL", true, null, null, null),
-            new FieldView("vendor", "STRING", false, null, null, null)));
+            new FieldView("amount", "DECIMAL", true, null, null, null, null, false),
+            new FieldView("vendor", "STRING", false, null, null, null, null, false)));
 
     Map<String, Object> updatedFields = Map.of("amount", 99.5, "vendor", "ACME");
     when(documentReader.get(documentId))
@@ -130,8 +130,8 @@ class ReviewControllerTest {
     seedSchema(
         DOC_TYPE_ID,
         List.of(
-            new FieldView("amount", "DECIMAL", true, null, null, null),
-            new FieldView("vendor", "STRING", true, null, null, null)));
+            new FieldView("amount", "DECIMAL", true, null, null, null, null, false),
+            new FieldView("vendor", "STRING", true, null, null, null, null, false)));
 
     mockMvc
         .perform(
@@ -151,7 +151,9 @@ class ReviewControllerTest {
   void patchFields_wrongType_returns400() throws Exception {
     UUID documentId = UUID.randomUUID();
     seedDocument(documentId, DOC_TYPE_ID, Map.of());
-    seedSchema(DOC_TYPE_ID, List.of(new FieldView("amount", "DECIMAL", true, null, null, null)));
+    seedSchema(
+        DOC_TYPE_ID,
+        List.of(new FieldView("amount", "DECIMAL", true, null, null, null, null, false)));
 
     mockMvc
         .perform(

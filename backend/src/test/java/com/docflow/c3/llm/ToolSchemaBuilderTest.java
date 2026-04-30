@@ -45,7 +45,7 @@ class ToolSchemaBuilderTest {
             "pinnacle-legal",
             "pinnacle_invoice",
             "Pinnacle Invoice",
-            List.of(new FieldView("vendor", "STRING", true, null, null, null)));
+            List.of(new FieldView("vendor", "STRING", true, null, null, null, null, false)));
     ToolSchema schema = builder.buildExtractSchema(docType);
     assertThat(schema.toolName()).isEqualTo("extract_pinnacle_invoice");
   }
@@ -70,11 +70,11 @@ class ToolSchemaBuilderTest {
             "change_order",
             "Change Order",
             List.of(
-                new FieldView("vendor", "STRING", true, null, null, null),
-                new FieldView("notes", "STRING", false, null, null, null),
-                new FieldView("amount", "DECIMAL", true, null, null, null),
-                new FieldView("approvedBy", "STRING", false, null, null, null),
-                new FieldView("effectiveDate", "DATE", true, null, null, null)));
+                new FieldView("vendor", "STRING", true, null, null, null, null, false),
+                new FieldView("notes", "STRING", false, null, null, null, null, false),
+                new FieldView("amount", "DECIMAL", true, null, null, null, null, false),
+                new FieldView("approvedBy", "STRING", false, null, null, null, null, false),
+                new FieldView("effectiveDate", "DATE", true, null, null, null, null, false)));
 
     String json = builder.buildExtractSchema(docType).inputSchemaJson();
 
@@ -95,7 +95,9 @@ class ToolSchemaBuilderTest {
                     true,
                     List.of("cash", "credit", "debit", "check"),
                     null,
-                    null)));
+                    null,
+                    null,
+                    false)));
 
     String json = builder.buildExtractSchema(docType).inputSchemaJson();
 
@@ -113,7 +115,7 @@ class ToolSchemaBuilderTest {
             "invoice",
             "Invoice",
             List.of(
-                new FieldView("vendor", "STRING", true, null, null, null),
+                new FieldView("vendor", "STRING", true, null, null, null, null, false),
                 new FieldView(
                     "materials",
                     "ARRAY",
@@ -121,9 +123,11 @@ class ToolSchemaBuilderTest {
                     null,
                     null,
                     List.of(
-                        new FieldView("item", "STRING", true, null, null, null),
-                        new FieldView("quantity", "DECIMAL", true, null, null, null),
-                        new FieldView("unitCost", "DECIMAL", false, null, null, null)))));
+                        new FieldView("item", "STRING", true, null, null, null, null, false),
+                        new FieldView("quantity", "DECIMAL", true, null, null, null, null, false),
+                        new FieldView("unitCost", "DECIMAL", false, null, null, null, null, false)),
+                    null,
+                    false)));
 
     String json = builder.buildExtractSchema(docType).inputSchemaJson();
 
@@ -145,9 +149,9 @@ class ToolSchemaBuilderTest {
             "retainer_agreement",
             "Retainer Agreement",
             List.of(
-                new FieldView("clientName", "STRING", true, null, null, null),
-                new FieldView("retainerAmount", "DECIMAL", true, null, null, null),
-                new FieldView("effectiveDate", "DATE", true, null, null, null)));
+                new FieldView("clientName", "STRING", true, null, null, null, null, false),
+                new FieldView("retainerAmount", "DECIMAL", true, null, null, null, null, false),
+                new FieldView("effectiveDate", "DATE", true, null, null, null, null, false)));
 
     String json = builder.buildExtractSchema(docType).inputSchemaJson();
 
@@ -168,7 +172,7 @@ class ToolSchemaBuilderTest {
             "riverside-bistro",
             "receipt",
             "Receipt",
-            List.of(new FieldView("paymentMethod", "ENUM", true, null, null, null)));
+            List.of(new FieldView("paymentMethod", "ENUM", true, null, null, null, null, false)));
 
     assertThatThrownBy(() -> builder.buildExtractSchema(docType))
         .isInstanceOf(IllegalArgumentException.class)
@@ -182,7 +186,7 @@ class ToolSchemaBuilderTest {
             "ironworks-construction",
             "invoice",
             "Invoice",
-            List.of(new FieldView("materials", "ARRAY", true, null, null, null)));
+            List.of(new FieldView("materials", "ARRAY", true, null, null, null, null, false)));
 
     assertThatThrownBy(() -> builder.buildExtractSchema(docType))
         .isInstanceOf(IllegalArgumentException.class)
@@ -196,7 +200,7 @@ class ToolSchemaBuilderTest {
             "riverside-bistro",
             "receipt",
             "Receipt",
-            List.of(new FieldView("weirdField", "MYSTERY", true, null, null, null)));
+            List.of(new FieldView("weirdField", "MYSTERY", true, null, null, null, null, false)));
 
     assertThatThrownBy(() -> builder.buildExtractSchema(docType))
         .isInstanceOf(IllegalArgumentException.class)
@@ -209,10 +213,10 @@ class ToolSchemaBuilderTest {
         "invoice",
         "Invoice",
         List.of(
-            new FieldView("vendor", "STRING", true, null, null, null),
-            new FieldView("invoiceNumber", "STRING", true, null, null, null),
-            new FieldView("invoiceDate", "DATE", true, null, null, null),
-            new FieldView("amount", "DECIMAL", true, null, null, null),
+            new FieldView("vendor", "STRING", true, null, null, null, null, false),
+            new FieldView("invoiceNumber", "STRING", true, null, null, null, null, false),
+            new FieldView("invoiceDate", "DATE", true, null, null, null, null, false),
+            new FieldView("amount", "DECIMAL", true, null, null, null, null, false),
             new FieldView(
                 "materials",
                 "ARRAY",
@@ -220,8 +224,10 @@ class ToolSchemaBuilderTest {
                 null,
                 null,
                 List.of(
-                    new FieldView("item", "STRING", true, null, null, null),
-                    new FieldView("quantity", "DECIMAL", true, null, null, null),
-                    new FieldView("unitCost", "DECIMAL", true, null, null, null)))));
+                    new FieldView("item", "STRING", true, null, null, null, null, false),
+                    new FieldView("quantity", "DECIMAL", true, null, null, null, null, false),
+                    new FieldView("unitCost", "DECIMAL", true, null, null, null, null, false)),
+                null,
+                false)));
   }
 }
