@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
 
-  public static final String UPDATE_SQL =
+  private static final String UPDATE_SQL =
       "UPDATE workflow_instances SET "
           + "current_stage_id = :currentStageId, "
           + "current_status = :currentStatus, "
@@ -33,7 +33,7 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
           + "AND updated_at = :priorUpdatedAt "
           + "AND current_stage_id = :priorStageId";
 
-  public static final String CLEAR_ORIGIN_KEEP_STAGE_SQL =
+  private static final String CLEAR_ORIGIN_KEEP_STAGE_SQL =
       "UPDATE workflow_instances SET "
           + "document_type_id = :newDocTypeId, "
           + "current_stage_id = :newStageId, "
@@ -43,7 +43,7 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
           + "updated_at = :newUpdatedAt "
           + "WHERE document_id = :documentId";
 
-  public static final String INSERT_SQL =
+  private static final String INSERT_SQL =
       "INSERT INTO workflow_instances "
           + "(id, document_id, organization_id, document_type_id, current_stage_id, "
           + "current_status, workflow_origin_stage, flag_comment, updated_at) "

@@ -15,23 +15,23 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 public class JdbcDocumentWriter implements DocumentWriter {
 
-  public static final String INSERT_SQL =
+  private static final String INSERT_SQL =
       "INSERT INTO documents "
           + "(id, stored_document_id, organization_id, detected_document_type, "
           + "extracted_fields, raw_text, processed_at, reextraction_status) "
           + "VALUES (:id, :storedDocumentId, :organizationId, :detectedDocumentType, "
           + "CAST(:extractedFields AS jsonb), :rawText, :processedAt, :reextractionStatus)";
 
-  public static final String UPDATE_EXTRACTION_SQL =
+  private static final String UPDATE_EXTRACTION_SQL =
       "UPDATE documents SET "
           + "detected_document_type = :detectedDocumentType, "
           + "extracted_fields = CAST(:extractedFields AS jsonb) "
           + "WHERE id = :id";
 
-  public static final String UPDATE_REEXTRACTION_STATUS_SQL =
+  private static final String UPDATE_REEXTRACTION_STATUS_SQL =
       "UPDATE documents SET reextraction_status = :reextractionStatus WHERE id = :id";
 
-  public static final String CLAIM_REEXTRACTION_IN_PROGRESS_SQL =
+  private static final String CLAIM_REEXTRACTION_IN_PROGRESS_SQL =
       "UPDATE documents SET reextraction_status = 'IN_PROGRESS' "
           + "WHERE id = :id AND reextraction_status != 'IN_PROGRESS'";
 

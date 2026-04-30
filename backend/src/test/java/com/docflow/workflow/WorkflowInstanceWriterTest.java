@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -86,7 +87,9 @@ class WorkflowInstanceWriterTest {
     assertThat(params).containsEntry("priorStageId", STAGE_REVIEW_ID);
     assertThat(params).containsEntry("newUpdatedAt", Timestamp.from(FIXED_NOW));
     verify(jdbc, times(1))
-        .update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class));
+        .update(
+            argThat(WorkflowInstanceWriterTest::isGuardedUpdateSql),
+            any(MapSqlParameterSource.class));
   }
 
   @Test
@@ -172,13 +175,17 @@ class WorkflowInstanceWriterTest {
     assertThat(params).containsEntry("workflowOriginStage", null);
     assertThat(params).containsEntry("flagComment", null);
     verify(jdbc, times(1))
-        .update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class));
+        .update(
+            argThat(WorkflowInstanceWriterTest::isGuardedUpdateSql),
+            any(MapSqlParameterSource.class));
   }
 
   @Test
   void zeroRowUpdate_throwsStaleWorkflowStateExceptionWithoutRetry() {
     seedSelect(STAGE_REVIEW_ID, null, null);
-    when(jdbc.update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class)))
+    when(jdbc.update(
+            argThat(WorkflowInstanceWriterTest::isGuardedUpdateSql),
+            any(MapSqlParameterSource.class)))
         .thenReturn(0);
     seedRowStillExists();
 
@@ -192,13 +199,17 @@ class WorkflowInstanceWriterTest {
               assertThat(stale.observedFromStageId()).isEqualTo(STAGE_REVIEW_ID);
             });
     verify(jdbc, times(1))
-        .update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class));
+        .update(
+            argThat(WorkflowInstanceWriterTest::isGuardedUpdateSql),
+            any(MapSqlParameterSource.class));
   }
 
   @Test
   void zeroRowUpdate_whenRowMissing_throwsUnknownDocumentException() {
     seedSelect(STAGE_REVIEW_ID, null, null);
-    when(jdbc.update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class)))
+    when(jdbc.update(
+            argThat(WorkflowInstanceWriterTest::isGuardedUpdateSql),
+            any(MapSqlParameterSource.class)))
         .thenReturn(0);
     when(jdbc.queryForList(anyString(), anyMap(), eq(Integer.class))).thenReturn(List.of());
 
@@ -220,7 +231,9 @@ class WorkflowInstanceWriterTest {
         new Row(STAGE_REVIEW_ID, null, null, PRIOR_AT),
         new Row(STAGE_REVIEW_ID, null, null, PRIOR_AT),
         new Row(STAGE_REVIEW_ID, null, null, PRIOR_AT));
-    when(jdbc.update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class)))
+    when(jdbc.update(
+            argThat(WorkflowInstanceWriterTest::isGuardedUpdateSql),
+            any(MapSqlParameterSource.class)))
         .thenReturn(1)
         .thenReturn(0)
         .thenReturn(0)
@@ -256,7 +269,9 @@ class WorkflowInstanceWriterTest {
   }
 
   private void seedUpdateSucceeds() {
-    when(jdbc.update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class)))
+    when(jdbc.update(
+            argThat(WorkflowInstanceWriterTest::isGuardedUpdateSql),
+            any(MapSqlParameterSource.class)))
         .thenReturn(1);
   }
 
@@ -267,7 +282,7 @@ class WorkflowInstanceWriterTest {
   private Map<String, Object> captureUpdateParams() {
     ArgumentCaptor<MapSqlParameterSource> captor =
         ArgumentCaptor.forClass(MapSqlParameterSource.class);
-    verify(jdbc).update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), captor.capture());
+    verify(jdbc).update(argThat(WorkflowInstanceWriterTest::isGuardedUpdateSql), captor.capture());
     return toMap(captor.getValue());
   }
 
@@ -277,6 +292,13 @@ class WorkflowInstanceWriterTest {
       out.put(name, params.getValue(name));
     }
     return out;
+  }
+
+  private static boolean isGuardedUpdateSql(String sql) {
+    return sql != null
+        && sql.startsWith("UPDATE workflow_instances")
+        && sql.contains("AND updated_at = :priorUpdatedAt")
+        && sql.contains("AND current_stage_id = :priorStageId");
   }
 
   private record Row(String stageId, String origin, String comment, Instant updatedAt) {
