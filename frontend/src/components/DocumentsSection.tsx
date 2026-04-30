@@ -1,17 +1,26 @@
 import { useNavigate } from "react-router-dom";
 import type { DocumentView, WorkflowStatus } from "../types/readModels";
 import { ChevronRightIcon } from "./icons/Icons";
+import { docDisplayId, docSubtitle } from "../util/formatters";
 
 interface DocumentsSectionProps {
   documents: DocumentView[];
 }
 
-const STATUS_BADGE_CLASSES: Record<WorkflowStatus, string> = {
+type StageColorKey =
+  | "AWAITING_REVIEW"
+  | "AWAITING_APPROVAL"
+  | "FILED"
+  | "REJECTED"
+  | "FLAGGED"
+  | null;
+
+const STAGE_BADGE_CLASSES: Record<NonNullable<StageColorKey>, string> = {
   AWAITING_REVIEW: "bg-stage-review-bg text-stage-review-fg",
   AWAITING_APPROVAL: "bg-stage-approval-bg text-stage-approval-fg",
   FILED: "bg-stage-filed-bg text-stage-filed-fg",
   REJECTED: "bg-stage-rejected-bg text-stage-rejected-fg",
-  FLAGGED: "bg-stage-flagged-bg text-stage-flagged-fg border border-[#fecdd3]",
+  FLAGGED: "bg-stage-review-bg text-stage-review-fg",
 };
 
 const NEUTRAL_BADGE = "bg-stage-type-neutral-bg text-stage-type-neutral-fg";
@@ -19,13 +28,32 @@ const NEUTRAL_BADGE = "bg-stage-type-neutral-bg text-stage-type-neutral-fg";
 const BADGE_BASE =
   "inline-flex items-center rounded-sm px-2 py-0.5 text-11 font-semibold tracking-[0.3px]";
 
-function StageBadge({ status, label }: { status: WorkflowStatus | null; label: string }) {
-  const variant = status ? STATUS_BADGE_CLASSES[status] : NEUTRAL_BADGE;
-  const testId = status === "FLAGGED" ? "badge-flagged" : "badge-stage";
+function StageBadge({
+  status,
+  label,
+  flagged,
+}: {
+  status: WorkflowStatus | null;
+  label: string;
+  flagged: boolean;
+}) {
+  const colorKey: NonNullable<StageColorKey> = status ?? "AWAITING_REVIEW";
+  const variant = STAGE_BADGE_CLASSES[colorKey] ?? NEUTRAL_BADGE;
   return (
-    <span data-testid={testId} className={`${BADGE_BASE} ${variant}`}>
-      {label}
-    </span>
+    <div className="flex flex-col items-start gap-1">
+      <span data-testid="badge-stage" className={`${BADGE_BASE} ${variant}`}>
+        {label}
+      </span>
+      {flagged && (
+        <span
+          data-testid="badge-flagged"
+          className="flex items-center gap-1 text-11 font-semibold text-stage-flagged-fg"
+        >
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-stage-flagged-fg" />
+          Flagged
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -72,58 +100,63 @@ export function DocumentsSection({ documents }: DocumentsSectionProps) {
                   Stage
                 </th>
                 <th className="border-b border-neutral-200 px-4 py-2.5 text-left text-11 font-semibold uppercase tracking-[0.5px] text-neutral-500">
-                  Status
-                </th>
-                <th className="border-b border-neutral-200 px-4 py-2.5 text-left text-11 font-semibold uppercase tracking-[0.5px] text-neutral-500">
                   Updated
                 </th>
                 <th className="w-8 border-b border-neutral-200 px-4 py-2.5" aria-hidden="true" />
               </tr>
             </thead>
             <tbody>
-              {documents.map((doc) => (
-                <tr
-                  key={doc.documentId}
-                  data-testid="document-row"
-                  data-document-id={doc.documentId}
-                  data-status={doc.currentStatus ?? ""}
-                  data-doc-type={doc.detectedDocumentType ?? ""}
-                  onClick={() => navigate(`/documents/${doc.documentId}`)}
-                  className="cursor-pointer transition-colors hover:bg-table-head [&>td]:border-b [&>td]:border-neutral-100 last:[&>td]:border-b-0"
-                >
-                  <td className="px-4 py-3 text-13 align-middle">
-                    <span className="font-semibold text-brand-navy">{doc.sourceFilename}</span>
-                  </td>
-                  <td className="px-4 py-3 text-13 align-middle">
-                    <TypeBadge value={doc.detectedDocumentType} />
-                  </td>
-                  <td className="px-4 py-3 text-13 align-middle">
-                    {doc.currentStageDisplayName ? (
-                      <span className={`${BADGE_BASE} ${NEUTRAL_BADGE}`}>
-                        {doc.currentStageDisplayName}
-                      </span>
-                    ) : (
-                      <span className="text-neutral-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-13 align-middle">
-                    {doc.currentStatus ? (
-                      <StageBadge status={doc.currentStatus} label={doc.currentStatus} />
-                    ) : (
-                      <span className="text-neutral-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-12 text-neutral-500 align-middle">
-                    {doc.processedAt ?? doc.uploadedAt}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-neutral-300 align-middle group-hover:text-brand-blue"
-                    aria-hidden="true"
+              {documents.map((doc) => {
+                const primaryId = docDisplayId(
+                  doc.detectedDocumentType,
+                  doc.extractedFields,
+                  doc.sourceFilename,
+                );
+                const subtitle = docSubtitle(doc.detectedDocumentType, doc.extractedFields);
+                const isFlagged = doc.currentStatus === "FLAGGED";
+                const stageStatus = isFlagged ? "AWAITING_REVIEW" : doc.currentStatus;
+                return (
+                  <tr
+                    key={doc.documentId}
+                    data-testid="document-row"
+                    data-document-id={doc.documentId}
+                    data-status={doc.currentStatus ?? ""}
+                    data-doc-type={doc.detectedDocumentType ?? ""}
+                    onClick={() => navigate(`/documents/${doc.documentId}`)}
+                    className="cursor-pointer transition-colors hover:bg-table-head [&>td]:border-b [&>td]:border-neutral-100 last:[&>td]:border-b-0"
                   >
-                    <ChevronRightIcon />
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-4 py-3 text-13 align-middle">
+                      <div className="font-semibold text-brand-navy">{primaryId}</div>
+                      {subtitle && (
+                        <div className="mt-0.5 text-12 text-neutral-500">{subtitle}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-13 align-middle">
+                      <TypeBadge value={doc.detectedDocumentType} />
+                    </td>
+                    <td className="px-4 py-3 text-13 align-middle">
+                      {doc.currentStageDisplayName ? (
+                        <StageBadge
+                          status={stageStatus}
+                          label={doc.currentStageDisplayName}
+                          flagged={isFlagged}
+                        />
+                      ) : (
+                        <span className="text-neutral-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-12 text-neutral-500 align-middle">
+                      {doc.processedAt ?? doc.uploadedAt}
+                    </td>
+                    <td
+                      className="px-4 py-3 text-neutral-300 align-middle group-hover:text-brand-blue"
+                      aria-hidden="true"
+                    >
+                      <ChevronRightIcon />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <div className="flex items-center justify-between border-t border-neutral-200 bg-table-head px-4 py-3">

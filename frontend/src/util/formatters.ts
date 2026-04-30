@@ -77,6 +77,49 @@ export function formatNumber(value: unknown): string {
   return num.toLocaleString("en-US");
 }
 
+const DOC_PRIMARY_FIELD: Record<string, string> = {
+  invoice: "invoiceNumber",
+  "retainer-agreement": "retainerNumber",
+  "expense-report": "submissionDate",
+  receipt: "date",
+  "change-order": "projectCode",
+  "lien-waiver": "projectCode",
+};
+
+const DOC_SUBTITLE_FIELD: Record<string, string> = {
+  invoice: "vendor",
+  "retainer-agreement": "clientName",
+  "expense-report": "attorneyName",
+  receipt: "merchant",
+  "change-order": "projectName",
+  "lien-waiver": "subcontractor",
+};
+
+export function docDisplayId(
+  detectedDocumentType: string | null,
+  extractedFields: Record<string, unknown>,
+  sourceFilename: string,
+): string {
+  if (!detectedDocumentType) return sourceFilename;
+  const field = DOC_PRIMARY_FIELD[detectedDocumentType];
+  if (!field) return sourceFilename;
+  const val = extractedFields[field];
+  if (val === null || val === undefined || val === "") return sourceFilename;
+  return String(val);
+}
+
+export function docSubtitle(
+  detectedDocumentType: string | null,
+  extractedFields: Record<string, unknown>,
+): string | null {
+  if (!detectedDocumentType) return null;
+  const field = DOC_SUBTITLE_FIELD[detectedDocumentType];
+  if (!field) return null;
+  const val = extractedFields[field];
+  if (val === null || val === undefined || val === "") return null;
+  return String(val);
+}
+
 export function formatFieldValue(
   fieldType: string,
   format: string | undefined,
