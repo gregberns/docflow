@@ -1,12 +1,14 @@
 import type { FieldSchema } from "../types/schema";
 import { formatFieldName, formatFieldValue } from "../util/formatters";
 import { ReadOnlyArrayTable } from "./ReadOnlyArrayTable";
+import { CheckIcon, FlagIcon } from "./icons/Icons";
 
 interface ApprovalSummaryProps {
   fields: FieldSchema[];
   values: Record<string, unknown>;
   stageDisplayName: string | null;
   role?: string | null;
+  docTypeLabel: string;
   onApprove: () => void;
   onFlag: () => void;
   isSubmitting?: boolean;
@@ -16,15 +18,15 @@ export function ApprovalSummary({
   fields,
   values,
   stageDisplayName,
-  role,
+  docTypeLabel,
   onApprove,
   onFlag,
   isSubmitting,
 }: ApprovalSummaryProps) {
-  const heading =
-    stageDisplayName && role && role.trim().length > 0
-      ? `${stageDisplayName} — role: ${role}`
-      : (stageDisplayName ?? "Approval");
+  const heading = stageDisplayName ?? "Approval";
+
+  const gridFields = fields.filter((f) => !f.multiline);
+  const multilineFields = fields.filter((f) => f.multiline);
 
   return (
     <section data-testid="approval-summary" className="flex min-h-0 flex-1 flex-col">
@@ -35,8 +37,24 @@ export function ApprovalSummary({
         >
           {heading}
         </h2>
+
+        <div className="mb-3 text-11 font-bold uppercase tracking-[0.5px] text-neutral-500">
+          Document Type
+        </div>
+        <dl data-testid="approval-summary-doc-type" className="m-0 mb-4">
+          <div className="mb-2.5 flex">
+            <dt className="w-[130px] flex-shrink-0 pt-px text-12 text-neutral-500">Type</dt>
+            <dd className="m-0 flex-1 text-13 font-medium text-brand-navy">{docTypeLabel}</dd>
+          </div>
+        </dl>
+
+        <div className="my-3 h-px bg-neutral-100" />
+
+        <div className="mb-3 text-11 font-bold uppercase tracking-[0.5px] text-neutral-500">
+          Reviewed Data
+        </div>
         <dl data-testid="approval-summary-fields" className="m-0">
-          {fields.map((field) => {
+          {gridFields.map((field) => {
             const upper = field.type.toUpperCase();
             const value = values[field.name];
             if (upper === "ARRAY") {
@@ -72,6 +90,21 @@ export function ApprovalSummary({
             );
           })}
         </dl>
+
+        {multilineFields.map((field) => (
+          <div key={field.name} data-testid={`approval-section-${field.name}`}>
+            <div className="my-3 h-px bg-neutral-100" />
+            <div className="mb-3 text-11 font-bold uppercase tracking-[0.5px] text-neutral-500">
+              {formatFieldName(field.name)}
+            </div>
+            <p
+              data-testid={`approval-field-${field.name}`}
+              className="text-13 leading-relaxed text-brand-navy"
+            >
+              {String(values[field.name] ?? "")}
+            </p>
+          </div>
+        ))}
       </div>
       <div
         data-testid="approval-action-bar"
@@ -84,6 +117,7 @@ export function ApprovalSummary({
           disabled={isSubmitting}
           className="inline-flex h-[38px] items-center justify-center gap-1.5 rounded-md border border-[#fde68a] bg-card px-5 text-13 font-semibold text-warn transition-colors hover:bg-[#fffbeb] disabled:cursor-not-allowed disabled:opacity-50"
         >
+          <FlagIcon size={14} />
           Flag
         </button>
         <button
@@ -93,6 +127,7 @@ export function ApprovalSummary({
           disabled={isSubmitting}
           className="inline-flex h-[38px] flex-1 items-center justify-center gap-1.5 rounded-md border-0 bg-success px-5 text-13 font-semibold text-white transition-colors hover:bg-success-strong disabled:cursor-not-allowed disabled:opacity-60"
         >
+          <CheckIcon />
           Approve
         </button>
       </div>

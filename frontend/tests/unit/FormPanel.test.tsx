@@ -184,9 +184,7 @@ describe("FormPanel — branch dispatch", () => {
       />,
     );
     expect(screen.getByTestId("form-panel")).toHaveAttribute("data-branch", "APPROVAL");
-    expect(screen.getByTestId("approval-summary-heading").textContent).toBe(
-      "Attorney Approval — role: Attorney",
-    );
+    expect(screen.getByTestId("approval-summary-heading").textContent).toBe("Attorney Approval");
 
     // No editable form rendered in approval mode.
     expect(screen.queryByTestId("review-form")).not.toBeInTheDocument();

@@ -8,6 +8,7 @@ interface TerminalSummaryProps {
   values: Record<string, unknown>;
   status: WorkflowStatus;
   stageDisplayName: string | null;
+  docTypeLabel: string;
   onBackToDocuments: () => void;
 }
 
@@ -16,8 +17,12 @@ export function TerminalSummary({
   values,
   status,
   stageDisplayName,
+  docTypeLabel,
   onBackToDocuments,
 }: TerminalSummaryProps) {
+  const gridFields = fields.filter((f) => !f.multiline);
+  const multilineFields = fields.filter((f) => f.multiline);
+
   return (
     <section
       data-testid="terminal-summary"
@@ -31,8 +36,24 @@ export function TerminalSummary({
         >
           {stageDisplayName ?? status}
         </h2>
+
+        <div className="mb-3 text-11 font-bold uppercase tracking-[0.5px] text-neutral-500">
+          Document Type
+        </div>
+        <dl data-testid="terminal-summary-doc-type" className="m-0 mb-4">
+          <div className="mb-2.5 flex">
+            <dt className="w-[130px] flex-shrink-0 pt-px text-12 text-neutral-500">Type</dt>
+            <dd className="m-0 flex-1 text-13 font-medium text-brand-navy">{docTypeLabel}</dd>
+          </div>
+        </dl>
+
+        <div className="my-3 h-px bg-neutral-100" />
+
+        <div className="mb-3 text-11 font-bold uppercase tracking-[0.5px] text-neutral-500">
+          Reviewed Data
+        </div>
         <dl data-testid="terminal-summary-fields" className="m-0">
-          {fields.map((field) => {
+          {gridFields.map((field) => {
             const upper = field.type.toUpperCase();
             const value = values[field.name];
             if (upper === "ARRAY") {
@@ -68,6 +89,21 @@ export function TerminalSummary({
             );
           })}
         </dl>
+
+        {multilineFields.map((field) => (
+          <div key={field.name} data-testid={`terminal-section-${field.name}`}>
+            <div className="my-3 h-px bg-neutral-100" />
+            <div className="mb-3 text-11 font-bold uppercase tracking-[0.5px] text-neutral-500">
+              {formatFieldName(field.name)}
+            </div>
+            <p
+              data-testid={`terminal-field-${field.name}`}
+              className="text-13 leading-relaxed text-brand-navy"
+            >
+              {String(values[field.name] ?? "")}
+            </p>
+          </div>
+        ))}
       </div>
       <div
         data-testid="terminal-action-bar"

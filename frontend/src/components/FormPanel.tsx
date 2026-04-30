@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { DocumentView, WorkflowStatus } from "../types/readModels";
 import type { FieldSchema } from "../types/schema";
 import type { StageSummary } from "../types/workflow";
-import { docDisplayId } from "../util/formatters";
+import { docDisplayId, formatDocType } from "../util/formatters";
 import { ApprovalSummary } from "./ApprovalSummary";
 import { TerminalSummary } from "./TerminalSummary";
 import { FlagBanner } from "./FlagBanner";
@@ -167,6 +167,7 @@ export function FormPanel({
           values={document.extractedFields}
           stageDisplayName={document.currentStageDisplayName}
           role={stage?.role ?? null}
+          docTypeLabel={formatDocType(document.detectedDocumentType ?? "")}
           onApprove={handlers?.onApprove ?? noop}
           onFlag={onFlag}
           isSubmitting={isSubmitting ?? false}
@@ -178,6 +179,7 @@ export function FormPanel({
           values={document.extractedFields}
           status={currentStatus}
           stageDisplayName={document.currentStageDisplayName}
+          docTypeLabel={formatDocType(document.detectedDocumentType ?? "")}
           onBackToDocuments={handlers?.onBackToDocuments ?? noop}
         />
       )}
