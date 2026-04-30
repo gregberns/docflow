@@ -273,7 +273,9 @@ function FieldRow({ field }: { field: FieldSchema }) {
   const inputType = upper === "DATE" ? "date" : "text";
   return (
     <label data-testid={`field-${field.name}`} className="mb-3.5 block">
-      <span className="mb-1 block text-12 font-semibold text-neutral-700">{field.name}</span>
+      <span className="mb-1 block text-12 font-semibold text-neutral-700">
+        {formatFieldName(field.name)}
+      </span>
       <input
         type={inputType}
         data-testid={`input-${field.name}`}
