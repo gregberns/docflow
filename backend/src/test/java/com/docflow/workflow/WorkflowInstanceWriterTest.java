@@ -10,6 +10,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.docflow.api.error.UnknownDocumentException;
 import com.docflow.config.catalog.StageView;
 import com.docflow.config.catalog.WorkflowCatalog;
 import com.docflow.config.catalog.WorkflowView;
@@ -179,6 +180,7 @@ class WorkflowInstanceWriterTest {
     seedSelect(STAGE_REVIEW_ID, null, null);
     when(jdbc.update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class)))
         .thenReturn(0);
+    seedRowStillExists();
 
     assertThatThrownBy(
             () -> writer.advanceStage(documentId, STAGE_MGR_ID, catalog, ORG_ID, DOC_TYPE_ID))
@@ -194,6 +196,24 @@ class WorkflowInstanceWriterTest {
   }
 
   @Test
+  void zeroRowUpdate_whenRowMissing_throwsUnknownDocumentException() {
+    seedSelect(STAGE_REVIEW_ID, null, null);
+    when(jdbc.update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class)))
+        .thenReturn(0);
+    when(jdbc.queryForList(anyString(), anyMap(), eq(Integer.class))).thenReturn(List.of());
+
+    assertThatThrownBy(
+            () -> writer.advanceStage(documentId, STAGE_MGR_ID, catalog, ORG_ID, DOC_TYPE_ID))
+        .isInstanceOf(UnknownDocumentException.class)
+        .satisfies(
+            ex -> {
+              UnknownDocumentException unknown = (UnknownDocumentException) ex;
+              assertThat(unknown.code().name()).isEqualTo("UNKNOWN_DOCUMENT");
+              assertThat(unknown.code().httpStatus()).isEqualTo(404);
+            });
+  }
+
+  @Test
   void concurrentWriters_simulated_onlyOneUpdateSucceeds() {
     seedSelectSequence(
         new Row(STAGE_REVIEW_ID, null, null, PRIOR_AT),
@@ -205,6 +225,7 @@ class WorkflowInstanceWriterTest {
         .thenReturn(0)
         .thenReturn(0)
         .thenReturn(0);
+    seedRowStillExists();
 
     int successes = 0;
     int stale = 0;
@@ -237,6 +258,10 @@ class WorkflowInstanceWriterTest {
   private void seedUpdateSucceeds() {
     when(jdbc.update(eq(JdbcWorkflowInstanceWriter.UPDATE_SQL), any(MapSqlParameterSource.class)))
         .thenReturn(1);
+  }
+
+  private void seedRowStillExists() {
+    when(jdbc.queryForList(anyString(), anyMap(), eq(Integer.class))).thenReturn(List.of(1));
   }
 
   private Map<String, Object> captureUpdateParams() {

@@ -1,5 +1,6 @@
 package com.docflow.workflow.internal;
 
+import com.docflow.api.error.UnknownDocumentException;
 import com.docflow.config.catalog.StageView;
 import com.docflow.config.catalog.WorkflowCatalog;
 import com.docflow.config.catalog.WorkflowView;
@@ -10,6 +11,7 @@ import com.docflow.workflow.WorkflowStatus;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -51,6 +53,9 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
   private static final String SELECT_STATE_SQL =
       "SELECT current_stage_id, workflow_origin_stage, updated_at "
           + "FROM workflow_instances WHERE document_id = :documentId";
+
+  private static final String COUNT_BY_DOCUMENT_SQL =
+      "SELECT 1 FROM workflow_instances WHERE document_id = :documentId LIMIT 1";
 
   private static final String STAGE_KIND_REVIEW = "review";
 
@@ -155,6 +160,11 @@ public class JdbcWorkflowInstanceWriter implements WorkflowInstanceWriter {
             .addValue("priorStageId", prior.currentStageId());
     int rows = jdbc.update(UPDATE_SQL, params);
     if (rows != 1) {
+      List<Integer> existing =
+          jdbc.queryForList(COUNT_BY_DOCUMENT_SQL, Map.of("documentId", documentId), Integer.class);
+      if (existing.isEmpty()) {
+        throw new UnknownDocumentException(documentId.toString());
+      }
       throw new StaleWorkflowStateException(documentId, prior.currentStageId());
     }
   }
